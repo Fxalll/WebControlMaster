@@ -241,16 +241,17 @@ svg:not(.nopic-clone),
   pointer-events: none;
   transition:
     opacity 0.3s ease,
-    transform 0.3s ease,
+    transform 0.25s ease,
     background 0.2s;
 }
 .nopic-float-btn:hover {
   background: #2f2f2f !important;
+  transform: scale(1.15) !important; /* hover 放大 */
 }
 .nopic-btn-active {
   opacity: 1 !important;
-  transform: scale(1) !important;
   pointer-events: auto !important;
+  transform: scale(1) !important; /* 基准确认 */
 }
 
 /* 方块倒计时 */
@@ -697,7 +698,7 @@ svg:not(.nopic-clone),
   border-radius: 10px;
   padding: 6px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  min-width: 170px;
+  min-width: 220px;
   max-width: 220px;
   flex-direction: column;
   gap: 2px;
@@ -755,7 +756,7 @@ svg:not(.nopic-clone),
   border-radius: 10px;
   padding: 6px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  min-width: 170px;
+  min-width: 220px;
   max-width: 220px;
   flex-direction: column;
   gap: 2px;
@@ -1421,7 +1422,7 @@ svg:not(.nopic-clone),
   padding-bottom: 2px;
 }
 .nopic-mask-list {
-  max-height: 120px;
+  max-height: 240px;
   overflow-y: auto;
 }
 .nopic-mask-item {
@@ -1619,24 +1620,22 @@ svg:not(.nopic-clone),
   gap: 2px;
 }
 .nopic-scope-clear-btn {
-  width: 16px;
-  height: 16px;
-  display: flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  background: rgba(248, 113, 113, 0.15);
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   font-size: 12px;
   color: #f87171;
   cursor: pointer;
-  opacity: 0.6;
-  transition:
-    opacity 0.2s,
-    background 0.2s;
+  background: transparent !important;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 .nopic-scope-clear-btn:hover {
-  opacity: 1;
-  background: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.15);
 }
 .nopic-privacy-actions {
   display: flex;
@@ -2995,6 +2994,9 @@ svg:not(.nopic-clone),
     opacity 0.25s ease,
     transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none;
+  max-height: none; /* 改为 none，取消高度限制 */
+  height: auto; /* 自动适应内容高度 */
+  overflow-y: visible; /* 让内容自然撑开 */
 }
 #nopic-tabdisguise-submenu.active,
 #nopic-mask-submenu.active,
@@ -3007,4 +3009,549 @@ svg:not(.nopic-clone),
   opacity: 1;
   transform: scale(1) translateY(0);
   pointer-events: auto;
+}
+/* ===== 关于弹窗 - 左右布局 ===== */
+#nopic-about-modal {
+  display: flex !important;
+  flex-direction: row !important;
+  max-width: 90vw !important;
+  min-width: auto !important;
+  width: auto !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  align-items: stretch !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+  text-align: left !important;
+  line-height: 1.5 !important;
+  padding: 22px 24px !important;
+  gap: 20px !important;
+  background: rgba(20, 20, 25, 0.97) !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ===== 左列 ===== */
+#nopic-about-modal .about-left {
+  flex: 0 0 270px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+  padding-right: 18px !important;
+}
+
+/* ===== 右列 ===== */
+#nopic-about-modal .about-right {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  min-width: 130px !important;
+  gap: 2px !important;
+}
+
+/* ===== 左列 - 每个板块 ===== */
+#nopic-about-modal .about-section {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+#nopic-about-modal .about-section-title {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+}
+
+#nopic-about-modal .about-section-desc {
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  margin-bottom: 6px !important;
+}
+
+/* ===== 方法行 ===== */
+#nopic-about-modal .about-method {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 12px !important;
+  padding: 2px 0 !important;
+}
+
+#nopic-about-modal .about-method .method-label {
+  color: rgba(255, 255, 255, 0.25) !important;
+  font-size: 11px !important;
+  flex-shrink: 0 !important;
+  width: 46px !important;
+}
+
+/* ===== Edge 按钮 - 实心蓝底白字 ===== */
+#nopic-about-modal .btn-edge {
+  display: inline-flex !important;
+  padding: 4px 14px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  background: #1a73e8 !important;
+  border: 1px solid #1a73e8 !important;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+#nopic-about-modal .btn-edge:hover {
+  background: #1557b0 !important;
+  border-color: #1557b0 !important;
+}
+
+/* ===== 下载 ZIP 按钮 - 保持原样（边框样式） ===== */
+#nopic-about-modal .btn-zip {
+  display: inline-flex !important;
+  padding: 4px 14px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+#nopic-about-modal .btn-zip:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #fff !important;
+}
+
+/* ===== disabled 状态（等待上架） ===== */
+#nopic-about-modal .btn-edge.disabled {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  filter: grayscale(0.6) !important;
+}
+
+#nopic-about-modal .badge-recommend {
+  font-size: 9px !important;
+  background: rgba(250, 204, 21, 0.2) !important;
+  color: #facc15 !important;
+  padding: 1px 7px !important;
+  border-radius: 3px !important;
+  font-weight: 500 !important;
+}
+#nopic-about-modal .badge-pending {
+  font-size: 9px !important;
+  background: rgba(156, 163, 175, 0.15) !important;
+  color: #9ca3af !important;
+  padding: 1px 7px !important;
+  border-radius: 3px !important;
+}
+
+#nopic-about-modal .method-hint {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.25) !important;
+}
+#nopic-about-modal .method-text {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ===== 方式二通用说明 ===== */
+#nopic-about-modal .about-guide {
+  background: rgba(96, 165, 250, 0.06) !important;
+  border: 1px solid rgba(96, 165, 250, 0.12) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  margin-top: 0 !important;
+}
+
+#nopic-about-modal .about-guide-title {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  margin-bottom: 4px !important;
+}
+
+#nopic-about-modal .about-guide-steps {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  padding-left: 4px !important;
+}
+#nopic-about-modal .about-guide-steps span {
+  padding: 1px 0 !important;
+}
+
+#nopic-about-modal .about-guide-note {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  margin-top: 4px !important;
+  padding-top: 4px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ===== 右列样式 ===== */
+#nopic-about-modal .about-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: rgba(250, 204, 21, 0.9) !important;
+}
+#nopic-about-modal .about-text {
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  line-height: 1.5 !important;
+}
+#nopic-about-modal .about-text.small {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+#nopic-about-modal .about-right img {
+  width: 140px !important;
+  height: 140px !important;
+  border-radius: 8px !important;
+  object-fit: cover !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  cursor: pointer !important;
+  margin: 4px 0 !important;
+}
+#nopic-about-modal .about-sponsor {
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* ===== 关闭按钮 ===== */
+#nopic-about-modal .about-close {
+  position: absolute !important;
+  top: 10px !important;
+  right: 14px !important;
+  font-size: 20px !important;
+  color: rgba(255, 255, 255, 0.2) !important;
+  cursor: pointer !important;
+  transition: color 0.2s !important;
+  pointer-events: auto !important;
+}
+#nopic-about-modal .about-close:hover {
+  color: #fff !important;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 560px) {
+  #nopic-about-modal {
+    flex-direction: column !important;
+    max-width: 340px !important;
+    min-width: auto !important;
+    padding: 16px !important;
+    gap: 14px !important;
+  }
+  #nopic-about-modal .about-left {
+    flex: 1 !important;
+    border-right: none !important;
+    padding-right: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding-bottom: 12px !important;
+  }
+  #nopic-about-modal .about-right img {
+    width: 110px !important;
+    height: 110px !important;
+  }
+}
+/* ===== 所有面板统一毛玻璃效果（排除隐私锁上锁界面） ===== */
+#nopic-tabdisguise-submenu,
+#nopic-mask-submenu,
+#nopic-privacylock-submenu,
+#nopic-textreplace-submenu,
+#nopic-autoclicker-submenu,
+#nopic-pageedit-submenu,
+#nopic-pagemonitor-submenu,
+#nopic-quicktext-submenu,
+.nopic-modal-popup,
+#nopic-about-modal,
+#nopic-menu,
+#nopic-settings-submenu,
+#nopic-display-submenu,
+#nopic-disguise-submenu,
+#nopic-submenu,
+#nopic-confirm-modal .nopic-confirm-box,
+#nopic-privacy-log-panel,
+#nopic-parade-header,
+.nopic-parade-filter-panel,
+#nopic-autoclicker-status-panel {
+  background: rgba(30, 30, 35, 0.95) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+}
+
+#nopic-privacy-lock-overlay .nopic-privacy-lock-wrapper {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 如果这些面板原来有独立背景色，覆盖掉 */
+#nopic-menu,
+#nopic-settings-submenu,
+#nopic-display-submenu,
+#nopic-disguise-submenu,
+#nopic-submenu {
+  background: rgba(30, 30, 35, 0.95) !important;
+}
+
+/* 阅兵模式遮罩保持原有风格 */
+#nopic-parade-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+/* 修复：文字替换+快捷文本 两个按钮挤在一起 */
+.nopic-col-1 > div[style*="display:flex"] .nopic-ext-btn {
+  aspect-ratio: auto !important;
+  height: 44px !important;
+  padding: 2px 2px !important;
+}
+.nopic-col-1 > div[style*="display:flex"] .nopic-app-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+.nopic-col-1 > div[style*="display:flex"] .nopic-app-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* 当只剩一个按钮时，恢复和其他按钮一样大 */
+.nopic-col-1
+  > div[style*="display:flex"]:has(.nopic-ext-btn[style*="display: none"])
+  .nopic-app-icon,
+.nopic-col-1
+  > div[style*="display:flex"]:has(.nopic-ext-btn[style*="display: none"])
+  .nopic-app-icon
+  svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+.nopic-col-1
+  > div[style*="display:flex"]:has(.nopic-ext-btn[style*="display: none"])
+  .nopic-app-icon
+  svg {
+  width: 22px !important;
+  height: 22px !important;
+}
+/* 两个按钮都隐藏时，容器也隐藏 */
+.nopic-col-1
+  > div[style*="display:flex"]:not(
+    :has(.nopic-ext-btn:not([style*="display: none"]))
+  ) {
+  display: none !important;
+}
+
+/* ===== 数据采集样式 ===== */
+.nopic-dc-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.nopic-dc-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.nopic-dc-btn.primary {
+  background: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
+}
+.nopic-dc-btn.primary:hover {
+  background: rgba(96, 165, 250, 0.35);
+}
+.nopic-dc-btn.success {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+.nopic-dc-btn.success:hover {
+  background: rgba(74, 222, 128, 0.3);
+}
+.nopic-dc-btn.danger {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+.nopic-dc-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.3);
+}
+.nopic-dc-btn.danger-outline {
+  background: transparent;
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+.nopic-dc-btn.danger-outline:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+.nopic-dc-btn.picking {
+  background: rgba(248, 113, 113, 0.3);
+  color: #f87171;
+}
+
+.nopic-dc-export-item {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.nopic-dc-export-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#nopic-dc-table-wrap::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+#nopic-dc-table-wrap::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+#nopic-dc-table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+@keyframes nopic-dc-flash {
+  0% {
+    background: rgba(96, 165, 250, 0.3);
+    border-color: #60a5fa;
+    transform: scale(1);
+  }
+  50% {
+    background: rgba(96, 165, 250, 0.6);
+    border-color: #93bbfc;
+    transform: scale(1.02);
+  }
+  100% {
+    background: rgba(96, 165, 250, 0.3);
+    border-color: #60a5fa;
+    transform: scale(1);
+  }
+}
+.nopic-dc-btn.export-btn:hover {
+  background: rgba(96, 165, 250, 0.35) !important;
+}
+.nopic-dc-export-option:hover {
+  background: rgba(96, 165, 250, 0.15) !important;
+}
+/* 数据采集弹窗淡入淡出动画 */
+#nopic-datacollect-submenu {
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+#nopic-datacollect-submenu.active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+#nopic-dc-tbody td {
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 4px 8px !important;
+  line-height: 1.4 !important;
+}
+/* ===== 所有弹窗统一增大圆角 ===== */
+#nopic-tabdisguise-submenu,
+#nopic-mask-submenu,
+#nopic-privacylock-submenu,
+#nopic-textreplace-submenu,
+#nopic-autoclicker-submenu,
+#nopic-pageedit-submenu,
+#nopic-pagemonitor-submenu,
+#nopic-quicktext-submenu,
+#nopic-datacollect-submenu,
+.nopic-modal-popup,
+#nopic-about-modal,
+#nopic-confirm-modal .nopic-confirm-box,
+#nopic-privacy-log-panel,
+.nopic-parade-filter-panel,
+#nopic-autoclicker-status-panel {
+  padding: 20px !important;
+  border-radius: 20px !important;
+}
+/* ===== 小区块细滚动条 ===== */
+.nopic-mask-list,
+#nopic-autoclicker-flow-list,
+#nopic-qt-list-url,
+#nopic-qt-list-domain,
+#nopic-qt-list-global {
+  scrollbar-width: thin !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.nopic-mask-list::-webkit-scrollbar,
+#nopic-autoclicker-flow-list::-webkit-scrollbar,
+#nopic-qt-list-url::-webkit-scrollbar,
+#nopic-qt-list-domain::-webkit-scrollbar,
+#nopic-qt-list-global::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  background: transparent !important;
+}
+
+.nopic-mask-list::-webkit-scrollbar-track,
+#nopic-autoclicker-flow-list::-webkit-scrollbar-track,
+#nopic-qt-list-url::-webkit-scrollbar-track,
+#nopic-qt-list-domain::-webkit-scrollbar-track,
+#nopic-qt-list-global::-webkit-scrollbar-track {
+  background: transparent !important;
+  margin: 4px 2px !important;
+}
+
+.nopic-mask-list::-webkit-scrollbar-thumb,
+#nopic-autoclicker-flow-list::-webkit-scrollbar-thumb,
+#nopic-qt-list-url::-webkit-scrollbar-thumb,
+#nopic-qt-list-domain::-webkit-scrollbar-thumb,
+#nopic-qt-list-global::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 10px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+  min-height: 30px !important;
+}
+
+.nopic-mask-list::-webkit-scrollbar-thumb:hover,
+#nopic-autoclicker-flow-list::-webkit-scrollbar-thumb:hover,
+#nopic-qt-list-url::-webkit-scrollbar-thumb:hover,
+#nopic-qt-list-domain::-webkit-scrollbar-thumb:hover,
+#nopic-qt-list-global::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+/* ===== 大面板不滚动 ===== */
+#nopic-mask-submenu,
+#nopic-textreplace-submenu,
+#nopic-quicktext-submenu,
+#nopic-autoclicker-submenu {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* ===== 标签伪装 - 未生效时半透明，悬停恢复 ===== */
+#nopic-disguise-list-url > div,
+#nopic-disguise-list-domain > div,
+#nopic-disguise-list-global > div {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+#nopic-disguise-list-url > div:hover,
+#nopic-disguise-list-domain > div:hover,
+#nopic-disguise-list-global > div:hover {
+  opacity: 1;
 }
