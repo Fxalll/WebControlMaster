@@ -5298,7 +5298,7 @@ window.addEventListener("load", function () {
   dataCollectSubmenu.style.flexDirection = "column";
   dataCollectSubmenu.innerHTML = `
   <div class="nopic-modal-header">
-    <span class="nopic-modal-title">📊 数据采集</span>
+    <span class="nopic-modal-title">数据采集</span>
     <div class="nopic-modal-close" id="nopic-datacollect-close">×</div>
   </div>
 
@@ -7021,14 +7021,14 @@ window.addEventListener("load", function () {
     <div class="nopic-cell-del-actions">
       <button class="nopic-cell-del-btn nopic-cell-del-btn-primary" data-action="shiftup">
         <div class="nopic-cell-del-btn-content">
-          <span class="nopic-cell-del-btn-label">🗑️ 删除并上移</span>
+          <span class="nopic-cell-del-btn-label">删除并上移</span>
           <span class="nopic-cell-del-btn-hint">下方数据填补空缺</span>
         </div>
       </button>
 
       <button class="nopic-cell-del-btn nopic-cell-del-btn-secondary" data-action="clear">
         <div class="nopic-cell-del-btn-content">
-          <span class="nopic-cell-del-btn-label">🧹 仅清空</span>
+          <span class="nopic-cell-del-btn-label">仅清空</span>
           <span class="nopic-cell-del-btn-hint">保留空位不移动</span>
         </div>
       </button>
@@ -7131,7 +7131,7 @@ window.addEventListener("load", function () {
     dcSaveCache();
   }
 
-  function showConfirmModal(title, text, onConfirm, cancelText) {
+  function showConfirmModal(title, text, onConfirm, onCancel) {
     // 确保 confirmModal 在 body 最顶层
     if (confirmModal.parentNode !== document.body) {
       document.body.appendChild(confirmModal);
@@ -7142,22 +7142,49 @@ window.addEventListener("load", function () {
 
     // 强制重绘 - 关键！确保 transition 重新生效
     void confirmModal.offsetHeight;
-    // 或者用 requestAnimationFrame 更稳妥
-    // requestAnimationFrame(() => {});
 
     confirmModal.querySelector(".nopic-confirm-title").textContent = title;
     confirmModal.querySelector(".nopic-confirm-text").textContent = text;
 
-    // 处理取消按钮文字（可选）
-    if (cancelText) {
-      const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
-      if (cancelBtn) cancelBtn.textContent = cancelText;
-    } else {
-      const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
-      if (cancelBtn) cancelBtn.textContent = "取消";
-    }
+    // 重置取消按钮文字为"取消"
+    const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
+    cancelBtn.textContent = "取消";
+    cancelBtn.style.display = "";
 
-    confirmCallback = onConfirm;
+    // 重置确认按钮
+    const confirmBtn = confirmModal.querySelector(".nopic-confirm-btn.danger");
+    confirmBtn.textContent = "确认";
+    confirmBtn.classList.add("danger");
+    confirmBtn.classList.remove("cancel");
+
+    // 移除旧的事件监听（通过克隆替换）
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    // 绑定确认回调
+    newConfirmBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (typeof onConfirm === "function") onConfirm();
+      hideConfirmModal();
+    });
+
+    // 绑定取消回调
+    newCancelBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (typeof onCancel === "function") onCancel();
+      hideConfirmModal();
+    });
+
+    // 点击背景也触发取消
+    confirmModal.addEventListener("click", function (e) {
+      if (e.target === confirmModal) {
+        if (typeof onCancel === "function") onCancel();
+        hideConfirmModal();
+      }
+    });
 
     // 使用 requestAnimationFrame 确保在下一帧添加 active 类
     requestAnimationFrame(() => {
