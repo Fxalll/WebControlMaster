@@ -1720,7 +1720,7 @@ svg:not(.nopic-clone),
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 1);
+  background: rgba(0, 0, 0, 1) !important;
   pointer-events: none;
 }
 #nopic-privacy-lock-overlay.active .nopic-privacy-lock-bg {
@@ -1734,7 +1734,7 @@ svg:not(.nopic-clone),
   top: 0;
   height: 100%;
   width: 100%;
-  background: rgba(26, 26, 46, 1);
+  background: rgba(26, 26, 46, 1) !important;
   pointer-events: auto;
   cursor: grab;
   will-change: transform;
@@ -1799,7 +1799,7 @@ svg:not(.nopic-clone),
 .nopic-privacy-lock-time {
   font-size: 72px;
   font-weight: 300;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9) !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   letter-spacing: 4px;
 }
@@ -3708,4 +3708,1091 @@ svg:not(.nopic-clone),
 }
 .nopic-dc-col-rename:hover {
   opacity: 1 !important;
+}
+
+/* ===== 导出弹窗样式（温和隔离） ===== */
+#nopic-export-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483648;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 只重置可能被页面干扰的属性，不动表单元素 */
+#nopic-export-overlay .nopic-export-box,
+#nopic-export-overlay .nopic-export-box * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 单独给容器设置样式 */
+#nopic-export-overlay .nopic-export-box {
+  display: flex;
+  flex-direction: column;
+  background: rgba(30, 30, 35, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 24px 28px;
+  min-width: 420px;
+  max-width: 500px;
+  color: #fff;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 16px;
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-checkbox-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+/* 复选框保留浏览器原生样式，只加必要的 */
+#nopic-export-overlay .nopic-export-box .nopic-export-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #60a5fa;
+  cursor: pointer;
+  flex-shrink: 0;
+  /* 保留原生 appearance，不去掉 */
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  align-items: center;
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-cancel {
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-cancel:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-spacer {
+  flex: 1;
+}
+
+/* 导出按钮 */
+#nopic-export-overlay .nopic-export-box .nopic-export-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+#nopic-export-overlay .nopic-export-box .nopic-export-btn.nopic-export-csv-btn {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
+}
+
+#nopic-export-overlay
+  .nopic-export-box
+  .nopic-export-btn.nopic-export-csv-btn:hover {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+#nopic-export-overlay
+  .nopic-export-box
+  .nopic-export-btn.nopic-export-html-btn {
+  background: rgba(244, 114, 182, 0.15);
+  border-color: rgba(244, 114, 182, 0.25);
+  color: #f472b6;
+}
+
+#nopic-export-overlay
+  .nopic-export-box
+  .nopic-export-btn.nopic-export-html-btn:hover {
+  background: rgba(244, 114, 182, 0.35);
+}
+
+#nopic-export-overlay
+  .nopic-export-box
+  .nopic-export-btn.nopic-export-json-btn {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.25);
+  color: #fbbf24;
+}
+
+#nopic-export-overlay
+  .nopic-export-box
+  .nopic-export-btn.nopic-export-json-btn:hover {
+  background: rgba(251, 191, 36, 0.35);
+}
+
+/* ========================================
+   数据采集弹窗 - 样式隔离
+   ======================================== */
+
+/* 容器隔离 */
+#nopic-datacollect-submenu,
+#nopic-datacollect-submenu * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+#nopic-datacollect-submenu {
+  position: fixed;
+  display: none;
+  background: rgba(30, 30, 35, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 20px 24px;
+  min-width: 820px;
+  max-width: 940px;
+  max-height: 85vh;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2147483647;
+  color: #fff;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ===== 头部 ===== */
+#nopic-datacollect-submenu .nopic-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+#nopic-datacollect-submenu .nopic-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+#nopic-datacollect-submenu .nopic-modal-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.2s;
+  border: none;
+}
+
+#nopic-datacollect-submenu .nopic-modal-close:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+/* ===== 工具栏 ===== */
+#nopic-datacollect-submenu .nopic-dc-toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* ===== 数据采集按钮 ===== */
+#nopic-datacollect-submenu .nopic-dc-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 0.2s;
+  white-space: nowrap;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.primary {
+  background: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.primary:hover {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.primary.picking {
+  background: rgba(248, 113, 113, 0.25);
+  color: #f87171;
+  animation: nopic-dc-pulse 1s infinite;
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.success {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.success:hover {
+  background: rgba(74, 222, 128, 0.3);
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.danger {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.3);
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.danger-outline {
+  background: transparent;
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.danger-outline:hover {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.export-btn {
+  background: rgba(96, 165, 250, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#nopic-datacollect-submenu .nopic-dc-btn.export-btn:hover {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+@keyframes nopic-dc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ===== 表格容器 ===== */
+#nopic-datacollect-submenu #nopic-dc-table-wrap {
+  flex: 1;
+  min-height: 200px;
+  overflow: auto;
+  position: relative;
+  margin-top: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+#nopic-datacollect-submenu #nopic-dc-table-wrap::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+#nopic-datacollect-submenu #nopic-dc-table-wrap::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+#nopic-datacollect-submenu #nopic-dc-table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+#nopic-datacollect-submenu #nopic-dc-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== 表格 ===== */
+#nopic-datacollect-submenu #nopic-dc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#nopic-datacollect-submenu #nopic-dc-thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(20, 20, 25, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#nopic-datacollect-submenu #nopic-dc-thead th {
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(20, 20, 25, 0.95);
+  position: relative;
+  white-space: nowrap;
+}
+
+#nopic-datacollect-submenu #nopic-dc-thead th:first-child {
+  width: 30px;
+  text-align: center;
+}
+
+#nopic-datacollect-submenu #nopic-dc-tbody td {
+  padding: 4px 8px;
+  max-width: 200px;
+  position: relative;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  vertical-align: middle;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+}
+
+#nopic-datacollect-submenu #nopic-dc-tbody tr:hover td {
+  background: rgba(96, 165, 250, 0.04);
+}
+
+/* 行号 */
+#nopic-datacollect-submenu .nopic-dc-row-num {
+  text-align: center;
+  padding: 4px 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  position: relative;
+  cursor: default;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+#nopic-datacollect-submenu .nopic-dc-rownum-text {
+  display: inline;
+}
+
+#nopic-datacollect-submenu .nopic-dc-row:hover .nopic-dc-rownum-text {
+  display: none;
+}
+
+#nopic-datacollect-submenu .nopic-dc-row:hover .nopic-dc-row-del {
+  display: inline-block !important;
+}
+
+#nopic-datacollect-submenu .nopic-dc-row-del {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #f87171;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 2px 4px;
+}
+
+#nopic-datacollect-submenu .nopic-dc-row-del:hover {
+  background: rgba(248, 113, 113, 0.15);
+  border-radius: 3px;
+}
+
+/* ===== 列名修改 ===== */
+#nopic-datacollect-submenu .nopic-dc-col-name {
+  display: inline-block;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#nopic-datacollect-submenu .nopic-dc-col-rename {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.4);
+  border: none;
+  background: transparent;
+}
+
+#nopic-datacollect-submenu .nopic-dc-col-rename:hover {
+  opacity: 1 !important;
+  color: #fbbf24;
+}
+
+#nopic-datacollect-submenu .nopic-dc-col-delete {
+  display: none;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #f87171;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+}
+
+#nopic-datacollect-submenu th:hover .nopic-dc-col-delete {
+  display: block !important;
+}
+
+#nopic-datacollect-submenu .nopic-dc-col-delete:hover {
+  background: rgba(248, 113, 113, 0.15);
+  border-radius: 3px;
+}
+
+/* ===== 单元格删除按钮 ===== */
+#nopic-datacollect-submenu .nopic-dc-cell-del {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  color: #f87171;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 0 4px;
+  z-index: 5;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+}
+
+#nopic-datacollect-submenu .nopic-dc-cell-del:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+#nopic-datacollect-submenu td:hover .nopic-dc-cell-del {
+  display: block !important;
+}
+
+/* ===== 状态栏 ===== */
+#nopic-datacollect-submenu .nopic-dc-status-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+/* ===== 导出弹窗（独立组件） ===== */
+/* ===== 导出选项弹窗（带动画+模糊背景） ===== */
+#nopic-export-overlay,
+#nopic-export-overlay * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+#nopic-export-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483648;
+  background: rgba(0, 0, 0, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    background 0.3s ease;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+}
+
+#nopic-export-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#nopic-export-overlay .nopic-export-box {
+  display: flex;
+  flex-direction: column;
+  background: rgba(30, 30, 35, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 24px 28px;
+  min-width: 420px;
+  max-width: 500px;
+  color: #fff;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  transform: scale(0.92) translateY(-10px);
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease;
+  opacity: 0;
+}
+
+#nopic-export-overlay.active .nopic-export-box {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+#nopic-export-overlay .nopic-export-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+#nopic-export-overlay .nopic-export-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 16px;
+}
+
+#nopic-export-overlay .nopic-export-checkbox-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#nopic-export-overlay .nopic-export-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+#nopic-export-overlay .nopic-export-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #60a5fa;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#nopic-export-overlay .nopic-export-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  align-items: center;
+}
+
+#nopic-export-overlay .nopic-export-spacer {
+  flex: 1;
+}
+
+#nopic-export-overlay .nopic-export-cancel {
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+#nopic-export-overlay .nopic-export-cancel:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+#nopic-export-overlay .nopic-export-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+#nopic-export-overlay .nopic-export-btn.nopic-export-csv-btn {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
+}
+#nopic-export-overlay .nopic-export-btn.nopic-export-csv-btn:hover {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+#nopic-export-overlay .nopic-export-btn.nopic-export-html-btn {
+  background: rgba(244, 114, 182, 0.15);
+  border-color: rgba(244, 114, 182, 0.25);
+  color: #f472b6;
+}
+#nopic-export-overlay .nopic-export-btn.nopic-export-html-btn:hover {
+  background: rgba(244, 114, 182, 0.35);
+}
+
+#nopic-export-overlay .nopic-export-btn.nopic-export-json-btn {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.25);
+  color: #fbbf24;
+}
+#nopic-export-overlay .nopic-export-btn.nopic-export-json-btn:hover {
+  background: rgba(251, 191, 36, 0.35);
+}
+
+/* ========================================
+   采集动画
+   ======================================== */
+.nopic-dc-anim-overlay {
+  position: fixed;
+  z-index: 2147483639;
+  pointer-events: none;
+  background: rgba(96, 165, 250, 0.3);
+  border: 2px solid #60a5fa;
+  border-radius: 4px;
+  box-sizing: border-box;
+  will-change: transform, opacity;
+}
+
+@keyframes nopic-dc-flash {
+  0%,
+  100% {
+    background: rgba(96, 165, 250, 0.25);
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+  }
+  50% {
+    background: rgba(96, 165, 250, 0.55);
+    box-shadow: 0 0 14px 3px rgba(96, 165, 250, 0.75);
+  }
+}
+
+@keyframes nopic-dc-fly {
+  0% {
+    opacity: 0.9;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fx, 0), var(--fy, 0)) scale(0.15);
+  }
+}
+
+/* ========================================
+   删除单元格弹窗 - 样式隔离
+   ======================================== */
+
+/* ===== 数据采集删除单元格弹窗（带动画+模糊背景） ===== */
+#nopic-cell-del-overlay,
+#nopic-cell-del-overlay * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+#nopic-cell-del-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483648;
+  background: rgba(0, 0, 0, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    background 0.3s ease;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+}
+
+#nopic-cell-del-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-box {
+  display: flex;
+  flex-direction: column;
+  background: rgba(30, 30, 35, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 20px 24px;
+  min-width: 320px;
+  max-width: 400px;
+  color: #fff;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  transform: scale(0.92) translateY(-10px);
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease;
+  opacity: 0;
+}
+
+#nopic-cell-del-overlay.active .nopic-cell-del-box {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-header {
+  padding: 0 0 18px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.3px;
+  text-align: left;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-subtitle {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 4px;
+  text-align: left;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-highlight {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 16px;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn {
+  padding: 15px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: inherit;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn-primary {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  font-weight: 500;
+}
+#nopic-cell-del-overlay .nopic-cell-del-btn-primary:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: scale(1.01);
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn-secondary {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 400;
+}
+#nopic-cell-del-overlay .nopic-cell-del-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 400;
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-btn-secondary .nopic-cell-del-btn-hint {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+#nopic-cell-del-overlay .nopic-cell-del-cancel {
+  padding: 11px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+  width: 100%;
+  font-weight: 400;
+  transition: color 0.15s;
+  font-family: inherit;
+}
+#nopic-cell-del-overlay .nopic-cell-del-cancel:hover {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ===== 通用确认弹窗 - 防止网页样式污染 ===== */
+#nopic-confirm-modal *,
+#nopic-confirm-modal *::before,
+#nopic-confirm-modal *::after {
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.5 !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  text-align: inherit !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  text-transform: none !important;
+  text-decoration: none !important;
+  text-shadow: none !important;
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  list-style: none !important;
+  vertical-align: baseline !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* ===== 弹窗容器本身也要重置 ===== */
+#nopic-confirm-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 2147483651 !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transition: opacity 0.25s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif !important;
+  line-height: 1.5 !important;
+  /* 阻止网页的 user-select 影响 */
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+#nopic-confirm-modal.active {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
+/* ===== 弹窗内容盒子 ===== */
+#nopic-confirm-modal .nopic-confirm-box {
+  background: rgba(30, 30, 35, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 16px !important;
+  padding: 28px 32px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
+  min-width: 300px !important;
+  max-width: 400px !important;
+  width: auto !important;
+  color: #ffffff !important;
+  transform: scale(0.92) !important;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  line-height: 1.5 !important;
+  font-family: inherit !important;
+  box-sizing: border-box !important;
+  margin: 20px !important;
+}
+
+#nopic-confirm-modal.active .nopic-confirm-box {
+  transform: scale(1) !important;
+}
+
+/* ===== 标题 ===== */
+#nopic-confirm-modal .nopic-confirm-title {
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  margin-bottom: 10px !important;
+  line-height: 1.4 !important;
+  font-family: inherit !important;
+}
+
+/* ===== 正文 ===== */
+#nopic-confirm-modal .nopic-confirm-text {
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  line-height: 1.6 !important;
+  margin-bottom: 22px !important;
+  white-space: pre-line !important;
+  font-family: inherit !important;
+}
+
+/* ===== 按钮容器 ===== */
+#nopic-confirm-modal .nopic-confirm-btns {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ===== 按钮 ===== */
+#nopic-confirm-modal .nopic-confirm-btn {
+  padding: 8px 20px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  font-family: inherit !important;
+  line-height: 1.4 !important;
+  min-height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#nopic-confirm-modal .nopic-confirm-btn.cancel {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+#nopic-confirm-modal .nopic-confirm-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+#nopic-confirm-modal .nopic-confirm-btn.danger {
+  background: rgba(248, 113, 113, 0.18) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.25) !important;
+}
+#nopic-confirm-modal .nopic-confirm-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.32) !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+}
+/* ===== 数据采集 - 空状态 ===== */
+#nopic-dc-tbody.nopic-dc-empty tr:hover td {
+  background: transparent !important;
+  cursor: default !important;
+}
+
+#nopic-dc-tbody.nopic-dc-empty td {
+  border-bottom: none !important;
 }

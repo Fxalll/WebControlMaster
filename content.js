@@ -932,6 +932,8 @@ window.addEventListener("load", function () {
 
   function hidePageMonitorSubmenu() {
     pageMonitorSubmenuOpen = false;
+    pageMonitorSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    pageMonitorSubmenu.style.opacity = "0";
     pageMonitorSubmenu.classList.remove("active");
     setTimeout(() => {
       pageMonitorSubmenu.style.display = "none";
@@ -5295,26 +5297,31 @@ window.addEventListener("load", function () {
   dataCollectSubmenu.style.display = "none";
   dataCollectSubmenu.style.flexDirection = "column";
   dataCollectSubmenu.innerHTML = `
-  <div class="nopic-modal-header" style="flex-shrink:0;">
-    <span class="nopic-modal-title">数据采集</span>
+  <div class="nopic-modal-header">
+    <span class="nopic-modal-title">📊 数据采集</span>
     <div class="nopic-modal-close" id="nopic-datacollect-close">×</div>
   </div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;align-items:center;">
+
+  <!-- 工具栏 - 加上 class="nopic-dc-toolbar" -->
+  <div class="nopic-dc-toolbar">
     <button class="nopic-dc-btn primary" id="nopic-dc-pick-btn">开始选取元素</button>
     <button class="nopic-dc-btn success" id="nopic-dc-start-btn">▶ 启动抓取</button>
     <button class="nopic-dc-btn danger" id="nopic-dc-stop-btn" style="display:none;">⏹ 停止</button>
     <button class="nopic-dc-btn danger-outline" id="nopic-dc-clear-btn">清空</button>
     <span style="flex:1;"></span>
-        <span style="font-size:11px;color:rgba(255,255,255,0.4);" id="nopic-dc-status">就绪</span>
-      <button class="nopic-dc-btn export-btn" id="nopic-dc-export-btn" style="background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;border-radius:4px;padding:4px 12px;font-size:12px;cursor:pointer;">导出</button>
+    <button class="nopic-dc-btn export-btn" id="nopic-dc-export-btn">导出</button>
   </div>
-  <div style="flex:1;min-height:200px;overflow:auto;position:relative;margin-top:6px;" id="nopic-dc-table-wrap">
-    <table id="nopic-dc-table" style="width:100%;border-collapse:collapse;font-size:12px;color:rgba(255,255,255,0.85);user-select:none;-webkit-user-select:none;">
-      <thead id="nopic-dc-thead" style="position:sticky;top:0;z-index:2;background:rgba(20,20,25,0.95);backdrop-filter:blur(8px);"></thead>
+
+  <!-- 表格容器 -->
+  <div id="nopic-dc-table-wrap">
+    <table id="nopic-dc-table">
+      <thead id="nopic-dc-thead"></thead>
       <tbody id="nopic-dc-tbody"></tbody>
     </table>
   </div>
-  <div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.4);flex-shrink:0;">
+
+  <!-- 状态栏 - 加上 class="nopic-dc-status-bar" -->
+  <div class="nopic-dc-status-bar">
     <span id="nopic-dc-row-count">数据: 0</span>
     <span id="nopic-dc-col-count">字段: 0</span>
   </div>
@@ -6985,153 +6992,119 @@ window.addEventListener("load", function () {
   }
 
   // ===== 单元格删除选项弹窗 =====
+  // ===== 单元格删除选项弹窗（带动画和模糊背景） =====
   function showDeleteCellModal(colName, rowNum, onShiftUp, onClear) {
+    // 移除已存在的弹窗
+    var existing = document.getElementById("nopic-cell-del-overlay");
+    if (existing) {
+      existing.remove();
+    }
+
     // 创建遮罩
     var overlay = document.createElement("div");
-    overlay.style.cssText = `
-    position:fixed;top:0;left:0;right:0;bottom:0;
-    z-index:2147483648;
-    background:rgba(0,0,0,0.5);
-    display:flex;align-items:center;justify-content:center;
-  `;
+    overlay.id = "nopic-cell-del-overlay";
+    overlay.className = "nopic-cell-del-overlay";
 
+    // ★★★ 关键：先让弹窗处于隐藏状态，等待添加 active 类触发动画 ★★★
     var box = document.createElement("div");
-    box.style.cssText = `
-    background:rgba(30,30,35,0.95);
-    backdrop-filter:blur(24px);
-    border:1px solid rgba(255,255,255,0.15);
-    border-radius:20px;
-    padding:20px 24px;
-    min-width:320px;
-    max-width:400px;
-    color:#fff;
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    box-shadow:0 12px 48px rgba(0,0,0,0.5);
-    text-align:center;
-  `;
+    box.className = "nopic-cell-del-box";
 
     box.innerHTML = `
-  <div style="padding:0 0 18px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-    <div style="font-size:17px;font-weight:600;color:#fff;letter-spacing:-0.3px;text-align:left;">删除单元格</div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-top:4px;text-align:left;">
-      第 <span style="color:rgba(255,255,255,0.65);">${rowNum}</span> 行 · <span style="color:rgba(255,255,255,0.65);">${colName}</span>
+    <div class="nopic-cell-del-header">
+      <div class="nopic-cell-del-title">删除单元格</div>
+      <div class="nopic-cell-del-subtitle">
+        第 <span class="nopic-cell-del-highlight">${rowNum}</span> 行 · 
+        <span class="nopic-cell-del-highlight">${colName}</span>
+      </div>
     </div>
-  </div>
 
-  <div style="display:flex;gap:6px;flex-direction:column;padding-top:16px;">
-    <!-- 主按钮：删除并上移 -->
-    <button class="nopic-cell-del-option primary" style="
-      padding:15px 18px;
-      background:rgba(239,68,68,0.12);
-      border:1px solid rgba(239,68,68,0.25);
-      border-radius:10px;
-      color:#f87171;
-      font-size:14px;
-      cursor:pointer;
-      transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
-      text-align:left;
-      width:100%;
-      font-weight:500;
-    " onmouseover="this.style.background='rgba(239,68,68,0.2)';this.style.borderColor='rgba(239,68,68,0.4)';this.style.transform='scale(1.01)'" onmouseout="this.style.background='rgba(239,68,68,0.12)';this.style.borderColor='rgba(239,68,68,0.25)';this.style.transform='scale(1)'">
-      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-        <span style="display:flex;align-items:center;gap:10px;">
-          删除并上移
-        </span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.3);font-weight:400;">下方数据填补空缺</span>
-      </div>
-    </button>
+    <div class="nopic-cell-del-actions">
+      <button class="nopic-cell-del-btn nopic-cell-del-btn-primary" data-action="shiftup">
+        <div class="nopic-cell-del-btn-content">
+          <span class="nopic-cell-del-btn-label">🗑️ 删除并上移</span>
+          <span class="nopic-cell-del-btn-hint">下方数据填补空缺</span>
+        </div>
+      </button>
 
-    <!-- 次按钮：仅清空 -->
-    <button class="nopic-cell-del-option secondary" style="
-      padding:13px 18px;
-      background:rgba(255,255,255,0.03);
-      border:1px solid rgba(255,255,255,0.06);
-      border-radius:10px;
-      color:rgba(255,255,255,0.7);
-      font-size:14px;
-      cursor:pointer;
-      transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
-      text-align:left;
-      width:100%;
-      font-weight:400;
-    " onmouseover="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.03)';this.style.borderColor='rgba(255,255,255,0.06)'">
-      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-        <span style="display:flex;align-items:center;gap:10px;">
-          仅清空
-        </span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.2);font-weight:400;">保留空位不移动</span>
-      </div>
-    </button>
+      <button class="nopic-cell-del-btn nopic-cell-del-btn-secondary" data-action="clear">
+        <div class="nopic-cell-del-btn-content">
+          <span class="nopic-cell-del-btn-label">🧹 仅清空</span>
+          <span class="nopic-cell-del-btn-hint">保留空位不移动</span>
+        </div>
+      </button>
 
-    <!-- 取消 -->
-    <button class="nopic-cell-del-cancel" style="
-      padding:11px;
-      background:transparent;
-      border:none;
-      border-radius:8px;
-      color:rgba(255,255,255,0.2);
-      font-size:13px;
-      cursor:pointer;
-      margin-top:4px;
-      width:100%;
-      font-weight:400;
-      transition:color 0.15s;
-    " onmouseover="this.style.color='rgba(255,255,255,0.45)'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">
-      取消
-    </button>
-  </div>
-`;
+      <button class="nopic-cell-del-cancel" data-action="cancel">取消</button>
+    </div>
+  `;
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
 
-    // 鼠标悬停效果
-    box.querySelectorAll(".nopic-cell-del-option").forEach(function (btn) {
-      btn.addEventListener("mouseenter", function () {
-        this.style.transform = "scale(1.02)";
-      });
-      btn.addEventListener("mouseleave", function () {
-        this.style.transform = "scale(1)";
+    // ★★★ 强制重绘，确保 transition 生效 ★★★
+    void overlay.offsetHeight;
+
+    // ★★★ 用 requestAnimationFrame 双重保险，添加 active 类触发动画 ★★★
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        overlay.classList.add("active");
       });
     });
 
     // 事件绑定
     box
-      .querySelector(".nopic-cell-del-option.primary")
+      .querySelector('[data-action="shiftup"]')
       .addEventListener("click", function (e) {
         e.stopPropagation();
-        overlay.remove();
-        if (typeof onShiftUp === "function") onShiftUp();
+        closeWithAnimation(overlay, function () {
+          if (typeof onShiftUp === "function") onShiftUp();
+        });
       });
 
     box
-      .querySelector(".nopic-cell-del-option.secondary")
+      .querySelector('[data-action="clear"]')
       .addEventListener("click", function (e) {
         e.stopPropagation();
-        overlay.remove();
-        if (typeof onClear === "function") onClear();
+        closeWithAnimation(overlay, function () {
+          if (typeof onClear === "function") onClear();
+        });
       });
 
     box
-      .querySelector(".nopic-cell-del-cancel")
+      .querySelector('[data-action="cancel"]')
       .addEventListener("click", function (e) {
         e.stopPropagation();
-        overlay.remove();
+        closeWithAnimation(overlay);
       });
 
-    // 点击遮罩关闭
+    // 点击遮罩关闭（带动画）
     overlay.addEventListener("click", function (e) {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay) {
+        closeWithAnimation(overlay);
+      }
     });
 
-    // ESC 关闭
+    // ESC关闭（带动画）
     function onKeyDown(e) {
       if (e.key === "Escape") {
-        overlay.remove();
+        closeWithAnimation(overlay);
         document.removeEventListener("keydown", onKeyDown);
       }
     }
     document.addEventListener("keydown", onKeyDown);
+
+    // ★★★ 带动画的关闭函数 ★★★
+    function closeWithAnimation(el, callback) {
+      if (!el || !el.parentNode) {
+        if (typeof callback === "function") callback();
+        return;
+      }
+      el.classList.remove("active");
+      // 等动画结束后移除 DOM
+      setTimeout(function () {
+        if (el.parentNode) el.remove();
+        if (typeof callback === "function") callback();
+      }, 300);
+    }
   }
 
   // ===== 删除单元格并上移（下方数据向上填补） =====
@@ -7158,16 +7131,40 @@ window.addEventListener("load", function () {
     dcSaveCache();
   }
 
-  function showConfirmModal(title, text, onConfirm) {
+  function showConfirmModal(title, text, onConfirm, cancelText) {
     // 确保 confirmModal 在 body 最顶层
     if (confirmModal.parentNode !== document.body) {
       document.body.appendChild(confirmModal);
     }
-    confirmModal.style.setProperty("z-index", "2147483650", "important");
+
+    // 先确保弹窗是完全关闭的状态，再重新打开
+    confirmModal.classList.remove("active");
+
+    // 强制重绘 - 关键！确保 transition 重新生效
+    void confirmModal.offsetHeight;
+    // 或者用 requestAnimationFrame 更稳妥
+    // requestAnimationFrame(() => {});
+
     confirmModal.querySelector(".nopic-confirm-title").textContent = title;
     confirmModal.querySelector(".nopic-confirm-text").textContent = text;
+
+    // 处理取消按钮文字（可选）
+    if (cancelText) {
+      const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
+      if (cancelBtn) cancelBtn.textContent = cancelText;
+    } else {
+      const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
+      if (cancelBtn) cancelBtn.textContent = "取消";
+    }
+
     confirmCallback = onConfirm;
-    confirmModal.classList.add("active");
+
+    // 使用 requestAnimationFrame 确保在下一帧添加 active 类
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        confirmModal.classList.add("active");
+      });
+    });
   }
   function hideConfirmModal() {
     confirmModal.classList.remove("active");
@@ -8989,26 +8986,33 @@ window.addEventListener("load", function () {
   });
 
   // ===== 通用弹窗显示和拖动功能 =====
+  // ===== 通用弹窗显示和拖动功能 =====
   function showPopupAtTrigger(popup, trigger) {
     popup.style.display = "flex";
-    // 强制回流，让 display 生效
+    // ★★★ 关键：强制重排，让浏览器先计算布局 ★★★
     void popup.offsetHeight;
-    popup.classList.add("active");
 
-    const popupRect = popup.getBoundingClientRect();
-    let left = (window.innerWidth - popupRect.width) / 2;
-    let top = (window.innerHeight - popupRect.height) / 2;
-    if (left < 10) left = 10;
-    if (top < 10) top = 10;
-    if (left + popupRect.width > window.innerWidth - 10) {
-      left = window.innerWidth - popupRect.width - 10;
-    }
-    if (top + popupRect.height > window.innerHeight - 10) {
-      top = window.innerHeight - popupRect.height - 10;
-    }
-    popup.style.left = left + "px";
-    popup.style.top = top + "px";
-    popup.style.transform = "none";
+    // ★★★ 用 requestAnimationFrame 等待一帧，确保内容完全渲染 ★★★
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        popup.classList.add("active");
+
+        const popupRect = popup.getBoundingClientRect();
+        let left = (window.innerWidth - popupRect.width) / 2;
+        let top = (window.innerHeight - popupRect.height) / 2;
+        if (left < 10) left = 10;
+        if (top < 10) top = 10;
+        if (left + popupRect.width > window.innerWidth - 10) {
+          left = window.innerWidth - popupRect.width - 10;
+        }
+        if (top + popupRect.height > window.innerHeight - 10) {
+          top = window.innerHeight - popupRect.height - 10;
+        }
+        popup.style.left = left + "px";
+        popup.style.top = top + "px";
+        popup.style.transform = "none";
+      });
+    });
   }
 
   // 拖动功能
@@ -9113,6 +9117,8 @@ window.addEventListener("load", function () {
 
   const hideTabDisguiseSubmenu = () => {
     tabDisguiseSubmenuOpen = false;
+    tabDisguiseSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    tabDisguiseSubmenu.style.opacity = "0";
     tabDisguiseSubmenu.classList.remove("active");
     setTimeout(() => {
       tabDisguiseSubmenu.style.display = "none";
@@ -9168,6 +9174,8 @@ window.addEventListener("load", function () {
 
   const hideMaskSubmenu = () => {
     maskSubmenuOpen = false;
+    maskSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    maskSubmenu.style.opacity = "0";
     maskSubmenu.classList.remove("active");
     setTimeout(() => {
       maskSubmenu.style.display = "none";
@@ -9234,6 +9242,8 @@ window.addEventListener("load", function () {
 
   const hidePrivacyLockSubmenu = () => {
     privacyLockSubmenuOpen = false;
+    privacyLockSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    privacyLockSubmenu.style.opacity = "0";
     privacyLockSubmenu.classList.remove("active");
     setTimeout(() => {
       privacyLockSubmenu.style.display = "none";
@@ -9277,6 +9287,8 @@ window.addEventListener("load", function () {
 
   const hideTextReplaceSubmenu = () => {
     textReplaceSubmenuOpen = false;
+    textReplaceSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    textReplaceSubmenu.style.opacity = "0";
     textReplaceSubmenu.classList.remove("active");
     setTimeout(() => {
       textReplaceSubmenu.style.display = "none";
@@ -9325,6 +9337,8 @@ window.addEventListener("load", function () {
 
   const hideAutoClickerSubmenu = () => {
     autoClickerSubmenuOpen = false;
+    autoClickerSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    autoClickerSubmenu.style.opacity = "0";
     autoClickerSubmenu.classList.remove("active");
     setTimeout(() => {
       autoClickerSubmenu.style.display = "none";
@@ -9365,6 +9379,8 @@ window.addEventListener("load", function () {
 
   const hidePageEditSubmenu = () => {
     pageEditSubmenuOpen = false;
+    pageEditSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    pageEditSubmenu.style.opacity = "0";
     pageEditSubmenu.classList.remove("active");
     setTimeout(() => {
       pageEditSubmenu.style.display = "none";
@@ -9422,6 +9438,8 @@ window.addEventListener("load", function () {
   };
   const hideQuickTextSubmenu = () => {
     quickTextSubmenuOpen = false;
+    quickTextSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    quickTextSubmenu.style.opacity = "0";
     quickTextSubmenu.classList.remove("active");
     isRecordingShortcut = false;
     setTimeout(() => {
@@ -9715,6 +9733,8 @@ window.addEventListener("load", function () {
 
   function hideDCSubmenu() {
     dcSubmenuOpen = false;
+    dataCollectSubmenu.style.transform = "scale(0.92) translateY(-10px)";
+    dataCollectSubmenu.style.opacity = "0";
     dataCollectSubmenu.classList.remove("active");
     setTimeout(() => {
       dataCollectSubmenu.style.display = "none";
@@ -10256,8 +10276,6 @@ window.addEventListener("load", function () {
     dcRenderTable();
     dcSaveCache();
     dcAnimateCollect(matches);
-    document.getElementById("nopic-dc-status").textContent =
-      "已采集 " + matches.length + " 条数据";
   }
 
   function dcOnPickKey(e) {
@@ -10363,7 +10381,7 @@ window.addEventListener("load", function () {
       headerHtml += "</span>";
       headerHtml +=
         '<span style="font-size:9px;color:rgba(255,255,255,0.3);margin-left:4px;">[' +
-        col.type +
+        "行数" +
         ":" +
         (dcState.columnData[col.id] || []).length +
         "]</span>";
@@ -10695,15 +10713,18 @@ window.addEventListener("load", function () {
     }
 
     if (maxRows === 0) {
-      // 隐藏表头
+      // ★★★ 隐藏表头 ★★★
       thead.style.display = "none";
+      // ★★★ 暂无数据 - 居中显示，占据整个表格区域 ★★★
       rowHtml =
         '<tr><td colspan="' +
         (dcState.columns.length + 1) +
-        '" style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;">暂无数据</td></tr>';
+        '" style="text-align:center;color:rgba(255,255,255,0.3);padding:40px 20px;font-size:13px;cursor:default;pointer-events:none;border:none;background:transparent !important;">暂无数据</td></tr>';
+      tbody.className = "nopic-dc-empty";
     } else {
       // 显示表头
       thead.style.display = "";
+      tbody.className = "";
     }
     tbody.innerHTML = rowHtml;
 
@@ -11028,6 +11049,7 @@ window.addEventListener("load", function () {
     });
 
   // ===== 导出选项弹窗 =====
+  // ===== 导出选项弹窗（带动画和模糊背景） =====
   function showExportOptionsModal() {
     if (dcState.columns.length === 0) {
       showConfirmModal("提示", "没有数据可导出", function () {
@@ -11036,81 +11058,59 @@ window.addEventListener("load", function () {
       return;
     }
 
+    // 移除已存在的弹窗
+    var existing = document.getElementById("nopic-export-overlay");
+    if (existing) {
+      existing.remove();
+    }
+
     // 创建遮罩
     var overlay = document.createElement("div");
     overlay.id = "nopic-export-overlay";
-    overlay.style.cssText = `
-    position:fixed;top:0;left:0;right:0;bottom:0;
-    z-index:2147483648;
-    background:rgba(0,0,0,0.5);
-    display:flex;align-items:center;justify-content:center;
-  `;
 
     var box = document.createElement("div");
-    box.style.cssText = `
-    background:rgba(30,30,35,0.95);
-    backdrop-filter:blur(24px);
-    border:1px solid rgba(255,255,255,0.15);
-    border-radius:20px;
-    padding:24px 28px;
-    min-width:420px;
-    max-width:500px;
-    color:#fff;
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    box-shadow:0 12px 48px rgba(0,0,0,0.5);
-  `;
+    box.className = "nopic-export-box";
 
     box.innerHTML = `
-    <div style="font-size:17px;font-weight:600;color:#fff;margin-bottom:4px;">导出选项</div>
-    <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:16px;">选择要导出的内容</div>
+    <div class="nopic-export-title">导出选项</div>
+    <div class="nopic-export-subtitle">选择要导出的内容</div>
 
-    <!-- 勾选区域 -->
-    <div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.8);cursor:pointer;">
-        <input type="checkbox" class="nopic-export-checkbox" data-field="text" checked style="width:16px;height:16px;accent-color:#60a5fa;cursor:pointer;">
+    <div class="nopic-export-checkbox-group">
+      <label class="nopic-export-checkbox-label">
+        <input type="checkbox" class="nopic-export-checkbox" data-field="text" checked>
         文字
       </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.8);cursor:pointer;">
-        <input type="checkbox" class="nopic-export-checkbox" data-field="image" checked style="width:16px;height:16px;accent-color:#60a5fa;cursor:pointer;">
+      <label class="nopic-export-checkbox-label">
+        <input type="checkbox" class="nopic-export-checkbox" data-field="image" checked>
         图片
       </label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.8);cursor:pointer;">
-        <input type="checkbox" class="nopic-export-checkbox" data-field="link" style="width:16px;height:16px;accent-color:#60a5fa;cursor:pointer;">
+      <label class="nopic-export-checkbox-label">
+        <input type="checkbox" class="nopic-export-checkbox" data-field="link">
         超链接
       </label>
     </div>
 
-    <!-- 导出按钮 - 三个 -->
-<div style="display:flex;gap:6px;margin-top:16px;padding-top:14px;">
-  <button class="nopic-export-cancel" style="
-    padding:6px 14px;background:transparent;border:none;border-radius:6px;
-    color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;
-    transition:color 0.2s;
-  ">取消</button>
-  <div style="flex:1;"></div>
-  <button class="nopic-export-csv-btn" style="
-    padding:6px 14px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.25);border-radius:6px;
-    color:#60a5fa;font-size:11px;cursor:pointer;
-    transition:all 0.2s;
-    white-space:nowrap;
-  ">导出为表格(CSV)</button>
-  <button class="nopic-export-html-btn" style="
-    padding:6px 14px;background:rgba(244,114,182,0.15);border:1px solid rgba(244,114,182,0.25);border-radius:6px;
-    color:#f472b6;font-size:11px;cursor:pointer;
-    transition:all 0.2s;
-    white-space:nowrap;
-  ">导出为网页</button>
-  <button class="nopic-export-json-btn" style="
-    padding:6px 14px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.25);border-radius:6px;
-    color:#fbbf24;font-size:11px;cursor:pointer;
-    transition:all 0.2s;
-    white-space:nowrap;
-  ">导出为JSON</button>
-</div>
+    <div class="nopic-export-actions">
+      <button class="nopic-export-cancel">取消</button>
+      <div class="nopic-export-spacer"></div>
+      <button class="nopic-export-btn nopic-export-csv-btn">导出为表格(CSV)</button>
+      <button class="nopic-export-btn nopic-export-html-btn">导出为网页</button>
+      <button class="nopic-export-btn nopic-export-json-btn">导出为JSON</button>
+    </div>
   `;
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+
+    // ★★★ 强制重绘，确保 transition 生效 ★★★
+    void overlay.offsetHeight;
+
+    // ★★★ 用 requestAnimationFrame 双重保险，添加 active 类触发动画 ★★★
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        overlay.classList.add("active");
+      });
+    });
 
     function getSelectedFields() {
       var fields = [];
@@ -11122,22 +11122,25 @@ window.addEventListener("load", function () {
       return fields;
     }
 
+    // ★★★ 带动画的关闭函数 ★★★
+    function closeWithAnimation(el, callback) {
+      if (!el || !el.parentNode) {
+        if (typeof callback === "function") callback();
+        return;
+      }
+      el.classList.remove("active");
+      setTimeout(function () {
+        if (el.parentNode) el.remove();
+        if (typeof callback === "function") callback();
+      }, 300);
+    }
+
     // 取消
     box
       .querySelector(".nopic-export-cancel")
       .addEventListener("click", function (e) {
         e.stopPropagation();
-        overlay.remove();
-      });
-    box
-      .querySelector(".nopic-export-cancel")
-      .addEventListener("mouseenter", function () {
-        this.style.color = "rgba(255,255,255,0.6)";
-      });
-    box
-      .querySelector(".nopic-export-cancel")
-      .addEventListener("mouseleave", function () {
-        this.style.color = "rgba(255,255,255,0.3)";
+        closeWithAnimation(overlay);
       });
 
     // 按钮悬停效果
@@ -11182,8 +11185,9 @@ window.addEventListener("load", function () {
           showTip("请至少选择一项导出内容");
           return;
         }
-        overlay.remove();
-        exportCSV(fields);
+        closeWithAnimation(overlay, function () {
+          exportCSV(fields);
+        });
       });
 
     // 导出 HTML
@@ -11196,8 +11200,9 @@ window.addEventListener("load", function () {
           showTip("请至少选择一项导出内容");
           return;
         }
-        overlay.remove();
-        exportHTML(fields);
+        closeWithAnimation(overlay, function () {
+          exportHTML(fields);
+        });
       });
 
     // 导出 JSON
@@ -11210,19 +11215,22 @@ window.addEventListener("load", function () {
           showTip("请至少选择一项导出内容");
           return;
         }
-        overlay.remove();
-        exportJSON(fields);
+        closeWithAnimation(overlay, function () {
+          exportJSON(fields);
+        });
       });
 
-    // 点击遮罩关闭
+    // 点击遮罩关闭（带动画）
     overlay.addEventListener("click", function (e) {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay) {
+        closeWithAnimation(overlay);
+      }
     });
 
-    // ESC关闭
+    // ESC关闭（带动画）
     function onKeyDown(e) {
       if (e.key === "Escape") {
-        overlay.remove();
+        closeWithAnimation(overlay);
         document.removeEventListener("keydown", onKeyDown);
       }
     }
@@ -11814,7 +11822,6 @@ window.addEventListener("load", function () {
       dcState.columnData = {};
       dcRenderTable();
       dcSaveCache();
-      document.getElementById("nopic-dc-status").textContent = "已清空";
       hideConfirmModal();
     });
   }
@@ -11858,14 +11865,12 @@ window.addEventListener("load", function () {
   function dcStartWatching() {
     if (dcState.isWatching) return;
     if (dcState.columns.length === 0) {
-      document.getElementById("nopic-dc-status").textContent = "请先选取元素";
       return;
     }
 
     dcState.isWatching = true;
     document.getElementById("nopic-dc-start-btn").style.display = "none";
     document.getElementById("nopic-dc-stop-btn").style.display = "";
-    document.getElementById("nopic-dc-status").textContent = "监听中...";
 
     // 创建 MutationObserver
     dcState.observer = new MutationObserver(function (mutations) {
@@ -11897,7 +11902,6 @@ window.addEventListener("load", function () {
     }
     document.getElementById("nopic-dc-start-btn").style.display = "";
     document.getElementById("nopic-dc-stop-btn").style.display = "none";
-    document.getElementById("nopic-dc-status").textContent = "⏹ 已停止";
     // 持久化停止状态
     dcSaveCache();
   }
@@ -12008,11 +12012,8 @@ window.addEventListener("load", function () {
       dcSaveCache();
       // 新增抓取元素时重复全套动画
       dcAnimateCollect(newElsForAnim);
-      document.getElementById("nopic-dc-status").textContent = "已更新数据";
     }
   }
-  // ===== 替换结束 =====
-  // ===== 替换结束 =====
 
   // ===== 替换文字规则列表更新 =====
 
@@ -12364,10 +12365,17 @@ window.addEventListener("load", function () {
     const timeEl = document.getElementById("nopic-lock-time");
     const subEl = document.getElementById("nopic-lock-sub");
 
-    if (bg) bg.style.background = appearance.bgColor;
-    if (wrapper) wrapper.style.background = appearance.bgColor;
-    if (timeEl) timeEl.style.color = appearance.textColor;
-    if (subEl) subEl.style.color = appearance.textColor + "80"; // 半透明
+    if (bg) bg.style.setProperty("background", appearance.bgColor, "important");
+    if (wrapper)
+      wrapper.style.setProperty("background", appearance.bgColor, "important");
+    if (timeEl)
+      timeEl.style.setProperty("color", appearance.textColor, "important");
+    if (subEl)
+      subEl.style.setProperty(
+        "color",
+        appearance.textColor + "80",
+        "important",
+      );
 
     // 更新时间文字
     const formatted = formatLockTime(
@@ -12495,11 +12503,13 @@ window.addEventListener("load", function () {
       const hasPassword = effective.password && effective.password.length === 4;
 
       if (hasPassword) {
-        // 有密码：始终保持纯黑
-        bg.style.background = "rgba(0,0,0,1)";
+        bg.style.setProperty("background", "rgba(0,0,0,1)", "important");
       } else {
-        // 无密码：随上拉进度变透明
-        bg.style.background = `rgba(0,0,0,${1 - progress})`;
+        bg.style.setProperty(
+          "background",
+          `rgba(0,0,0,${1 - progress})`,
+          "important",
+        );
       }
     }
 
