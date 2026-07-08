@@ -14864,79 +14864,59 @@ window.addEventListener("load", function () {
             }, 500);
           }
         } else if (step.type === "position") {
-          // 点击位置 - 稳健方案，彻底解决滚动偏移问题
+          // 点击位置 - 修复滚动被覆盖问题
           index++;
           try {
             const x = step.x || 0;
             const y = step.y || 0;
 
-            // 先滚动到目标位置（居中）
+            // 先滚动到目标位置
             window.scrollTo({
               left: Math.max(0, x - window.innerWidth / 2),
               top: Math.max(0, y - window.innerHeight / 2),
               behavior: "instant",
             });
 
-            // 使用延迟确保滚动完全完成（增加延迟时间）
-            setTimeout(() => {
+            // 等待滚动完成
+            const waitForScrollComplete = function (callback) {
+              const targetX = Math.max(0, x - window.innerWidth / 2);
+              const targetY = Math.max(0, y - window.innerHeight / 2);
+              let attempts = 0;
+              const maxAttempts = 20;
+
+              const checkScroll = function () {
+                attempts++;
+                const currentX = window.scrollX;
+                const currentY = window.scrollY;
+
+                const reachedX = Math.abs(currentX - targetX) <= 1;
+                const reachedY = Math.abs(currentY - targetY) <= 1;
+
+                if ((reachedX && reachedY) || attempts >= maxAttempts) {
+                  callback();
+                  return;
+                }
+                requestAnimationFrame(checkScroll);
+              };
+              requestAnimationFrame(checkScroll);
+            };
+
+            waitForScrollComplete(function () {
               if (signal.aborted || isTerminated) return;
 
-              // 重新计算视口坐标
+              // ★★★ 重新计算视口坐标 ★★★
               let viewX = x - window.scrollX;
               let viewY = y - window.scrollY;
 
-              // 检查坐标是否在可视区域内
-              const isInViewport =
-                viewX >= 0 &&
-                viewX <= window.innerWidth &&
-                viewY >= 0 &&
-                viewY <= window.innerHeight;
-
-              // 如果不在可视区域，强制滚动并重试
-              if (!isInViewport) {
-                // 强制滚动到精确位置
-                window.scrollTo({
-                  left: Math.max(0, x - window.innerWidth / 2),
-                  top: Math.max(0, y - window.innerHeight / 2),
-                  behavior: "instant",
-                });
-
-                // 额外延迟再试
-                setTimeout(() => {
-                  if (signal.aborted || isTerminated) return;
-
-                  // 重新计算坐标
-                  viewX = x - window.scrollX;
-                  viewY = y - window.scrollY;
-
-                  // 再次检查，如果还不在可视区域，直接使用边界值
-                  if (viewX < 0) viewX = 0;
-                  if (viewX > window.innerWidth) viewX = window.innerWidth - 1;
-                  if (viewY < 0) viewY = 0;
-                  if (viewY > window.innerHeight)
-                    viewY = window.innerHeight - 1;
-
-                  executeClick(viewX, viewY);
-                }, 150);
-                return;
-              }
-
-              executeClick(viewX, viewY);
-            }, 200); // 增加延迟确保滚动完成
-
-            function executeClick(viewX, viewY) {
-              if (signal.aborted || isTerminated) return;
-
-              // 确保坐标在有效范围内
+              // 边界保护
               viewX = Math.max(0, Math.min(viewX, window.innerWidth - 1));
               viewY = Math.max(0, Math.min(viewY, window.innerHeight - 1));
 
               // 获取目标元素
               let el = document.elementFromPoint(viewX, viewY);
 
-              // 如果没找到元素，尝试稍微偏移再试一次
+              // 如果没找到元素，尝试偏移
               if (!el) {
-                // 尝试附近几个点
                 const offsets = [
                   [0, 0],
                   [5, 0],
@@ -14957,7 +14937,6 @@ window.addEventListener("load", function () {
                   );
                   el = document.elementFromPoint(testX, testY);
                   if (el) {
-                    // 更新坐标到实际点击位置
                     viewX = testX;
                     viewY = testY;
                     break;
@@ -14966,21 +14945,18 @@ window.addEventListener("load", function () {
               }
 
               if (el) {
-                // 滚动元素到可视区域（确保完全可见）
-                try {
-                  el.scrollIntoView({ behavior: "instant", block: "center" });
-                } catch (e) {}
+                // ★★★ 关键修复：移除 scrollIntoView，它会重新滚动页面 ★★★
+                // 不再调用 el.scrollIntoView，因为我们已经滚动到目标位置了
 
-                // 先尝试聚焦（输入框、按钮等可聚焦元素）
+                // 聚焦
                 try {
                   if (typeof el.focus === "function") {
                     el.focus();
                   }
                 } catch (e) {}
 
-                // 模拟鼠标按下和释放（更真实的点击）
+                // 模拟点击
                 try {
-                  // mousedown
                   el.dispatchEvent(
                     new MouseEvent("mousedown", {
                       bubbles: true,
@@ -14990,8 +14966,6 @@ window.addEventListener("load", function () {
                       button: 0,
                     }),
                   );
-
-                  // mouseup
                   el.dispatchEvent(
                     new MouseEvent("mouseup", {
                       bubbles: true,
@@ -15001,8 +14975,6 @@ window.addEventListener("load", function () {
                       button: 0,
                     }),
                   );
-
-                  // click
                   el.dispatchEvent(
                     new MouseEvent("click", {
                       bubbles: true,
@@ -15013,7 +14985,6 @@ window.addEventListener("load", function () {
                     }),
                   );
                 } catch (e) {
-                  // 如果鼠标事件失败，尝试简单点击
                   try {
                     if (typeof el.click === "function") {
                       el.click();
@@ -15021,7 +14992,7 @@ window.addEventListener("load", function () {
                   } catch (e2) {}
                 }
 
-                // 如果是输入框，额外触发 focus 事件确保完全激活
+                // 输入框处理
                 if (
                   el.tagName === "INPUT" ||
                   el.tagName === "TEXTAREA" ||
@@ -15031,7 +15002,6 @@ window.addEventListener("load", function () {
                     el.dispatchEvent(
                       new FocusEvent("focus", { bubbles: true }),
                     );
-                    // 光标移到末尾
                     if (el.setSelectionRange && el.value !== undefined) {
                       const len = el.value.length;
                       el.setSelectionRange(len, len);
@@ -15046,7 +15016,7 @@ window.addEventListener("load", function () {
                   );
                 }
 
-                // 视觉反馈 - 圆圈扩散
+                // 视觉反馈 - 圆圈扩散特效
                 try {
                   const flash = document.createElement("div");
                   flash.style.cssText =
@@ -15070,9 +15040,8 @@ window.addEventListener("load", function () {
                   if (!isTerminated) runNext();
                 }, 300);
               } else {
-                // 完全没找到元素，尝试通过坐标直接触发事件
+                // 没找到元素，坐标点击
                 try {
-                  // 直接在文档上触发点击
                   document.dispatchEvent(
                     new MouseEvent("click", {
                       bubbles: true,
@@ -15102,7 +15071,7 @@ window.addEventListener("load", function () {
                   if (!isTerminated) runNext();
                 }, 300);
               }
-            }
+            });
           } catch (e) {
             if (!isTerminated) {
               updateAutoClickerStatus(
