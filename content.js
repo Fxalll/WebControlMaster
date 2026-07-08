@@ -7149,6 +7149,113 @@ window.addEventListener("load", function () {
 
   let confirmCallback = null;
 
+  function showSecurityBanner() {
+    // 移除已存在的横幅
+    var existing = document.getElementById("nopic-security-banner");
+    if (existing) existing.remove();
+
+    var banner = document.createElement("div");
+    banner.id = "nopic-security-banner";
+    banner.innerHTML = `
+    <span>⚠️ 检测到您曾使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在<a href="#" id="nopic-security-link" style="color:#60a5fa;text-decoration:underline;">隐私锁设置</a>中重置密码。</span>
+    <span id="nopic-security-countdown" style="font-weight:bold;color:#fbbf24;margin-left:8px;"></span>
+    <span id="nopic-security-close" style="cursor:pointer;margin-left:12px;color:rgba(255,255,255,0.5);">✕</span>
+  `;
+    banner.style.cssText = `
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:2147483647;
+    background:#1a1a2e;
+    border-bottom:2px solid #f87171;
+    color:#fff;
+    font-size:13px;
+    padding:12px 20px;
+    text-align:center;
+    font-family:-apple-system,sans-serif;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    flex-wrap:wrap;
+    transform:translateY(-100%);
+    transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  `;
+    document.body.appendChild(banner);
+
+    // 点击"隐私锁设置"跳转
+    document
+      .getElementById("nopic-security-link")
+      .addEventListener("click", function (e) {
+        e.preventDefault();
+        // 打开隐私锁弹窗
+        var trigger = document.querySelector('[data-submenu="privacylock"]');
+        if (trigger) trigger.click();
+        // 关闭横幅
+        var b = document.getElementById("nopic-security-banner");
+        if (b) b.remove();
+      });
+
+    // 关闭按钮
+    document
+      .getElementById("nopic-security-close")
+      .addEventListener("click", function () {
+        var b = document.getElementById("nopic-security-banner");
+        if (b) b.remove();
+      });
+
+    // 倒计时显示（先显示，不会自动消失，只显示倒计时数字）
+    var countdownEl = document.getElementById("nopic-security-countdown");
+    if (countdownEl) {
+      countdownEl.textContent = "";
+    }
+
+    // 延迟一帧执行滑入动画
+    requestAnimationFrame(function () {
+      banner.style.transform = "translateY(0)";
+    });
+
+    // 10秒后自动淡出消失
+    var autoHideTimer = setTimeout(function () {
+      var b = document.getElementById("nopic-security-banner");
+      if (b) {
+        b.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+        b.style.transform = "translateY(-100%)";
+        b.style.opacity = "0";
+        setTimeout(function () {
+          if (b.parentNode) b.remove();
+        }, 350);
+      }
+    }, 10000);
+
+    // 鼠标悬停时暂停倒计时
+    banner.addEventListener("mouseenter", function () {
+      clearTimeout(autoHideTimer);
+      // 显示"悬停暂停"提示
+      var el = document.getElementById("nopic-security-countdown");
+      if (el) el.textContent = "⏸";
+    });
+
+    banner.addEventListener("mouseleave", function () {
+      var el = document.getElementById("nopic-security-countdown");
+      if (el) el.textContent = "";
+      // 重新计时
+      autoHideTimer = setTimeout(function () {
+        var b = document.getElementById("nopic-security-banner");
+        if (b) {
+          b.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+          b.style.transform = "translateY(-100%)";
+          b.style.opacity = "0";
+          setTimeout(function () {
+            if (b.parentNode) b.remove();
+          }, 350);
+        }
+      }, 5000);
+    });
+  }
+
   // 专门用于安全警告的弹窗 - 点击"我知道了"仅关闭弹窗，不清除标志
   function showConfirmModalWithAck(title, text) {
     confirmModal.querySelector(".nopic-confirm-title").textContent = title;
@@ -12852,16 +12959,18 @@ window.addEventListener("load", function () {
     const wrapper = lockDragState.wrapper;
     if (!wrapper) return;
 
+    // 1. 计算拖动的进度 (0 ~ 1)
     let newY = (dy / window.innerHeight) * 100;
     newY = Math.max(-100, Math.min(0, newY));
-
     const progress = Math.max(0, Math.min(1, -newY / 100));
 
+    // 2. 获取界面元素
     const hint = document.getElementById("nopic-lock-hint");
     const arrow = document.querySelector(".nopic-privacy-lock-arrow");
+    const bg = document.getElementById("nopic-lock-bg");
 
+    // 3. 更新文字和箭头透明度（和原来一样）
     const opacityAmount = Math.max(0, 1 - progress * 2);
-
     if (hint) {
       hint.style.opacity = opacityAmount;
       if (progress < 0.3) {
@@ -12870,28 +12979,27 @@ window.addEventListener("load", function () {
         hint.textContent = "松手解锁";
       }
     }
-
     if (arrow) {
       arrow.style.opacity = opacityAmount;
     }
 
-    // 背景透明度：有密码时始终保持纯黑，无密码时随进度变透明
-    const bg = document.getElementById("nopic-lock-bg");
+    // 4. ★★★ 核心修复：有密码时背景永远纯黑，无密码时才变透明 ★★★
     if (bg) {
       const effective = getEffectivePrivacyLock();
       const hasPassword = effective.password && effective.password.length === 4;
 
       if (hasPassword) {
-        bg.style.setProperty("background", "rgba(0,0,0,1)", "important");
+        // 【有密码】：背景始终保持纯黑不透明，绝对不能变透明
+        bg.style.background = "rgba(0,0,0,1)";
+        bg.style.opacity = "1";
       } else {
-        bg.style.setProperty(
-          "background",
-          `rgba(0,0,0,${1 - progress})`,
-          "important",
-        );
+        // 【无密码】：背景透明度随拖动进度变化 (1 -> 0)
+        bg.style.background = "rgba(0,0,0,1)";
+        bg.style.opacity = 1 - progress;
       }
     }
 
+    // 5. 更新滑块位置（和原来一样）
     wrapper.style.transform = `translateY(${newY}%)`;
     lockDragState.currentY = newY;
   }
@@ -13197,31 +13305,21 @@ window.addEventListener("load", function () {
     );
 
     // 【关键修复】无论是否锁定，只要存在待重置标志，就弹出安全警告
+    // 找到这段：
     if (pendingReset === "true") {
-      // 延迟弹出，确保页面加载完成
       setTimeout(function () {
-        showConfirmModal(
+        showConfirmModalWithAck(
           "⚠️ 安全警告",
           '检测到您曾使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在隐私锁设置中重置密码，以保护页面安全。',
-          function () {
-            // 用户点击"我知道了" - 只关闭弹窗，不清除标志
-            hideConfirmModal();
-          },
         );
-        // 修改确认按钮样式
-        var confirmBtn = document.querySelector(
-          "#nopic-confirm-modal .nopic-confirm-btn.danger",
-        );
-        if (confirmBtn) {
-          confirmBtn.textContent = "我知道了";
-          confirmBtn.classList.remove("danger");
-          confirmBtn.classList.add("cancel");
-        }
-        var cancelBtn = document.querySelector(
-          "#nopic-confirm-modal .nopic-confirm-btn.cancel:not(.danger)",
-        );
-        if (cancelBtn) cancelBtn.style.display = "none";
-      }, 500); // 延迟500ms确保DOM已加载
+      }, 500);
+    }
+
+    // 替换为：
+    if (pendingReset === "true") {
+      setTimeout(function () {
+        showSecurityBanner();
+      }, 500);
     }
 
     // 刷新时如果之前是上锁状态，则保持上锁
