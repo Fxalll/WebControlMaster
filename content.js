@@ -1437,7 +1437,6 @@ window.addEventListener("load", function () {
           <option value="desktop" ${monitor.action === "desktop" ? "selected" : ""}>桌面通知</option>
           <option value="refresh" ${monitor.action === "refresh" ? "selected" : ""}>刷新页面</option>
           <option value="autoclicker" ${monitor.action === "autoclicker" ? "selected" : ""}>运行自动点击</option>
-          <option value="script" ${monitor.action === "script" ? "selected" : ""}>运行JS脚本</option>
         </select>
         <div class="nopic-pm-row" style="display:${monitor.action === "script" ? "flex" : "none"};">
   <span class="nopic-pm-label">脚本</span>
@@ -5539,20 +5538,6 @@ window.addEventListener("load", function () {
     智能等待
   </div>
   
-  <!-- 7. 运行脚本 - 带文档和括号 -->
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-script" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(244, 114, 182, 0.10); border: 1px solid rgba(244, 114, 182, 0.12); color: #f472b6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f472b6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-      <path d="M14 2v6h6"/>
-      <path d="M10 9l-3 3 3 3"/>
-      <path d="M14 9l3 3-3 3"/>
-      <path d="M17 6v2" stroke-opacity="0.3"/>
-      <path d="M7 6v2" stroke-opacity="0.3"/>
-      <line x1="8" y1="18" x2="12" y2="18" stroke-opacity="0.3"/>
-    </svg>
-    运行脚本
-  </div>
-  
 </div>
 
         <!-- 控制开关和输入 -->
@@ -5589,7 +5574,7 @@ window.addEventListener("load", function () {
   <div style="font-size: 10px; color: rgba(255,255,255,0.35); line-height: 1.7;">
     <div>• 智能等待即等待元素加载才执行操作</div>
     <div>• 由于浏览器安全限制，快捷键可能受限</div>
-    <div>• 安全延迟为防止陷入无法停止的死循环</div>
+    <div>• 循环次数设为 0 即为无限循环</div>
   </div>
 </div>
 
@@ -14378,9 +14363,6 @@ window.addEventListener("load", function () {
             <!-- 不支持提示 -->
             <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:2px;">
               此快捷键不在支持列表中
-            </div>
-            <div style="font-size:11px;color:#fbbf24;margin-top:2px;">
-              💡 建议使用「运行脚本」步骤代替
             </div>
         `;
       }
