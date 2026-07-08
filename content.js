@@ -2043,15 +2043,6 @@ window.addEventListener("load", function () {
           executeAutoClicker();
         }
         break;
-      case "script":
-        if (monitor.scriptCode) {
-          try {
-            (0, eval)(monitor.scriptCode);
-          } catch (e) {
-            console.error("脚本执行错误:", e);
-          }
-        }
-        break;
       case "desktop": // 新增桌面通知
         showDesktopNotification(monitor, beforeValue, afterValue);
         break;
@@ -13339,12 +13330,6 @@ window.addEventListener("load", function () {
         } else if (step.type === "shortcut") {
           const shortcutText = step.shortcut || "";
           detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">快捷键: ${shortcutText}</div>`;
-        } else if (step.type === "script") {
-          const codeShort =
-            step.code && step.code.length > 30
-              ? step.code.substring(0, 30) + "..."
-              : step.code || "";
-          detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;">${codeShort}</div>`;
         }
 
         const borderColors = {
@@ -15716,28 +15701,6 @@ window.addEventListener("load", function () {
               if (!isTerminated) runNext();
             }, 300);
           }
-        } else if (step.type === "script") {
-          // 运行脚本
-          index++;
-          try {
-            const result = (0, eval)(step.code);
-            if (!isTerminated) {
-              updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 脚本执行成功`,
-                "success",
-              );
-            }
-          } catch (e) {
-            if (!isTerminated) {
-              updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 脚本执行错误: ${e.message}`,
-                "error",
-              );
-            }
-          }
-          setTimeout(() => {
-            if (!isTerminated) runNext();
-          }, 300);
         }
       }
       runNext();
