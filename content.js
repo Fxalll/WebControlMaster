@@ -913,8 +913,8 @@ window.addEventListener("load", function () {
   </div>
   <div id="nopic-pm-monitors-list" style="max-height:50vh;overflow-y:auto;"></div>
   <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;">
-    <div>• 重要提醒：如果规则是元素出现/消失，要把检测间隔填小点，如100毫秒</div>
-    <div>• 数字规则会自动尝试解析元素文本为数值</div>
+    <div>• 重要提醒：请保持此页面在前台激活，否则监控可能失效</div>
+    <div>• 如果规则是元素出现/消失，要把检测间隔填小点，如100毫秒</div>
     <div>• 选择"运行自动点击"需先在本页配置自动点击器</div>
   </div>
 `;
@@ -1545,6 +1545,25 @@ window.addEventListener("load", function () {
       m._configChanged = false; // 重启后清除标记
     }
     renderPageMonitorList();
+
+    // ★★★ 新增：如果用户选择了"桌面通知"，立即请求权限 ★★★
+    if (field === "action" && value === "desktop") {
+      if ("Notification" in window && Notification.permission === "default") {
+        console.log("[nopic] 用户选择了桌面通知，立即请求权限");
+        showPermissionRequestTip();
+        Notification.requestPermission().then(function (permission) {
+          console.log("[nopic] 权限请求结果:", permission);
+          removePermissionTip();
+          if (permission === "granted") {
+            try {
+              new Notification("✅ 桌面通知已启用", {
+                body: "页面监控器的桌面通知权限已获得，监控触发时会收到通知。",
+              });
+            } catch (e) {}
+          }
+        });
+      }
+    }
   }
 
   function toggleMonitor(id) {
@@ -1882,12 +1901,20 @@ window.addEventListener("load", function () {
     console.log("当前通知权限:", Notification.permission);
 
     if (Notification.permission === "default") {
+      // ★★★ 关键修复：立即请求权限，并显示反馈 ★★★
+      console.log("[nopic] 立即请求桌面通知权限");
+      // 先显示一个提示告知用户正在请求权限
+      showPermissionRequestTip(monitor, beforeValue, afterValue);
       Notification.requestPermission().then((permission) => {
         console.log("权限请求结果:", permission);
         if (permission === "granted") {
+          // 权限授予后立即发送通知
           sendDesktopNotification(monitor, beforeValue, afterValue);
+          // 移除权限请求提示
+          removePermissionTip();
         } else {
-          // 权限被拒绝，弹窗提示
+          // 权限被拒绝，显示拒绝提示
+          removePermissionTip();
           showPermissionDeniedTip(monitor, beforeValue, afterValue);
         }
       });
@@ -1897,6 +1924,39 @@ window.addEventListener("load", function () {
       // 已拒绝，弹窗提示
       console.warn("桌面通知被拒绝");
       showPermissionDeniedTip(monitor, beforeValue, afterValue);
+    }
+  }
+
+  // ===== 权限请求中提示（告诉用户正在请求权限） =====
+  function showPermissionRequestTip(monitor, beforeValue, afterValue) {
+    // 先移除已存在的权限提示
+    removePermissionTip();
+
+    const tip = document.createElement("div");
+    tip.id = "nopic-permission-request-tip";
+    tip.style.cssText = `
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+    z-index:2147483647; background:rgba(30,30,35,0.95);
+    backdrop-filter:blur(20px); border:1px solid rgba(96,165,250,0.3);
+    border-radius:12px; padding:16px 24px;
+    color:#fff; font-size:13px; font-family:-apple-system,sans-serif;
+    max-width:420px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    animation: nopic-fadeIn 0.3s ease;
+  `;
+    tip.innerHTML = `
+    <div style="font-weight:600;margin-bottom:4px;color:#60a5fa;">正在请求通知权限...</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8;">
+      请在弹出的浏览器弹窗中点击「允许」
+    </div>
+  `;
+    document.body.appendChild(tip);
+  }
+
+  // ===== 移除权限请求提示 =====
+  function removePermissionTip() {
+    const tip = document.getElementById("nopic-permission-request-tip");
+    if (tip && tip.parentNode) {
+      tip.remove();
     }
   }
 
@@ -2103,13 +2163,7 @@ window.addEventListener("load", function () {
     // 首次调用，直接记录并初始化
     if (_lastAutoClickerBasePath === null) {
       _lastAutoClickerBasePath = newBasePath;
-      // 首次加载时，如果自动启动开启，执行
-      if (
-        autoClickerConfig.autoStartOnLoad &&
-        autoClickerConfig.steps.length > 0
-      ) {
-        setTimeout(executeAutoClicker, 300);
-      }
+      // 首次加载由 initAutoClickerOnLoad 处理，这里不重复执行
       return;
     }
 
@@ -2123,12 +2177,12 @@ window.addEventListener("load", function () {
       newBasePath,
     );
 
-    // ===== 关键修复：只更新记录，不做任何配置迁移 =====
     _lastAutoClickerBasePath = newBasePath;
 
-    // 1. 重新加载配置（从新 URL 读取，如果没有就是空配置）
-    const newConfig = getAutoClickerConfig();
-    autoClickerConfig = newConfig;
+    // 1. 重新加载配置（按优先级获取）
+    const effective = getEffectiveAutoClickerConfig();
+    autoClickerConfig = effective.config;
+    currentAutoClickerScope = effective.scope;
 
     // 2. 如果正在运行，停止
     if (isAutoClickerRunning && autoClickerAbortController) {
@@ -2138,17 +2192,24 @@ window.addEventListener("load", function () {
       hideAutoClickerStatusPanel();
     }
 
-    // 3. 如果弹窗打开，刷新列表（显示新 URL 的配置，应该是空的）
+    // 3. 如果弹窗打开，刷新列表
     if (autoClickerSubmenuOpen) {
       updateAutoClickerFlowList();
+      updateAutoClickerScopeUI();
     }
 
     // 4. 如果新配置允许自动启动，立即执行
     if (
+      autoClickerConfig.enabled &&
       autoClickerConfig.autoStartOnLoad &&
+      autoClickerConfig.steps &&
       autoClickerConfig.steps.length > 0
     ) {
-      console.log("[nopic] 新 URL 有自动点击流程，准备执行");
+      console.log(
+        "[nopic] 新 URL 有自动点击流程，准备执行 (作用域:",
+        currentAutoClickerScope,
+        ")",
+      );
       setTimeout(executeAutoClicker, 300);
     }
   }
@@ -5362,54 +5423,188 @@ window.addEventListener("load", function () {
       <span class="nopic-modal-title">自动点击器</span>
       <div class="nopic-modal-close" id="nopic-autoclicker-close">×</div>
     </div>
-    <div class="nopic-textreplace-section">
-      <div class="nopic-textreplace-section-title">执行流程（从上到下顺序执行）</div>
-      <div id="nopic-autoclicker-flow-list" style="max-height:200px;overflow-y:auto;padding-right:4px;"></div>
-<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-delay" style="flex:1;min-width:80px;">+ 延时</div>
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-wait" style="flex:1;min-width:80px;">+ 智能等待</div>  <!-- 新增这一行 -->
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-click" style="flex:1;min-width:80px;">+ 点击元素</div>
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-position" style="flex:1;min-width:80px;">+ 点击位置</div>
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-input" style="flex:1;min-width:80px;">+ 输入文字</div>
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-shortcut" style="flex:1;min-width:80px;">+ 快捷键</div>
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-script" style="flex:1;min-width:80px;">+ 运行脚本</div>
-</div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span style="font-size:11px;color:rgba(255,255,255,0.7);">循环次数 (0为无限)</span>
-    <input type="number" id="nopic-autoclicker-loop-count" min="0" value="1" style="width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:12px;padding:4px 6px;text-align:right;">
-</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-size:11px;color:rgba(255,255,255,0.7);">轮次安全延迟(秒)</span>
-        <input type="number" id="nopic-autoclicker-safety-delay" min="0" max="30" value="3" style="width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:12px;padding:4px 6px;text-align:right;">
+    
+    <!-- 左右两栏容器 -->
+    <div style="display: flex; gap: 16px; margin-top: 4px; min-height: 300px;">
+      
+      <!-- 左栏：流程列表 -->
+      <div style="flex: 0.8; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); padding-right: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.7);">执行流程</span>
+          <span style="font-size: 10px; color: rgba(255,255,255,0.3);" id="nopic-ac-step-count">0 步</span>
+        </div>
+       <div id="nopic-autoclicker-flow-list" style="flex: 1; overflow-y: auto; padding-right: 4px; min-height: 0;"></div>
       </div>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span style="font-size:11px;color:rgba(255,255,255,0.7);">刷新后自动启动</span>
-    <div class="nopic-switch" id="nopic-autoclicker-autostart-toggle" style="cursor:pointer;"></div>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span style="font-size:11px;color:rgba(255,255,255,0.7);">执行过程提示</span>
-    <div class="nopic-switch on" id="nopic-autoclicker-notif-toggle" style="cursor:pointer;"></div>
-</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-    <span style="font-size:11px;color:rgba(255,255,255,0.7);">精确匹配当前网站</span>
-    <div class="nopic-switch" id="nopic-autoclicker-exactmatch-toggle" style="cursor:pointer;"></div>
-</div>
+      
+      <!-- 右栏：各种按钮和开关 -->
+      <div style="flex: 1.2; min-width: 140px; display: flex; flex-direction: column; gap: 10px;">
+
+    <div class="nopic-ac-scope-tabs" style="display:flex;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div class="nopic-ac-scope-tab active" data-ac-scope="url" style="padding:4px 14px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.2s;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;">仅当前页</div>
+        <div class="nopic-ac-scope-tab" data-ac-scope="domain" style="padding:4px 14px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.2s;background:transparent;border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);">当前网站</div>
     </div>
-    <div class="nopic-privacy-actions" style="margin-top:8px;display:flex;gap:6px;">
-  <button class="nopic-privacy-btn primary" id="nopic-autoclicker-save-btn" style="flex:1;padding:6px 0;font-size:12px;border-radius:4px;">保存</button>
-  <button class="nopic-privacy-btn primary" id="nopic-autoclicker-save-execute-btn" style="flex:1;padding:6px 0;font-size:12px;border-radius:4px;background:rgba(74,222,128,0.25);border-color:rgba(74,222,128,0.5);color:#4ade80;">保存并执行</button>
+        
+        <!-- 添加步骤按钮组 -->
+<!-- 添加步骤按钮组（按重要性排序：点击操作排前面） -->
+<!-- 添加步骤按钮组 -->
+<div style="display: flex; flex-wrap: wrap; gap: 5px;">
+  
+  <!-- 1. 点击元素 - 鼠标指针带点击轨迹 -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-click" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(74, 222, 128, 0.10); border: 1px solid rgba(74, 222, 128, 0.12); color: #4ade80; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4l6.5 15.5 2.5-7 7-2.5L4 4z"/>
+      <path d="M15 15l5 5" stroke-opacity="0.5"/>
+      <path d="M4 4l11 11" stroke-opacity="0.3"/>
+    </svg>
+    点击元素
+  </div>
+  
+  <!-- 2. 点击位置 - 带刻度瞄准镜 -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-position" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(96, 165, 250, 0.10); border: 1px solid rgba(96, 165, 250, 0.12); color: #60a5fa; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="1.5"/>
+      <line x1="12" y1="1" x2="12" y2="4"/>
+      <line x1="12" y1="20" x2="12" y2="23"/>
+      <line x1="1" y1="12" x2="4" y2="12"/>
+      <line x1="20" y1="12" x2="23" y2="12"/>
+      <line x1="4.5" y1="4.5" x2="6.5" y2="6.5" stroke-opacity="0.4"/>
+      <line x1="17.5" y1="17.5" x2="19.5" y2="19.5" stroke-opacity="0.4"/>
+      <line x1="4.5" y1="19.5" x2="6.5" y2="17.5" stroke-opacity="0.4"/>
+      <line x1="17.5" y1="6.5" x2="19.5" y2="4.5" stroke-opacity="0.4"/>
+    </svg>
+    点击位置
+  </div>
+  
+  <!-- 3. 输入文字 - 带光标和换行符 -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-input" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(167, 139, 250, 0.10); border: 1px solid rgba(167, 139, 250, 0.12); color: #a78bfa; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="5" width="3" height="2" rx="0.5"/>
+      <rect x="8" y="5" width="3" height="2" rx="0.5"/>
+      <rect x="12" y="5" width="3" height="2" rx="0.5"/>
+      <rect x="4" y="11" width="4" height="2" rx="0.5"/>
+      <rect x="10" y="11" width="4" height="2" rx="0.5"/>
+      <rect x="16" y="11" width="4" height="2" rx="0.5"/>
+      <rect x="4" y="17" width="6" height="2" rx="0.5"/>
+      <rect x="12" y="17" width="6" height="2" rx="0.5"/>
+      <line x1="20" y1="5" x2="20" y2="7" stroke-opacity="0.5"/>
+      <path d="M19 6h2" stroke-opacity="0.5"/>
+    </svg>
+    输入文字
+  </div>
+  
+  <!-- 4. 快捷键 - 组合键/Ctrl+ -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-shortcut" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(34, 211, 238, 0.10); border: 1px solid rgba(34, 211, 238, 0.12); color: #22d3ee; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="8" x2="6" y2="8" stroke-width="3"/>
+      <line x1="18" y1="8" x2="18" y2="8" stroke-width="3"/>
+      <line x1="6" y1="16" x2="6" y2="16" stroke-width="3"/>
+      <line x1="18" y1="16" x2="18" y2="16" stroke-width="3"/>
+      <path d="M10 11l4 2" stroke-opacity="0.5"/>
+      <path d="M10 13l4-2" stroke-opacity="0.5"/>
+    </svg>
+    快捷键
+  </div>
+  
+  <!-- 5. 延时 - 带刻度表盘 -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-delay" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(251, 191, 36, 0.10); border: 1px solid rgba(251, 191, 36, 0.12); color: #fbbf24; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="3" x2="12" y2="5" stroke-opacity="0.4"/>
+      <line x1="12" y1="19" x2="12" y2="21" stroke-opacity="0.4"/>
+      <line x1="3" y1="12" x2="5" y2="12" stroke-opacity="0.4"/>
+      <line x1="19" y1="12" x2="21" y2="12" stroke-opacity="0.4"/>
+      <line x1="5.5" y1="5.5" x2="7" y2="7" stroke-opacity="0.3"/>
+      <line x1="17" y1="17" x2="18.5" y2="18.5" stroke-opacity="0.3"/>
+      <line x1="5.5" y1="18.5" x2="7" y2="17" stroke-opacity="0.3"/>
+      <line x1="17" y1="7" x2="18.5" y2="5.5" stroke-opacity="0.3"/>
+      <polyline points="12 6 12 12 15 14"/>
+    </svg>
+    延时
+  </div>
+  
+  <!-- 6. 智能等待 - 带旋转弧线和沙漏 -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-wait" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(251, 146, 60, 0.10); border: 1px solid rgba(251, 146, 60, 0.12); color: #fb923c; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fb923c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2v4"/>
+      <path d="M12 18v4"/>
+      <path d="M4.93 4.93l2.83 2.83"/>
+      <path d="M16.24 16.24l2.83 2.83"/>
+      <path d="M2 12h4"/>
+      <path d="M18 12h4"/>
+      <path d="M4.93 19.07l2.83-2.83"/>
+      <path d="M16.24 7.76l2.83-2.83"/>
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 10v2h2" stroke-opacity="0.6"/>
+      <path d="M8 12h2M14 12h2" stroke-opacity="0.3"/>
+    </svg>
+    智能等待
+  </div>
+  
+  <!-- 7. 运行脚本 - 带文档和括号 -->
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-script" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(244, 114, 182, 0.10); border: 1px solid rgba(244, 114, 182, 0.12); color: #f472b6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f472b6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+      <path d="M14 2v6h6"/>
+      <path d="M10 9l-3 3 3 3"/>
+      <path d="M14 9l3 3-3 3"/>
+      <path d="M17 6v2" stroke-opacity="0.3"/>
+      <path d="M7 6v2" stroke-opacity="0.3"/>
+      <line x1="8" y1="18" x2="12" y2="18" stroke-opacity="0.3"/>
+    </svg>
+    运行脚本
+  </div>
+  
 </div>
-    <div style="margin-top:4px;text-align:center;display:flex;gap:12px;justify-content:center;">
-      <span class="nopic-privacy-link danger" id="nopic-autoclicker-clear-btn">清空当前页</span>
-      <span class="nopic-privacy-link danger" id="nopic-autoclicker-clear-domain-btn">清空本域名</span>
-      <span class="nopic-privacy-link danger" id="nopic-autoclicker-clear-global-btn">清空全局</span>
-    </div>
-    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">
-        <div>• 智能等待即等待元素加载才执行操作</div>
-        <div>• 由于浏览器安全限制，快捷键可能使用受限</div>
-        <div>• 安全延迟是为了防止陷入无法停止的死循环</div>
+
+        <!-- 控制开关和输入 -->
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: rgba(255,255,255,0.7);">循环次数</span>
+            <input type="number" id="nopic-autoclicker-loop-count" min="0" value="1" style="width: 60px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #fff; font-size: 12px; padding: 4px 6px; text-align: right;">
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: rgba(255,255,255,0.7);">安全延迟(秒)</span>
+            <input type="number" id="nopic-autoclicker-safety-delay" min="0" max="30" value="3" style="width: 60px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #fff; font-size: 12px; padding: 4px 6px; text-align: right;">
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: rgba(255,255,255,0.7);">刷新后自动启动</span>
+            <div class="nopic-switch" id="nopic-autoclicker-autostart-toggle" style="cursor: pointer;"></div>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: rgba(255,255,255,0.7);">执行过程提示</span>
+            <div class="nopic-switch on" id="nopic-autoclicker-notif-toggle" style="cursor: pointer;"></div>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: rgba(255,255,255,0.7);">精确匹配当前网站</span>
+            <div class="nopic-switch" id="nopic-autoclicker-exactmatch-toggle" style="cursor: pointer;"></div>
+          </div>
+        </div>
+
+<!-- 提示信息（移到上面） -->
+<div style="margin-top: 4px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04);">
+  <div style="font-size: 10px; color: rgba(255,255,255,0.35); line-height: 1.7;">
+    <div>• 智能等待即等待元素加载才执行操作</div>
+    <div>• 由于浏览器安全限制，快捷键可能受限</div>
+    <div>• 安全延迟为防止陷入无法停止的死循环</div>
+  </div>
+</div>
+
+<!-- 操作按钮（移到下面） -->
+<div style="display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+  <button class="nopic-privacy-btn primary" id="nopic-autoclicker-save-btn" style="flex: 1; padding: 5px 0; font-size: 12px; border-radius: 4px;">保存</button>
+  <button class="nopic-privacy-btn primary" id="nopic-autoclicker-save-execute-btn" style="flex: 1; padding: 5px 0; font-size: 12px; border-radius: 4px; background: rgba(74,222,128,0.25); border-color: rgba(74,222,128,0.5); color: #4ade80;">保存并执行</button>
+</div>
+
+<!-- 清空操作 -->
+<div style="display: flex; gap: 6px; justify-content: center; margin-top: 4px;">
+  <span class="nopic-privacy-link danger" id="nopic-autoclicker-clear-btn" style="font-size: 11px;">清空当前页</span>
+  <span class="nopic-privacy-link danger" id="nopic-autoclicker-clear-domain-btn" style="font-size: 11px;">清空本域名</span>
+  <span class="nopic-privacy-link danger" id="nopic-autoclicker-clear-global-btn" style="font-size: 11px;">清空全局</span>
+</div>
       </div>
     </div>
   `;
@@ -5495,7 +5690,15 @@ window.addEventListener("load", function () {
             : "rgba(255,255,255,0.9)";
 
     // 如果有倒计时，显示并更新
+    // 如果有倒计时，显示并更新
     if (countdownMs && countdownMs > 0) {
+      // 如果小于1000ms，直接显示毫秒数
+      if (countdownMs < 1000) {
+        textEl.textContent = msg + " (" + countdownMs + "ms)";
+        // 不用定时器，只显示一次
+        return;
+      }
+
       let remaining = Math.ceil(countdownMs / 1000);
       const originalText = msg;
 
@@ -5568,6 +5771,16 @@ window.addEventListener("load", function () {
     if (!toggle) return;
     e.stopPropagation();
     toggle.classList.toggle("on");
+  });
+
+  // ===== 新增：作用域切换事件绑定 =====
+  autoClickerSubmenu.querySelectorAll(".nopic-ac-scope-tab").forEach((tab) => {
+    tab.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const scope = this.dataset.acScope;
+      // 切换到对应作用域
+      switchAutoClickerScope(scope);
+    });
   });
 
   // 初始化循环次数输入框和开关状态
@@ -9134,6 +9347,127 @@ window.addEventListener("load", function () {
     });
   }
 
+  // ===== 新增：自动点击器作用域管理 =====
+  // 作用域取值: 'url' | 'domain'
+  let currentAutoClickerScope = "url"; // 默认仅当前页
+
+  // 获取当前作用域的配置（不触发自动执行）
+  function getAutoClickerConfigByScope(scope) {
+    const basePath = getAutoClickerBasePath();
+    let key;
+    if (scope === "domain") {
+      key = "nopic_autoclicker_domain_" + location.host;
+    } else {
+      // url 级别
+      key = "nopic_autoclicker_" + encodeURIComponent(basePath);
+    }
+    const saved = localStorage.getItem(key);
+    return saved
+      ? JSON.parse(saved)
+      : { ...defaultAutoClickerConfig, steps: [] };
+  }
+
+  // 保存配置到指定作用域
+  function setAutoClickerConfigByScope(scope, config) {
+    const basePath = getAutoClickerBasePath();
+    let key;
+    if (scope === "domain") {
+      key = "nopic_autoclicker_domain_" + location.host;
+    } else {
+      key = "nopic_autoclicker_" + encodeURIComponent(basePath);
+    }
+    localStorage.setItem(key, JSON.stringify(config));
+  }
+
+  // 获取生效的配置（优先级：url > domain）
+  function getEffectiveAutoClickerConfig() {
+    const urlConfig = getAutoClickerConfigByScope("url");
+    const domainConfig = getAutoClickerConfigByScope("domain");
+
+    // 如果 url 级别有步骤，使用 url 级别
+    if (urlConfig.steps && urlConfig.steps.length > 0) {
+      return { config: urlConfig, scope: "url" };
+    }
+    // 否则使用 domain 级别
+    if (domainConfig.steps && domainConfig.steps.length > 0) {
+      return { config: domainConfig, scope: "domain" };
+    }
+    // 都没有则返回空配置，默认 url
+    return { config: { ...defaultAutoClickerConfig, steps: [] }, scope: "url" };
+  }
+
+  // 初始化自动点击器配置（按照优先级加载）
+  function initAutoClickerConfig() {
+    const urlConfig = getAutoClickerConfigByScope("url");
+    const domainConfig = getAutoClickerConfigByScope("domain");
+
+    const urlHasSteps = urlConfig.steps && urlConfig.steps.length > 0;
+    const domainHasSteps = domainConfig.steps && domainConfig.steps.length > 0;
+
+    if (urlHasSteps) {
+      currentAutoClickerScope = "url";
+      autoClickerConfig = urlConfig;
+    } else if (domainHasSteps) {
+      currentAutoClickerScope = "domain";
+      autoClickerConfig = domainConfig;
+    } else {
+      currentAutoClickerScope = "url";
+      autoClickerConfig = { ...defaultAutoClickerConfig, steps: [] };
+    }
+
+    // 恢复用户上次选择（但受优先级约束）
+    const lastScope = localStorage.getItem(
+      "nopic_autoclicker_last_scope_" + location.host,
+    );
+    if (lastScope === "domain" && !urlHasSteps && domainHasSteps) {
+      currentAutoClickerScope = "domain";
+      autoClickerConfig = domainConfig;
+    }
+
+    return autoClickerConfig;
+  }
+
+  // 切换作用域时调用，只切换显示，不自动执行
+  function switchAutoClickerScope(scope) {
+    if (scope === currentAutoClickerScope) return;
+
+    // 加载对应作用域的配置
+    const config = getAutoClickerConfigByScope(scope);
+    autoClickerConfig = config;
+    currentAutoClickerScope = scope;
+
+    // 更新UI列表
+    updateAutoClickerFlowList();
+    // 更新UI开关状态
+    updateAutoClickerScopeUI();
+    // 保存当前作用域选择（用于下次打开时记住）
+    localStorage.setItem(
+      "nopic_autoclicker_last_scope_" + location.host,
+      scope,
+    );
+  }
+
+  // 更新作用域UI高亮
+  function updateAutoClickerScopeUI() {
+    const tabs = autoClickerSubmenu.querySelectorAll(".nopic-ac-scope-tab");
+    tabs.forEach((tab) => {
+      const isActive = tab.dataset.acScope === currentAutoClickerScope;
+      tab.classList.toggle("active", isActive);
+      // 手动控制样式，高亮使用蓝色
+      if (isActive) {
+        tab.style.background = "rgba(96,165,250,0.15)";
+        tab.style.borderColor = "rgba(96,165,250,0.3)";
+        tab.style.color = "#60a5fa";
+        tab.style.fontWeight = "500";
+      } else {
+        tab.style.background = "transparent";
+        tab.style.borderColor = "rgba(255,255,255,0.08)";
+        tab.style.color = "rgba(255,255,255,0.4)";
+        tab.style.fontWeight = "400";
+      }
+    });
+  }
+
   // ===== 标签伪装子菜单事件（弹窗方式） =====
   const tabDisguiseTrigger = menu.querySelector('[data-submenu="tabdisguise"]');
 
@@ -9352,15 +9686,57 @@ window.addEventListener("load", function () {
     "nopic-autoclicker-menu-entry",
   );
 
-  const showAutoClickerSubmenu = () => {
+  function showAutoClickerSubmenu() {
     autoClickerSubmenuOpen = true;
     showPopupAtTrigger(autoClickerSubmenu, autoClickerTrigger);
+
+    // ===== 核心：根据优先级决定显示哪个作用域的配置 =====
+    // 1. 先检查 url 级别是否有配置（有步骤）
+    const urlConfig = getAutoClickerConfigByScope("url");
+    const domainConfig = getAutoClickerConfigByScope("domain");
+
+    const urlHasSteps = urlConfig.steps && urlConfig.steps.length > 0;
+    const domainHasSteps = domainConfig.steps && domainConfig.steps.length > 0;
+
+    // 优先级：url > domain
+    if (urlHasSteps) {
+      // 仅当前页有配置，使用它
+      currentAutoClickerScope = "url";
+      autoClickerConfig = urlConfig;
+    } else if (domainHasSteps) {
+      // 仅当前页没有配置，但当前网站有配置，使用它
+      currentAutoClickerScope = "domain";
+      autoClickerConfig = domainConfig;
+    } else {
+      // 两个都没有配置，默认使用 url（空配置）
+      currentAutoClickerScope = "url";
+      autoClickerConfig = { ...defaultAutoClickerConfig, steps: [] };
+    }
+
+    // 如果有上次用户手动选择的作用域，且该作用域有配置，则使用用户选择
+    // 但优先级规则不变：如果 url 有配置，即使用户上次选了 domain，也显示 url
+    const lastScope = localStorage.getItem(
+      "nopic_autoclicker_last_scope_" + location.host,
+    );
+    if (lastScope === "domain" && !urlHasSteps && domainHasSteps) {
+      // 只有 url 没配置、domain 有配置，且用户上次选了 domain，才切换到 domain
+      currentAutoClickerScope = "domain";
+      autoClickerConfig = domainConfig;
+    } else if (lastScope === "url" && urlHasSteps) {
+      currentAutoClickerScope = "url";
+      autoClickerConfig = urlConfig;
+    }
+    // 如果 lastScope 是 domain 但 url 有配置，保持 url（优先级更高）
+
+    // 更新UI
     updateAutoClickerFlowList();
+    updateAutoClickerScopeUI();
+
     // 阻止点击事件冒泡到页面，防止关闭网站菜单
     autoClickerSubmenu.addEventListener("click", function (e) {
       e.stopPropagation();
     });
-  };
+  }
 
   const hideAutoClickerSubmenu = () => {
     autoClickerSubmenuOpen = false;
@@ -12913,6 +13289,16 @@ window.addEventListener("load", function () {
     const list = document.getElementById("nopic-autoclicker-flow-list");
     if (!list) return;
 
+    // 更新右上角的步骤计数
+    const stepCountEl = document.getElementById("nopic-ac-step-count");
+    if (stepCountEl) {
+      const count = autoClickerConfig.steps
+        ? autoClickerConfig.steps.length
+        : 0;
+      const scopeLabel = currentAutoClickerScope === "url" ? "当前页" : "网站";
+      stepCountEl.textContent = count + " 步 (" + scopeLabel + ")";
+    }
+
     if (autoClickerConfig.steps.length === 0) {
       list.innerHTML =
         '<div style="text-align:center;color:rgba(255,255,255,0.5);padding:20px;font-size:12px;">暂无步骤，点击上方按钮添加</div>';
@@ -13607,6 +13993,20 @@ window.addEventListener("load", function () {
       autoClickerSubmenuOpen = true;
       autoClickerSubmenu.style.display = "flex";
       autoClickerSubmenu.classList.add("active");
+      // 重新定位弹窗
+      const rect = autoClickerSubmenu.getBoundingClientRect();
+      let left = (window.innerWidth - rect.width) / 2;
+      let top = (window.innerHeight - rect.height) / 2;
+      if (left < 10) left = 10;
+      if (top < 10) top = 10;
+      if (left + rect.width > window.innerWidth - 10) {
+        left = window.innerWidth - rect.width - 10;
+      }
+      if (top + rect.height > window.innerHeight - 10) {
+        top = window.innerHeight - rect.height - 10;
+      }
+      autoClickerSubmenu.style.left = left + "px";
+      autoClickerSubmenu.style.top = top + "px";
     };
 
     const keyHandler = (e) => {
@@ -13767,6 +14167,20 @@ window.addEventListener("load", function () {
       autoClickerSubmenuOpen = true;
       autoClickerSubmenu.style.display = "flex";
       autoClickerSubmenu.classList.add("active");
+      // 重新定位弹窗
+      const rect = autoClickerSubmenu.getBoundingClientRect();
+      let left = (window.innerWidth - rect.width) / 2;
+      let top = (window.innerHeight - rect.height) / 2;
+      if (left < 10) left = 10;
+      if (top < 10) top = 10;
+      if (left + rect.width > window.innerWidth - 10) {
+        left = window.innerWidth - rect.width - 10;
+      }
+      if (top + rect.height > window.innerHeight - 10) {
+        top = window.innerHeight - rect.height - 10;
+      }
+      autoClickerSubmenu.style.left = left + "px";
+      autoClickerSubmenu.style.top = top + "px";
     };
 
     // 点击区域开始监听快捷键
@@ -14070,6 +14484,21 @@ window.addEventListener("load", function () {
       // 恢复显示自动点击器弹窗
       autoClickerSubmenuOpen = true;
       autoClickerSubmenu.style.display = "flex";
+      autoClickerSubmenu.classList.add("active");
+      // 重新定位弹窗
+      const rect = autoClickerSubmenu.getBoundingClientRect();
+      let left = (window.innerWidth - rect.width) / 2;
+      let top = (window.innerHeight - rect.height) / 2;
+      if (left < 10) left = 10;
+      if (top < 10) top = 10;
+      if (left + rect.width > window.innerWidth - 10) {
+        left = window.innerWidth - rect.width - 10;
+      }
+      if (top + rect.height > window.innerHeight - 10) {
+        top = window.innerHeight - rect.height - 10;
+      }
+      autoClickerSubmenu.style.left = left + "px";
+      autoClickerSubmenu.style.top = top + "px";
     };
 
     confirmBtn.addEventListener("click", () => {
@@ -14156,8 +14585,15 @@ window.addEventListener("load", function () {
       return new Promise((resolve) => {
         // 如果已经终止，不再更新状态
         if (!isTerminated) {
+          // 如果小于1秒，显示毫秒
+          let delayDisplay = autoClickerSafetyConfig.delay;
+          if (safetyDelay < 1000) {
+            delayDisplay = safetyDelay + "ms";
+          } else {
+            delayDisplay = delayDisplay + "秒";
+          }
           updateAutoClickerStatus(
-            `第 ${currentLoop} 轮即将开始 (${autoClickerSafetyConfig.delay}秒后执行，可点击终止)`,
+            `第 ${currentLoop} 轮即将开始 (${delayDisplay}后执行，可点击终止)`,
             "pending",
             safetyDelay,
           );
@@ -15348,7 +15784,7 @@ window.addEventListener("load", function () {
     autoClickerToggle.addEventListener("click", (e) => {
       e.stopPropagation();
       autoClickerConfig.enabled = !autoClickerConfig.enabled;
-      setAutoClickerConfig(autoClickerConfig);
+      setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
       updateAllUI();
     });
   }
@@ -15509,7 +15945,7 @@ window.addEventListener("load", function () {
         setAutoClickerSafetyConfig(autoClickerSafetyConfig);
       }
 
-      setAutoClickerConfig(autoClickerConfig);
+      setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
       hideAutoClickerSubmenu();
       // 移除 executeAutoClicker()，保存后不自动执行
     });
@@ -15551,7 +15987,7 @@ window.addEventListener("load", function () {
         autoClickerSafetyConfig.delay = sVal;
         setAutoClickerSafetyConfig(autoClickerSafetyConfig);
       }
-      setAutoClickerConfig(autoClickerConfig);
+      setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
 
       // 2. 关闭弹窗
       hideAutoClickerSubmenu();
@@ -15584,9 +16020,14 @@ window.addEventListener("load", function () {
       // 清空步骤
       autoClickerConfig.steps = [];
       // 立即保存到 localStorage
-      setAutoClickerConfig(autoClickerConfig);
+      setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
       // 刷新列表显示
       updateAutoClickerFlowList();
+      // 强制更新计数（双重保险）
+      const stepCountEl = document.getElementById("nopic-ac-step-count");
+      if (stepCountEl) {
+        stepCountEl.textContent = "0 步";
+      }
     });
   }
   // 扫描指定范围内的自动点击器流程，返回 { key, url, steps } 列表
@@ -15638,7 +16079,10 @@ window.addEventListener("load", function () {
         () => {
           flows.forEach((f) => localStorage.removeItem(f.key));
           autoClickerConfig.steps = [];
-          setAutoClickerConfig(autoClickerConfig);
+          setAutoClickerConfigByScope(
+            currentAutoClickerScope,
+            autoClickerConfig,
+          );
           updateAutoClickerFlowList();
         },
       );
@@ -15676,7 +16120,10 @@ window.addEventListener("load", function () {
         () => {
           flows.forEach((f) => localStorage.removeItem(f.key));
           autoClickerConfig.steps = [];
-          setAutoClickerConfig(autoClickerConfig);
+          setAutoClickerConfigByScope(
+            currentAutoClickerScope,
+            autoClickerConfig,
+          );
           updateAutoClickerFlowList();
         },
       );
@@ -17028,20 +17475,46 @@ window.addEventListener("load", function () {
     }
   }
 
-  // // 初始化自动点击器（页面加载后自动执行）
-  // if (
-  //   autoClickerConfig.enabled &&
-  //   autoClickerConfig.autoStartOnLoad &&
-  //   autoClickerConfig.steps.length > 0
-  // ) {
-  //   if (document.readyState === 'complete') {
-  //     setTimeout(executeAutoClicker, 500);
-  //   } else {
-  //     window.addEventListener('load', () => {
-  //       setTimeout(executeAutoClicker, 500);
-  //     });
-  //   }
-  // }
+  // ===== 初始化自动点击器（页面加载后自动执行，支持多作用域）=====
+  function initAutoClickerOnLoad() {
+    // 获取生效的配置（按优先级）
+    const effective = getEffectiveAutoClickerConfig();
+    const config = effective.config;
+    const scope = effective.scope;
+
+    // 如果配置已启用、自动启动开启、且有步骤
+    if (
+      config.enabled &&
+      config.autoStartOnLoad &&
+      config.steps &&
+      config.steps.length > 0
+    ) {
+      // 同步全局变量
+      autoClickerConfig = config;
+      currentAutoClickerScope = scope;
+
+      console.log(
+        "[nopic] 自动点击器自动启动，作用域:",
+        scope,
+        "步骤数:",
+        config.steps.length,
+      );
+
+      if (document.readyState === "complete") {
+        setTimeout(executeAutoClicker, 500);
+      } else {
+        window.addEventListener("load", function onLoad() {
+          window.removeEventListener("load", onLoad);
+          setTimeout(executeAutoClicker, 500);
+        });
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // 调用初始化
+  setTimeout(initAutoClickerOnLoad, 300);
 
   // // 启动页面监控器
   // setTimeout(() => {

@@ -2200,8 +2200,8 @@ svg:not(.nopic-clone),
   border-radius: 12px;
   padding: 12px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  min-width: 240px;
-  max-width: 300px;
+  min-width: 580px;
+  max-width: 720px;
   flex-direction: column;
   gap: 4px;
   z-index: 2147483647;
@@ -3486,13 +3486,20 @@ svg:not(.nopic-clone),
 }
 /* ===== 小区块细滚动条 ===== */
 .nopic-mask-list,
-#nopic-autoclicker-flow-list,
 #nopic-qt-list-url,
 #nopic-qt-list-domain,
 #nopic-qt-list-global {
   scrollbar-width: thin !important;
   max-height: 120px !important;
   overflow-y: auto !important;
+}
+
+#nopic-autoclicker-flow-list {
+  scrollbar-width: thin !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+  min-height: 200px !important;
+  max-height: calc(90vh - 300px) !important;
 }
 
 .nopic-mask-list::-webkit-scrollbar,
@@ -4795,4 +4802,8 @@ svg:not(.nopic-clone),
 
 #nopic-dc-tbody.nopic-dc-empty td {
   border-bottom: none !important;
+}
+.nopic-textreplace-add-btn:hover {
+  transform: scale(1.03);
+  filter: brightness(1.2);
 }
