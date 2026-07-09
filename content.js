@@ -5128,20 +5128,20 @@ window.addEventListener("load", function () {
   </div>
   <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:6px;">会将生效的配置进行高亮，未高亮时点击编辑按钮可以进行修改。有些网站如AI网站可能由于网站限制，标题无法有效修改。</div>
 
-  <!-- 三列列表视图（默认显示） -->
-  <div id="nopic-disguise-list-view" style="display:flex;flex-direction:column;gap:4px;flex:1;max-height:55vh;overflow-y:auto;">
-    <div style="display:flex;gap:10px;">
-      <div style="flex:1;background:rgba(0,0,0,0.15);border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:auto;">
-        <div id="nopic-disguise-list-url" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
-      </div>
-      <div style="flex:1;background:rgba(0,0,0,0.15);border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:auto;">
-        <div id="nopic-disguise-list-domain" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
-      </div>
-      <div style="flex:1;background:rgba(0,0,0,0.15);border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:auto;">
-        <div id="nopic-disguise-list-global" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
-      </div>
+<!-- 三列列表视图（默认显示） -->
+<div id="nopic-disguise-list-view" style="display:flex;flex-direction:column;gap:4px;flex:1;max-height:55vh;overflow-y:auto;overflow-x:hidden;">
+  <div style="display:flex;gap:10px;flex-wrap:nowrap;min-width:0;">
+    <div style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;overflow:hidden;">
+      <div id="nopic-disguise-list-url" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
+    </div>
+    <div style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;overflow:hidden;">
+      <div id="nopic-disguise-list-domain" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
+    </div>
+    <div style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;overflow:hidden;">
+      <div id="nopic-disguise-list-global" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
     </div>
   </div>
+</div>
 
   <!-- 编辑视图（点击编辑后显示） -->
   <div id="nopic-disguise-edit-view" style="display:none;flex-direction:column;gap:4px;flex:1;max-height:55vh;overflow-y:auto;">
@@ -5233,28 +5233,25 @@ window.addEventListener("load", function () {
       <div class="nopic-modal-close" id="nopic-mask-close">×</div>
     </div>
     <div class="nopic-privacy-select-row nopic-scope-row">
-<div class="nopic-privacy-select-btn" data-scope="url">仅当前页</div>
-<div class="nopic-privacy-select-btn" data-scope="domain">当前网站</div>
-<div class="nopic-privacy-select-btn" data-scope="global">全局通用</div>
+      <div class="nopic-privacy-select-btn" data-scope="url">仅当前页</div>
+      <div class="nopic-privacy-select-btn" data-scope="domain">当前网站</div>
+      <div class="nopic-privacy-select-btn" data-scope="global">全局通用</div>
     </div>
-    <div class="nopic-mask-section">
-      <div class="nopic-mask-section-title">遮罩样式</div>
-      <div class="nopic-mask-color-row">
-        <input type="color" class="nopic-mask-color-picker" id="nopic-mask-color" value="#000000">
-        <span style="font-size:11px;color:rgba(255,255,255,0.7);">遮罩颜色</span>
-      </div>
-      <div class="nopic-mask-opacity-row">
-        <span class="nopic-mask-opacity-label">透明度</span>
-        <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-opacity" min="10" max="100" value="100">
-        <span class="nopic-mask-opacity-value" id="nopic-mask-opacity-val">100%</span>
-      </div>
-      <div class="nopic-mask-opacity-row">
-        <span class="nopic-mask-opacity-label">圆角</span>
-        <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-radius" min="0" max="50" value="8">
-        <span class="nopic-mask-opacity-value" id="nopic-mask-radius-val">8px</span>
-      </div>
-
-    </div>
+<div class="nopic-mask-section">
+  <div class="nopic-mask-section-title">遮罩样式</div>
+  <div class="nopic-mask-color-row">
+    <input type="color" class="nopic-mask-color-picker" id="nopic-mask-color" value="#000000">
+    <span style="font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap;">遮罩颜色</span>
+  </div>
+  <div class="nopic-mask-opacity-row">
+    <span class="nopic-mask-opacity-label">透明度</span>
+    <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-opacity" min="10" max="100" value="100">
+  </div>
+  <div class="nopic-mask-opacity-row">
+    <span class="nopic-mask-opacity-label">圆角</span>
+    <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-radius" min="0" max="50" value="8">
+  </div>
+</div>
     <div class="nopic-mask-section">
       <div class="nopic-mask-section-title">位置模式</div>
       <div class="nopic-mask-position-row">
@@ -5262,10 +5259,10 @@ window.addEventListener("load", function () {
         <div class="nopic-mask-position-btn active" data-position="absolute">跟随页面</div>
       </div>
     </div>
-    <div class="nopic-mask-actions" style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
-  <button class="nopic-mask-btn primary" id="nopic-mask-draw-btn" style="flex:1;padding:6px 0;text-align:center;border-radius:4px;font-size:12px;cursor:pointer;">开始绘制</button>
-  <span class="nopic-privacy-link danger" id="nopic-mask-clear-btn" style="flex:1;padding:6px 0;text-align:center;border-radius:4px;font-size:12px;cursor:pointer;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);">清除当前层级</span>
-</div>
+    <div class="nopic-mask-actions" style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+      <button class="nopic-mask-btn primary" id="nopic-mask-draw-btn" style="flex:1;padding:6px 0;text-align:center;border-radius:6px;font-size:12px;cursor:pointer;">开始绘制</button>
+      <span class="nopic-privacy-link danger" id="nopic-mask-clear-btn" style="flex:1;padding:6px 0;text-align:center;border-radius:6px;font-size:12px;cursor:pointer;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.12);">清除当前层级</span>
+    </div>
     <div class="nopic-mask-section" id="nopic-mask-list-section" style="display:none;">
       <div class="nopic-mask-section-title">已绘制遮罩</div>
       <div class="nopic-mask-list-container">
@@ -5297,7 +5294,7 @@ window.addEventListener("load", function () {
 </div>
 <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:8px;">注意，本功能防君子不防小人，只是轻量化防偷窥的手段。如有重要防护，仍需要通过电脑锁屏来实现。</div>
 <!-- 锁屏外观设置 -->
-<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px;background:rgba(0,0,0,0.2);border-radius:8px;flex-wrap:wrap;align-items:center;">
+<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;flex-wrap:wrap;align-items:center;border:1px solid rgba(255,255,255,0.04);">
   <div style="display:flex;align-items:center;gap:4px;">
     <span style="font-size:10px;color:rgba(255,255,255,0.5);">背景色</span>
     <input type="color" id="nopic-lock-bg-color" value="#1a1a2e" style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;padding:0;">
@@ -5317,13 +5314,13 @@ window.addEventListener("load", function () {
   <button id="nopic-lock-format-help" style="padding:2px 8px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.3);border-radius:4px;color:#60a5fa;font-size:10px;cursor:pointer;">占位符说明</button>
 </div>
 <div class="nopic-pl-three-cols" style="display:flex;gap:8px;max-height:55vh;overflow-y:auto;">
-  <div class="nopic-pl-col" style="flex:1;background:rgba(0,0,0,0.15);border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:180px;">
+    <div class="nopic-pl-col" style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;min-height:180px;border:1px solid rgba(255,255,255,0.04);">
     <div id="nopic-pl-list-url" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
   </div>
-  <div class="nopic-pl-col" style="flex:1;background:rgba(0,0,0,0.15);border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:180px;">
+    <div class="nopic-pl-col" style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;min-height:180px;border:1px solid rgba(255,255,255,0.04);">
     <div id="nopic-pl-list-domain" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
   </div>
-  <div class="nopic-pl-col" style="flex:1;background:rgba(0,0,0,0.15);border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:180px;">
+    <div class="nopic-pl-col" style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;min-height:180px;border:1px solid rgba(255,255,255,0.04);">
     <div id="nopic-pl-list-global" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
   </div>
 </div>
@@ -5825,14 +5822,14 @@ window.addEventListener("load", function () {
       <span class="nopic-modal-title">页面可编辑</span>
       <div class="nopic-modal-close" id="nopic-pageedit-close">×</div>
     </div>
-    <div class="nopic-privacy-section">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
+    <div class="nopic-privacy-section" style="padding:4px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;">
         <span style="font-size:13px;color:rgba(255,255,255,0.9);">启用页面编辑模式</span>
-        <div class="nopic-switch" id="nopic-pageedit-switch"></div>
+        <div class="nopic-switch" id="nopic-pageedit-switch" style="cursor:pointer;"></div>
       </div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
-        <div>开启后可直接在页面上编辑文字内容，就和在文档一样轻松。</div>
-        <div style="margin-top:6px;color:rgba(255,255,255,0.4);">此开关关闭页面后自动重置，不会记忆状态。</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;margin-top:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);">
+        <div>开启后可直接在页面上编辑文字内容</div>
+        <div style="margin-top:4px;color:rgba(255,255,255,0.3);">关闭页面后自动重置，不记忆状态</div>
       </div>
     </div>
   `;
@@ -6445,9 +6442,24 @@ window.addEventListener("load", function () {
     const effectiveScope = effective._effectiveScope || null;
 
     const titles = {
-      url: { text: "仅当前页", color: "#60a5fa" },
-      domain: { text: "当前网站", color: "#b3951e" },
-      global: { text: "全局通用", color: "#a855f7" },
+      url: {
+        text: "仅当前页",
+        color: "#60a5fa",
+        bg: "rgba(96,165,250,0.12)",
+        border: "rgba(96,165,250,0.15)",
+      },
+      domain: {
+        text: "当前网站",
+        color: "#fbbf24",
+        bg: "rgba(251,191,36,0.12)",
+        border: "rgba(251,191,36,0.15)",
+      },
+      global: {
+        text: "全局通用",
+        color: "#a78bfa",
+        bg: "rgba(167,139,250,0.12)",
+        border: "rgba(167,139,250,0.15)",
+      },
     };
 
     ["url", "domain", "global"].forEach((scope) => {
@@ -6466,11 +6478,10 @@ window.addEventListener("load", function () {
       const title = titles[scope];
 
       listEl.innerHTML = `
-    <div style="opacity:${opacity};transition:opacity 0.3s ease;display:flex;flex-direction:column;flex:1;gap:6px;">
-      <!-- 标题 -->
-      <div style="font-size:10px;font-weight:600;color:${title.color};text-align:center;padding-bottom:4px;border-bottom:1px solid ${title.color}25;margin-bottom:4px;">
-        ${title.text} <span id="nopic-pl-active-${scope}" style="display:${isActive ? "inline" : "none"};font-size:8px;background:${title.color};color:#fff;padding:1px 6px;border-radius:3px;margin-left:4px;">生效</span>
-      </div>
+  <div style="opacity:${opacity};transition:opacity 0.3s ease;display:flex;flex-direction:column;flex:1;gap:6px;">
+    <div style="font-size:10px;font-weight:600;color:${title.color};text-align:center;padding-bottom:4px;border-bottom:1px solid ${title.border};margin-bottom:4px;">
+      ${title.text} <span id="nopic-pl-active-${scope}" style="display:${isActive ? "inline" : "none"};font-size:8px;background:${title.bg};color:${title.color};padding:1px 8px;border-radius:10px;margin-left:4px;border:1px solid ${title.border};">生效</span>
+    </div>
       
       <!-- PIN码设置 -->
       <div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:10px 8px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center;">
@@ -8251,12 +8262,30 @@ window.addEventListener("load", function () {
           custom: "自定义图标",
         }[cfg.iconMode] || "原生图标";
 
+      const colors = {
+        url: {
+          primary: "#60a5fa",
+          bg: "rgba(96,165,250,0.12)",
+          border: "rgba(96,165,250,0.15)",
+        },
+        domain: {
+          primary: "#fbbf24",
+          bg: "rgba(251,191,36,0.12)",
+          border: "rgba(251,191,36,0.15)",
+        },
+        global: {
+          primary: "#a78bfa",
+          bg: "rgba(167,139,250,0.12)",
+          border: "rgba(167,139,250,0.15)",
+        },
+      };
+
       html += `
-      <div style="font-size:10px;font-weight:600;color:${["#60a5fa", "#b3951e", "#a855f7"][idx]};text-align:center;padding-bottom:4px;border-bottom:1px solid ${["#60a5fa", "#b3951e", "#a855f7"][idx]}25;margin-bottom:4px;">
-        ${["仅当前页", "当前网站", "全局通用"][idx]}
-        <span style="font-size:8px;background:${["#60a5fa", "#b3951e", "#a855f7"][idx]};color:#fff;padding:1px 6px;border-radius:3px;margin-left:4px;">${hasData ? "已配置" : "未配置"}</span>
-      </div>
-    `;
+  <div style="font-size:10px;font-weight:600;color:${colors[scope].primary};text-align:center;padding-bottom:4px;border-bottom:1px solid ${colors[scope].border};margin-bottom:4px;">
+    ${["仅当前页", "当前网站", "全局通用"][idx]}
+    ${hasData ? `<span style="font-size:8px;background:${colors[scope].bg};color:${colors[scope].primary};padding:1px 8px;border-radius:10px;margin-left:4px;border:1px solid ${colors[scope].border};">已配置</span>` : ""}
+  </div>
+`;
 
       // 判断当前配置是否生效 - 按优先级 url > domain > global
       let isEffective = false;
@@ -8298,14 +8327,14 @@ window.addEventListener("load", function () {
       html += `
   <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:3px;border-left:2px solid ${isEffective ? "#4ade80" : "rgba(255,255,255,0.06)"};transition:all 0.2s ease;cursor:default;opacity:${opacity};">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:11px;color:rgba(255,255,255,0.85);font-weight:400;">${titleLabel}</span>
-      <span style="font-size:9px;color:rgba(255,255,255,0.25);">${iconLabel}</span>
+      <span style="font-size:11px;color:rgba(255,255,255,0.85);font-weight:400;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleLabel}</span>
+      <span style="font-size:9px;color:rgba(255,255,255,0.25);flex-shrink:0;margin-left:6px;">${iconLabel}</span>
     </div>
-    <div style="display:flex;gap:4px;margin-top:2px;justify-content:flex-end;">
-      <button class="nopic-disguise-btn primary" style="font-size:9px;padding:1px 10px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.12);border-radius:3px;color:#60a5fa;cursor:pointer;" data-disguise-edit="${scope}">编辑</button>
-      <button class="nopic-disguise-btn danger" style="font-size:9px;padding:1px 10px;background:transparent;border:1px solid rgba(248,113,113,0.12);border-radius:3px;color:#f87171;cursor:pointer;" data-disguise-clear="${scope}">清除</button>
-    </div>
-    ${isEffective ? '<div style="font-size:8px;color:#4ade80;text-align:right;margin-top:1px;">● 生效中</div>' : ""}
+<div style="display:flex;gap:4px;margin-top:2px;justify-content:flex-end;flex-shrink:0;">
+  <button class="nopic-disguise-btn primary" style="font-size:9px;padding:1px 8px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.12);border-radius:3px;color:#60a5fa;cursor:pointer;flex-shrink:0;white-space:nowrap;width:auto;min-width:0;display:inline-flex;" data-disguise-edit="${scope}">编辑</button>
+  <button class="nopic-disguise-btn danger" style="font-size:9px;padding:1px 8px;background:transparent;border:1px solid rgba(248,113,113,0.12);border-radius:3px;color:#f87171;cursor:pointer;flex-shrink:0;white-space:nowrap;width:auto;min-width:0;display:inline-flex;" data-disguise-clear="${scope}">清除</button>
+</div>
+    ${isEffective ? '<div style="font-size:8px;color:#4ade80;text-align:right;margin-top:1px;flex-shrink:0;">● 生效中</div>' : ""}
   </div>
 `;
 

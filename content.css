@@ -992,52 +992,63 @@ svg:not(.nopic-clone),
 #nopic-tabdisguise-submenu {
   position: fixed;
   display: none;
-  background: rgba(30, 30, 35, 1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  min-width: 220px;
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px 18px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  min-width: 280px;
+  max-width: 640px;
   width: 600px;
-  min-height: 120px;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   z-index: 2147483647;
   max-height: 80vh;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: none;
 }
 #nopic-tabdisguise-submenu::-webkit-scrollbar {
   display: none;
 }
 .nopic-disguise-section {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
-  padding: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px 12px 12px;
   margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 .nopic-disguise-section:first-child {
   margin-top: 0;
 }
 .nopic-disguise-section-title {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .nopic-radio-row {
   display: flex;
   align-items: center;
-  padding: 4px 0;
+  padding: 5px 0;
   cursor: pointer;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.2s;
+}
+.nopic-radio-row:hover {
+  color: rgba(255, 255, 255, 0.95);
 }
 .nopic-radio {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  margin-right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1045,8 +1056,8 @@ svg:not(.nopic-clone),
   flex-shrink: 0;
 }
 .nopic-radio.checked {
-  border-color: #3b82f6;
-  background: #3b82f6;
+  border-color: #60a5fa;
+  background: #60a5fa;
 }
 .nopic-radio.checked::after {
   content: "";
@@ -1057,81 +1068,101 @@ svg:not(.nopic-clone),
 }
 .nopic-disguise-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   color: #fff;
   font-size: 12px;
-  padding: 6px 8px;
+  padding: 7px 12px;
   margin-top: 4px;
+  box-sizing: border-box;
+  outline: none;
+  transition: all 0.25s ease;
 }
 .nopic-disguise-input:focus {
-  outline: none;
   border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.08);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
 }
 .nopic-disguise-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.3);
 }
 .nopic-preset-row {
-  margin: 6px 0 6px 24px;
+  margin: 6px 0 6px 26px;
 }
 .nopic-custom-select {
   position: relative;
   width: 100%;
 }
 .nopic-custom-select-header {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 11px;
-  padding: 4px 8px;
+  padding: 6px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+.nopic-custom-select-header:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
 }
 .nopic-custom-select-header::after {
   content: "▼";
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.5);
-}
-.nopic-custom-select-header:focus {
-  outline: none;
-  border-color: #60a5fa;
+  color: rgba(255, 255, 255, 0.3);
+  transition: transform 0.25s ease;
 }
 .nopic-custom-select.open .nopic-custom-select-header {
   border-color: #60a5fa;
 }
+.nopic-custom-select.open .nopic-custom-select-header::after {
+  transform: rotate(180deg);
+}
 .nopic-custom-select-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: rgba(30, 30, 30, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: rgba(25, 25, 30, 0.98);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   margin-top: 2px;
   display: none;
   z-index: 100;
-  max-height: 150px;
+  max-height: 160px;
   overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  scrollbar-width: thin;
+}
+.nopic-custom-select-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.nopic-custom-select-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
 }
 .nopic-custom-select.open .nopic-custom-select-dropdown {
   display: block;
 }
 .nopic-custom-select-option {
-  padding: 6px 8px;
+  padding: 6px 12px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.15s ease;
 }
 .nopic-custom-select-option:hover {
-  background: rgba(96, 165, 250, 0.2);
+  background: rgba(96, 165, 250, 0.12);
 }
 .nopic-custom-select-option.selected {
-  background: rgba(96, 165, 250, 0.3);
+  background: rgba(96, 165, 250, 0.2);
   color: #60a5fa;
 }
 .nopic-preset-select {
@@ -1151,15 +1182,16 @@ svg:not(.nopic-clone),
 .nopic-icon-upload-area {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: 6px;
+  flex-wrap: wrap;
 }
 .nopic-icon-preview {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1172,95 +1204,103 @@ svg:not(.nopic-clone),
   object-fit: contain;
 }
 .nopic-icon-upload-btn {
-  padding: 4px 10px;
-  background: rgba(96, 165, 250, 0.2);
-  border: 1px solid rgba(96, 165, 250, 0.4);
-  border-radius: 4px;
+  padding: 5px 14px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 6px;
   color: #60a5fa;
   font-size: 11px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-icon-upload-btn:hover {
-  background: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.25);
+  border-color: rgba(96, 165, 250, 0.35);
 }
 .nopic-disguise-btn {
-  padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-disguise-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 .nopic-disguise-btn.primary {
-  background: rgba(96, 165, 250, 0.25);
-  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.2);
   color: #60a5fa;
 }
 .nopic-disguise-btn.primary:hover {
-  background: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.25);
+  border-color: rgba(96, 165, 250, 0.35);
 }
 .nopic-disguise-btn.danger {
   color: #f87171;
+  border-color: rgba(248, 113, 113, 0.12);
 }
 .nopic-disguise-btn.danger:hover {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.2);
 }
 .nopic-disguise-actions {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  justify-content: center; /* 加上这一行 */
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: center;
 }
 .nopic-scope-row {
   display: flex;
   gap: 4px;
   margin-top: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .nopic-scope-btn {
   flex: 1;
   padding: 4px 6px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-scope-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
 }
 .nopic-scope-btn.active {
-  background: #3b82f6;
-  color: white;
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
 }
 
 /* ===== 页面局部遮罩 ===== */
 #nopic-mask-submenu {
   position: fixed;
   display: none;
-  background: rgba(30, 30, 35, 1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  min-width: 200px;
-  max-width: 260px;
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px 18px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  min-width: 210px;
+  max-width: 270px;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   z-index: 2147483647;
   max-height: 80vh;
   overflow-y: auto;
@@ -1275,134 +1315,199 @@ svg:not(.nopic-clone),
   cursor: default;
 }
 .nopic-mask-section {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
-  padding: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 6px 10px 8px 10px;
   margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 .nopic-mask-section:first-child {
   margin-top: 0;
 }
 .nopic-mask-section-title {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .nopic-mask-color-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  overflow: visible !important;
 }
 .nopic-mask-color-picker {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   flex-shrink: 0;
+  padding: 2px;
+  background: transparent;
+  transition: border-color 0.2s;
+  display: block !important;
+  box-sizing: border-box !important;
 }
 .nopic-mask-color-picker::-webkit-color-swatch-wrapper {
   padding: 2px;
 }
 .nopic-mask-color-picker::-webkit-color-swatch {
-  border-radius: 2px;
+  border-radius: 3px;
   border: none;
+}
+.nopic-mask-color-row > span {
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  line-height: 1 !important;
+  flex-shrink: 0;
+  white-space: nowrap !important;
 }
 .nopic-mask-opacity-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  overflow: visible !important;
 }
 .nopic-mask-opacity-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
+  min-width: 36px;
+  line-height: 1 !important;
+  white-space: nowrap !important;
 }
 .nopic-mask-opacity-slider {
   flex: 1;
-  height: 4px;
+  height: 4px !important;
+  min-height: 4px !important;
+  max-height: 4px !important;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
   appearance: none;
   cursor: pointer;
+  transition: background 0.2s;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  border: none !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  width: auto !important;
 }
 .nopic-mask-opacity-slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #60a5fa;
-  cursor: pointer;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  max-width: 12px !important;
+  max-height: 12px !important;
+  border-radius: 50% !important;
+  background: #60a5fa !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 6px rgba(96, 165, 250, 0.3);
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
-.nopic-mask-opacity-value {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  width: 30px;
-  text-align: right;
+.nopic-mask-opacity-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 10px rgba(96, 165, 250, 0.4);
+}
+.nopic-mask-opacity-slider::-moz-range-thumb {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  max-width: 12px !important;
+  max-height: 12px !important;
+  border-radius: 50% !important;
+  background: #60a5fa !important;
+  cursor: pointer !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(96, 165, 250, 0.3);
+}
+.nopic-mask-opacity-slider::-moz-range-track {
+  height: 4px !important;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  border: none !important;
 }
 .nopic-mask-position-row {
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 6px;
+  margin-top: 4px;
 }
 .nopic-mask-position-btn {
   flex: 1;
   padding: 4px 6px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
-}
-.nopic-mask-position-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  transition: all 0.2s ease;
 }
 .nopic-mask-position-btn.active {
-  background: #3b82f6;
-  color: white;
+  background: rgba(96, 165, 250, 0.2) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+  color: #60a5fa !important;
 }
 .nopic-mask-actions {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  justify-content: center; /* 加上这一行 */
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 .nopic-mask-btn {
-  padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-mask-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 .nopic-mask-btn.primary {
-  background: rgba(96, 165, 250, 0.25);
-  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.2);
   color: #60a5fa;
 }
 .nopic-mask-btn.primary:hover {
-  background: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.3);
+  border-color: rgba(96, 165, 250, 0.4);
 }
 .nopic-mask-btn.danger {
   color: #f87171;
+  border-color: rgba(248, 113, 113, 0.15);
 }
 .nopic-mask-btn.danger:hover {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.25);
 }
 .nopic-mask-list-container {
   display: flex;
@@ -1414,56 +1519,72 @@ svg:not(.nopic-clone),
   min-width: 0;
 }
 .nopic-mask-list-column-title {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.25);
   text-align: center;
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 2px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .nopic-mask-list {
-  max-height: 240px;
+  max-height: 200px;
   overflow-y: auto;
+  scrollbar-width: thin;
+}
+.nopic-mask-list::-webkit-scrollbar {
+  width: 3px;
+}
+.nopic-mask-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
 }
 .nopic-mask-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 4px;
   margin-bottom: 2px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: background 0.15s;
 }
 .nopic-mask-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 .nopic-mask-item-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .nopic-mask-item-info {
   flex: 1;
-  margin-left: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
 }
 .nopic-mask-item-delete {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f87171;
+  color: rgba(248, 113, 113, 0.4);
   cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 3px;
+  font-size: 12px;
+  transition: all 0.15s;
 }
 .nopic-mask-item-delete:hover {
-  background: rgba(248, 113, 113, 0.2);
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
 }
 
 /* 遮罩绘制层 */
@@ -1523,16 +1644,21 @@ svg:not(.nopic-clone),
 
 /* ===== 网页隐私锁 ===== */
 /* 隐私锁设置弹窗 */
+/* ===== 网页隐私锁 ===== */
+/* 隐私锁设置弹窗 */
 #nopic-privacylock-submenu {
   position: fixed;
   display: none;
-  background: rgba(30, 30, 35, 1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px 18px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   min-width: 220px;
-  max-width: 280px;
+  max-width: 680px;
+  width: 620px;
   flex-direction: column;
   gap: 4px;
   z-index: 2147483647;
@@ -1550,7 +1676,7 @@ svg:not(.nopic-clone),
   cursor: default;
 }
 .nopic-privacy-section {
-  background: rgba(0, 0, 0, 0.15);
+  background: none;
   border-radius: 6px;
   padding: 8px;
   margin-top: 4px;
@@ -1571,17 +1697,20 @@ svg:not(.nopic-clone),
 }
 .nopic-privacy-input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   color: #fff;
   font-size: 12px;
-  padding: 6px 8px;
+  padding: 6px 12px;
   box-sizing: border-box;
   outline: none;
+  transition: all 0.25s ease;
 }
 .nopic-privacy-input:focus {
   border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.06);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
 .nopic-privacy-select-row {
   display: flex;
@@ -1592,26 +1721,27 @@ svg:not(.nopic-clone),
   flex: 1;
   padding: 4px 6px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-privacy-select-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
 }
 .nopic-privacy-select-btn.active {
-  background: #3b82f6;
-  color: white;
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.25);
+  color: #60a5fa;
 }
 .nopic-scope-row {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .nopic-scope-item {
   flex: 1;
@@ -1635,45 +1765,46 @@ svg:not(.nopic-clone),
   margin-left: 4px;
 }
 .nopic-scope-clear-btn:hover {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.12);
 }
 .nopic-privacy-actions {
   display: flex;
   gap: 6px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  justify-content: center; /* 加上这一行 */
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: center;
 }
 .nopic-privacy-btn {
   padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-privacy-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 .nopic-privacy-btn.primary {
-  background: rgba(96, 165, 250, 0.25);
-  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.2);
   color: #60a5fa;
 }
 .nopic-privacy-btn.primary:hover {
-  background: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.25);
+  border-color: rgba(96, 165, 250, 0.35);
 }
 .nopic-privacy-btn.danger {
   color: #f87171;
+  border-color: rgba(248, 113, 113, 0.12);
 }
 .nopic-privacy-btn.danger:hover {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.2);
 }
 .nopic-privacy-link {
   font-size: 11px;
@@ -1692,7 +1823,6 @@ svg:not(.nopic-clone),
   color: #fca5a5;
 }
 
-/* 隐私锁遮罩层 */
 /* 隐私锁 - 全屏上拉解锁样式 */
 #nopic-privacy-lock-overlay {
   position: fixed;
@@ -1713,7 +1843,6 @@ svg:not(.nopic-clone),
   pointer-events: auto;
   opacity: 1;
 }
-
 .nopic-privacy-lock-bg {
   position: absolute;
   top: 0;
@@ -1726,7 +1855,6 @@ svg:not(.nopic-clone),
 #nopic-privacy-lock-overlay.active .nopic-privacy-lock-bg {
   background: rgba(0, 0, 0, 1);
 }
-
 .nopic-privacy-lock-wrapper {
   position: absolute;
   left: 0;
@@ -1746,7 +1874,6 @@ svg:not(.nopic-clone),
   align-items: center;
   justify-content: center;
 }
-
 .nopic-privacy-lock-wrapper.dragging {
   transition: none !important;
   cursor: grabbing;
@@ -1755,7 +1882,6 @@ svg:not(.nopic-clone),
   transform: translateY(-100%) !important;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .nopic-privacy-lock-handle {
   position: absolute;
   bottom: 40px;
@@ -1791,7 +1917,6 @@ svg:not(.nopic-clone),
   letter-spacing: 2px;
   transition: none;
 }
-
 .nopic-privacy-lock-content {
   text-align: center;
   padding: 8px 0;
@@ -2039,8 +2164,8 @@ svg:not(.nopic-clone),
   width: 100%;
   max-width: 120px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   color: #fff;
   font-size: 14px;
   padding: 6px 8px;
@@ -2052,10 +2177,12 @@ svg:not(.nopic-clone),
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: all 0.25s ease;
 }
 .nopic-privacy-pin-input:focus {
   border-color: #60a5fa !important;
-  box-shadow: 0 0 12px rgba(96, 165, 250, 0.15);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
+  background: rgba(96, 165, 250, 0.06);
 }
 .nopic-privacy-pin-input::placeholder {
   color: rgba(255, 255, 255, 0.2);
@@ -2222,11 +2349,13 @@ svg:not(.nopic-clone),
 #nopic-pageedit-submenu {
   position: fixed;
   display: none;
-  background: rgba(30, 30, 35, 1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px 18px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   min-width: 240px;
   max-width: 300px;
   flex-direction: column;
@@ -2246,18 +2375,21 @@ svg:not(.nopic-clone),
 }
 
 /* ===== 页面监控器 ===== */
+/* ===== 页面监控器 ===== */
 #nopic-pagemonitor-submenu {
   position: fixed;
   display: none;
-  background: rgba(30, 30, 35, 1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px 18px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   min-width: 420px;
   max-width: 520px;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   z-index: 2147483647;
   max-height: 80vh;
   overflow-y: auto;
@@ -2273,24 +2405,25 @@ svg:not(.nopic-clone),
   cursor: default;
 }
 .nopic-pm-pick-btn {
-  padding: 6px 12px;
-  background: rgba(96, 165, 250, 0.25);
-  border: 1px solid rgba(96, 165, 250, 0.5);
+  padding: 6px 14px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.2);
   border-radius: 6px;
   color: #60a5fa;
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 .nopic-pm-pick-btn:hover {
-  background: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.25);
+  border-color: rgba(96, 165, 250, 0.35);
 }
 .nopic-pm-pick-btn.picking {
-  background: rgba(248, 113, 113, 0.25);
-  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.25);
   color: #f87171;
   animation: nopic-pm-pulse 1s infinite;
 }
@@ -2316,7 +2449,7 @@ svg:not(.nopic-clone),
 .nopic-pm-pick-highlight {
   position: absolute;
   z-index: 2147483647;
-  background: rgba(96, 165, 250, 0.3);
+  background: rgba(96, 165, 250, 0.2);
   border: 2px solid #60a5fa;
   border-radius: 4px;
   pointer-events: none;
@@ -2325,24 +2458,28 @@ svg:not(.nopic-clone),
 @keyframes nopic-pm-pulse-border {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.4);
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.3);
   }
   50% {
-    box-shadow: 0 0 10px 3px rgba(96, 165, 250, 0.6);
+    box-shadow: 0 0 10px 3px rgba(96, 165, 250, 0.5);
   }
 }
 .nopic-pm-monitor-item {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  padding: 10px;
+  padding: 10px 12px;
   margin-bottom: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: border-color 0.2s;
+}
+.nopic-pm-monitor-item:hover {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 .nopic-pm-monitor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .nopic-pm-monitor-name {
   font-size: 13px;
@@ -2351,86 +2488,109 @@ svg:not(.nopic-clone),
 }
 .nopic-pm-monitor-status {
   font-size: 10px;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 10px;
-  background: rgba(76, 175, 80, 0.2);
+  background: rgba(76, 175, 80, 0.15);
   color: #4ade80;
+  border: 1px solid rgba(76, 175, 80, 0.15);
 }
 .nopic-pm-monitor-status.stopped {
-  background: rgba(156, 163, 175, 0.2);
+  background: rgba(156, 163, 175, 0.1);
   color: #9ca3af;
+  border: 1px solid rgba(156, 163, 175, 0.1);
 }
 .nopic-pm-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .nopic-pm-label {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  width: 60px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  width: 48px;
   flex-shrink: 0;
 }
 .nopic-pm-input {
   flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   color: #fff;
   font-size: 12px;
-  padding: 5px 8px;
+  padding: 4px 10px;
+  outline: none;
+  transition: all 0.25s ease;
+  min-width: 0;
 }
 .nopic-pm-input:focus {
-  outline: none;
   border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.06);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
 }
 .nopic-pm-select {
   flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   color: #fff;
   font-size: 12px;
-  padding: 5px 8px;
+  padding: 4px 8px;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
 }
 .nopic-pm-select:focus {
-  outline: none;
   border-color: #60a5fa;
+  background-color: rgba(96, 165, 250, 0.06);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
 }
 .nopic-pm-select option {
   background: #1e1e23;
   color: #fff;
 }
 .nopic-pm-small-input {
-  width: 80px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  width: 70px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   color: #fff;
   font-size: 12px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   text-align: right;
+  outline: none;
+  transition: all 0.25s ease;
 }
 .nopic-pm-small-input:focus {
-  outline: none;
   border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.06);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
 }
 .nopic-pm-checkbox-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .nopic-pm-checkbox {
   width: 14px;
   height: 14px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.nopic-pm-checkbox:hover {
+  border-color: rgba(255, 255, 255, 0.35);
 }
 .nopic-pm-checkbox.checked {
   background: #3b82f6;
@@ -2452,81 +2612,85 @@ svg:not(.nopic-clone),
 .nopic-pm-actions {
   display: flex;
   gap: 6px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 .nopic-pm-btn {
-  padding: 4px 10px;
+  padding: 3px 12px;
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
   border: none;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-pm-btn.primary {
-  background: rgba(96, 165, 250, 0.25);
+  background: rgba(96, 165, 250, 0.12);
   color: #60a5fa;
-  border: 1px solid rgba(96, 165, 250, 0.4);
+  border: 1px solid rgba(96, 165, 250, 0.15);
 }
 .nopic-pm-btn.primary:hover {
-  background: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.25);
 }
 .nopic-pm-btn.danger {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.1);
   color: #f87171;
-  border: 1px solid rgba(248, 113, 113, 0.3);
+  border: 1px solid rgba(248, 113, 113, 0.12);
 }
 .nopic-pm-btn.danger:hover {
-  background: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.2);
 }
 .nopic-pm-btn.success {
-  background: rgba(76, 175, 80, 0.15);
+  background: rgba(76, 175, 80, 0.1);
   color: #4ade80;
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  border: 1px solid rgba(76, 175, 80, 0.12);
 }
 .nopic-pm-btn.success:hover {
-  background: rgba(76, 175, 80, 0.3);
+  background: rgba(76, 175, 80, 0.2);
 }
 .nopic-pm-add-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px dashed rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.06);
+  border: 1.5px dashed rgba(96, 165, 250, 0.2);
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
   color: #60a5fa;
   gap: 6px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-pm-add-btn:hover {
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.35);
 }
 .nopic-pm-scope-tabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .nopic-pm-scope-tab {
   flex: 1;
-  padding: 5px 8px;
+  padding: 4px 8px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 .nopic-pm-scope-tab:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
 }
 .nopic-pm-scope-tab.active {
-  background: #3b82f6;
-  color: white;
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
 }
 
 /* ===== 阅兵模式 ===== */
