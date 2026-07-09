@@ -300,7 +300,8 @@ svg:not(.nopic-clone),
   width: auto;
   padding: 6px 10px;
   border-radius: 14px;
-  background: rgba(25, 25, 30, 0.96);
+  background: rgba(25, 25, 30, 0.85);
+  backdrop-filter: blur(3px);
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.25),
     inset 0 0 0 1px rgba(255, 255, 255, 0.1);
@@ -993,8 +994,8 @@ svg:not(.nopic-clone),
   position: fixed;
   display: none;
   background: rgba(30, 30, 35, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 16px 18px 18px 18px;
@@ -3440,10 +3441,6 @@ svg:not(.nopic-clone),
 .nopic-modal-popup,
 #nopic-about-modal,
 #nopic-menu,
-#nopic-settings-submenu,
-#nopic-display-submenu,
-#nopic-disguise-submenu,
-#nopic-submenu,
 #nopic-confirm-modal .nopic-confirm-box,
 #nopic-privacy-log-panel,
 #nopic-parade-header,
@@ -3460,11 +3457,7 @@ svg:not(.nopic-clone),
 }
 
 /* 如果这些面板原来有独立背景色，覆盖掉 */
-#nopic-menu,
-#nopic-settings-submenu,
-#nopic-display-submenu,
-#nopic-disguise-submenu,
-#nopic-submenu {
+#nopic-menu {
   background: rgba(30, 30, 35, 0.95) !important;
 }
 

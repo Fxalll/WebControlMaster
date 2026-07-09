@@ -10153,13 +10153,8 @@ window.addEventListener("load", function () {
       renderQuickTextLists();
     });
 
-    // 根据参数决定聚焦哪个输入框
-    if (focusRecord) {
-      recordBtn.click();
-    } else {
-      textInput.focus();
-      textInput.select();
-    }
+    textInput.focus();
+    textInput.select();
   }
 
   // 添加按钮与录制逻辑
