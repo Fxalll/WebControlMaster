@@ -2330,6 +2330,7 @@ svg:not(.nopic-clone),
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
   min-width: 580px;
   max-width: 720px;
+  width: 720px;
   flex-direction: column;
   gap: 4px;
   z-index: 2147483647;
