@@ -742,6 +742,9 @@ window.addEventListener("load", function () {
     forgotUnlockTime: null,
   };
 
+  var _lockShortcutHandler = null;
+  var _isRecordingLockShortcut = false;
+
   currentPrivacyLockScope = nopicGetConfigScope("nopic_privacylock");
 
   // 获取当前编辑 scope 的配置（用于 UI 面板显示）
@@ -5313,6 +5316,13 @@ window.addEventListener("load", function () {
   </div>
   <button id="nopic-lock-format-help" style="padding:2px 8px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.3);border-radius:4px;color:#60a5fa;font-size:10px;cursor:pointer;">占位符说明</button>
 </div>
+<!-- 快捷键上锁设置 -->
+<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;flex-wrap:wrap;align-items:center;border:1px solid rgba(255,255,255,0.04);">
+  <span style="font-size:11px;color:rgba(255,255,255,0.7);">快捷键上锁</span>
+  <input type="text" id="nopic-lock-shortcut-display" value="" readonly placeholder="未设置" style="flex:1;min-width:100px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:12px;padding:4px 8px;cursor:default;text-align:center;">
+  <button id="nopic-lock-shortcut-record-btn" style="padding:4px 12px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:4px;color:#60a5fa;font-size:11px;cursor:pointer;">录制</button>
+  <button id="nopic-lock-shortcut-clear-btn" style="padding:4px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:4px;color:#f87171;font-size:11px;cursor:pointer;">清除</button>
+</div>
 <div class="nopic-pl-three-cols" style="display:flex;gap:8px;max-height:55vh;overflow-y:auto;">
     <div class="nopic-pl-col" style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;min-height:180px;border:1px solid rgba(255,255,255,0.04);">
     <div id="nopic-pl-list-url" style="display:flex;flex-direction:column;gap:6px;flex:1;"></div>
@@ -9684,6 +9694,7 @@ window.addEventListener("load", function () {
   function showPrivacyLockSubmenu() {
     privacyLockSubmenuOpen = true;
     showPopupAtTrigger(privacyLockSubmenu, privacyLockTrigger);
+    updateLockShortcutDisplay();
 
     // 恢复忘记密码跳过开关状态
     var skipToggle = document.getElementById("nopic-privacy-skip-toggle");
@@ -13323,6 +13334,27 @@ window.addEventListener("load", function () {
 
   // 初始化时检查是否需要显示锁定遮罩
   function initPrivacyLock() {
+    console.log(111);
+
+    // 注册快捷键上锁监听（等待存储就绪，解决跨域同步延迟）
+    function _registerWithRetry() {
+      if (_nopicStorageReady) {
+        registerLockShortcut();
+      } else {
+        var timer = setInterval(function () {
+          if (_nopicStorageReady) {
+            clearInterval(timer);
+            registerLockShortcut();
+          }
+        }, 100);
+        // 保险：最多等3秒，超时强制注册（即使取不到）
+        setTimeout(function () {
+          clearInterval(timer);
+          registerLockShortcut();
+        }, 3000);
+      }
+    }
+    _registerWithRetry();
     // 检测待重置密码标志
     var pendingReset = localStorage.getItem(
       "nopic_pending_password_reset_" + location.host,
@@ -16460,6 +16492,86 @@ window.addEventListener("load", function () {
     if (textColorInput) textColorInput.value = appConfig.textColor;
     if (timeFormatInput) timeFormatInput.value = appConfig.timeFormat;
     if (customTextInput) customTextInput.value = appConfig.customText;
+
+    // ---- 快捷键上锁录制 ----
+    var lockShortcutRecordBtn = e.target.closest(
+      "#nopic-lock-shortcut-record-btn",
+    );
+    if (lockShortcutRecordBtn) {
+      e.stopPropagation();
+      if (_isRecordingLockShortcut) {
+        // 取消录制
+        _isRecordingLockShortcut = false;
+        lockShortcutRecordBtn.textContent = "录制";
+        lockShortcutRecordBtn.style.background = "rgba(96,165,250,0.15)";
+        lockShortcutRecordBtn.style.borderColor = "rgba(96,165,250,0.3)";
+        lockShortcutRecordBtn.style.color = "#60a5fa";
+        return;
+      }
+      _isRecordingLockShortcut = true;
+      lockShortcutRecordBtn.textContent = "按组合键...";
+      lockShortcutRecordBtn.style.background = "rgba(251,191,36,0.3)";
+      lockShortcutRecordBtn.style.borderColor = "rgba(251,191,36,0.5)";
+      lockShortcutRecordBtn.style.color = "#fbbf24";
+
+      var keyHandler = function (ev) {
+        // 忽略重复触发（比如按住不放）
+        if (!_isRecordingLockShortcut) {
+          document.removeEventListener("keydown", keyHandler);
+          return;
+        }
+        // 只处理有实际按键的组合（排除单独按修饰键）
+        var combo = getComboString(ev);
+        if (!combo) {
+          // 如果只按了修饰键，忽略并继续等待
+          return;
+        }
+        // 阻止默认行为（如 Ctrl+S 保存页面）
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        // 保存快捷键
+        GM_setValue("nopic_lock_shortcut_global", combo);
+        updateLockShortcutDisplay();
+        registerLockShortcut(); // 立即生效
+
+        // 恢复按钮状态
+        _isRecordingLockShortcut = false;
+        document.removeEventListener("keydown", keyHandler);
+        lockShortcutRecordBtn.textContent = "录制";
+        lockShortcutRecordBtn.style.background = "rgba(96,165,250,0.15)";
+        lockShortcutRecordBtn.style.borderColor = "rgba(96,165,250,0.3)";
+        lockShortcutRecordBtn.style.color = "#60a5fa";
+      };
+
+      // 使用捕获阶段，确保能拦截全局按键
+      document.addEventListener("keydown", keyHandler, true);
+
+      // 超时取消（5秒无操作）
+      setTimeout(function () {
+        if (_isRecordingLockShortcut) {
+          _isRecordingLockShortcut = false;
+          document.removeEventListener("keydown", keyHandler, true);
+          lockShortcutRecordBtn.textContent = "录制";
+          lockShortcutRecordBtn.style.background = "rgba(96,165,250,0.15)";
+          lockShortcutRecordBtn.style.borderColor = "rgba(96,165,250,0.3)";
+          lockShortcutRecordBtn.style.color = "#60a5fa";
+        }
+      }, 5000);
+      return;
+    }
+
+    // ---- 清除快捷键 ----
+    var lockShortcutClearBtn = e.target.closest(
+      "#nopic-lock-shortcut-clear-btn",
+    );
+    if (lockShortcutClearBtn) {
+      e.stopPropagation();
+      GM_setValue("nopic_lock_shortcut_global", null);
+      updateLockShortcutDisplay();
+      registerLockShortcut();
+      return;
+    }
   });
 
   privacyLockSubmenu.addEventListener("input", (e) => {
@@ -17392,6 +17504,46 @@ window.addEventListener("load", function () {
 
     keys.push(mainKey);
     return keys.join("+");
+  }
+
+  // ---------- 快捷键上锁注册和录制 ----------
+  function registerLockShortcut() {
+    // 移除旧的监听
+    if (_lockShortcutHandler) {
+      document.removeEventListener("keydown", _lockShortcutHandler);
+      _lockShortcutHandler = null;
+    }
+    var shortcut = GM_getValue("nopic_lock_shortcut_global", null);
+    if (!shortcut) return;
+
+    _lockShortcutHandler = function (e) {
+      // 忽略输入框/文本域/可编辑元素中的按键，避免干扰正常输入
+      var active = document.activeElement;
+      if (active) {
+        var tag = active.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || active.isContentEditable) {
+          return;
+        }
+      }
+      // 使用快捷文本已有的组合键解析函数（全局可用）
+      var combo = getComboString(e);
+      if (combo === shortcut) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!privacyLockRuntime.isLocked) {
+          showPrivacyLockOverlay();
+        }
+      }
+    };
+    document.addEventListener("keydown", _lockShortcutHandler);
+  }
+
+  // 更新面板上的快捷键显示
+  function updateLockShortcutDisplay() {
+    var display = document.getElementById("nopic-lock-shortcut-display");
+    if (!display) return;
+    var shortcut = GM_getValue("nopic_lock_shortcut_global", null);
+    display.value = shortcut || "";
   }
 
   // 统一的结束录制处理函数
