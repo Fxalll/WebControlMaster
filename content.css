@@ -7672,3 +7672,45 @@ html[data-nopic-theme] #nopic-widget {
   span[style*="color:rgba(255,255,255,0.3)"] {
   color: rgba(0, 0, 0, 0.3) !important;
 }
+/* ===== 输入框 ===== */
+[data-nopic-theme="light"] .nopic-disguise-input,
+[data-nopic-theme="light"] .nopic-textreplace-input,
+[data-nopic-theme="light"] .nopic-privacy-input,
+[data-nopic-theme="light"] .nopic-privacy-pin-input,
+[data-nopic-theme="light"] #nopic-custom-title-input,
+[data-nopic-theme="light"] #nopic-autoclicker-script-code,
+[data-nopic-theme="light"] .nopic-pm-input,
+[data-nopic-theme="light"] .nopic-pm-small-input,
+[data-nopic-theme="light"] .nopic-pm-select,
+[data-nopic-theme="light"] .nopic-delay-input,
+[data-nopic-theme="light"] .nopic-qt-edit-text,
+[data-nopic-theme="light"] .nopic-qt-shortcut-input,
+[data-nopic-theme="light"] #nopic-autoclicker-loop-count,
+[data-nopic-theme="light"] #nopic-autoclicker-safety-delay,
+[data-nopic-theme="light"] #nopic-lock-time-format,
+[data-nopic-theme="light"] #nopic-lock-custom-text,
+[data-nopic-theme="light"] #nopic-lock-shortcut-display,
+[data-nopic-theme="light"] .nopic-tr-edit-from,
+[data-nopic-theme="light"] .nopic-tr-edit-to,
+[data-nopic-theme="light"] .nopic-qt-edit-row input[type="text"],
+[data-nopic-theme="light"] .nopic-dc-col-edit-input {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1a1e !important;
+}
+/* ===== 隐私锁PIN输入框浅色模式强制覆盖 ===== */
+[data-nopic-theme="light"] input.nopic-privacy-pin-input {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a1e !important;
+}
+
+[data-nopic-theme="light"] input.nopic-privacy-pin-input::placeholder {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-nopic-theme="light"] input.nopic-privacy-pin-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
