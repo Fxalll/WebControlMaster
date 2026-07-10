@@ -1010,6 +1010,7 @@ svg:not(.nopic-clone),
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
+  overflow: visible !important; /* 强制让下拉框可以溢出 */
 }
 #nopic-tabdisguise-submenu::-webkit-scrollbar {
   display: none;
