@@ -2934,7 +2934,8 @@ svg:not(.nopic-clone),
   justify-content: space-between;
   padding: 0 20px;
   background: rgba(10, 10, 12, 0.72);
-
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
   color: rgba(255, 255, 255, 0.9);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   font-size: 13px;
@@ -3445,7 +3446,6 @@ svg:not(.nopic-clone),
 #nopic-menu,
 #nopic-confirm-modal .nopic-confirm-box,
 #nopic-privacy-log-panel,
-#nopic-parade-header,
 .nopic-parade-filter-panel,
 #nopic-autoclicker-status-panel {
   background: rgba(30, 30, 35, 0.95) !important;
