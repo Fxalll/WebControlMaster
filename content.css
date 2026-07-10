@@ -796,7 +796,7 @@ html[data-nopic-theme] #nopic-widget {
 
 #nopic-menu {
   position: fixed;
-  z-index: 2147483646;
+  z-index: 2147483666 !important; /* 或更高 */
   pointer-events: none;
   opacity: 0;
   transform: translateX(-10px) scale(0.95);
@@ -1142,6 +1142,9 @@ html[data-nopic-theme] #nopic-widget {
   right: 100%;
   margin-left: 0;
   margin-right: 4px;
+}
+.nopic-submenu {
+  z-index: 2147483677 !important; /* 比主菜单高 */
 }
 .nopic-submenu-item {
   display: flex;
@@ -5371,9 +5374,9 @@ html[data-nopic-theme] #nopic-widget {
 
 /* ===== 主面板 ===== */
 [data-nopic-theme="light"] #nopic-widget {
-  background: rgba(238, 241, 248, 0.88) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  background: rgba(238, 241, 248, 0.78) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
   border: 1px solid rgba(0, 0, 0, 0.15) !important;
   box-shadow: 0 4px 16px rgba(60, 80, 120, 0.1) !important;
 }
