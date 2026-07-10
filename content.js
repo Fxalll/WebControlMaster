@@ -915,11 +915,11 @@ window.addEventListener("load", function () {
     </div>
   </div>
   <div id="nopic-pm-monitors-list" style="max-height:50vh;overflow-y:auto;"></div>
-  <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;">
+<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--nopic-border, rgba(255,255,255,0.1));font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;">
     <div>• 重要提醒：请保持此页面在前台激活，否则监控可能失效</div>
     <div>• 如果规则是元素出现/消失，要把检测间隔填小点，如100毫秒</div>
     <div>• 选择"运行自动点击"需先在本页配置自动点击器</div>
-  </div>
+</div>
 `;
   document.documentElement.appendChild(pageMonitorSubmenu);
   makeDraggable(pageMonitorSubmenu);
@@ -1827,7 +1827,7 @@ window.addEventListener("load", function () {
   let currentNotificationToast = null;
 
   function showElegantNotification(monitor, beforeValue, afterValue) {
-    // 如果有旧弹窗，立即移除（让位给新弹窗）
+    // 如果有旧弹窗，立即移除
     if (
       window.currentNotificationToast &&
       window.currentNotificationToast.parentNode
@@ -1836,18 +1836,33 @@ window.addEventListener("load", function () {
       window.currentNotificationToast = null;
     }
 
+    const isLight =
+      document.documentElement.getAttribute("data-nopic-theme") === "light";
+
     const toast = document.createElement("div");
     toast.className = "nopic-notification-toast";
     toast.style.cssText = `
-      position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-20px);
-      z-index:2147483647; background:rgba(20,20,25,0.92); backdrop-filter:blur(20px);
-      border:1px solid rgba(96,165,250,0.3); border-radius:14px;
-      padding:16px 28px; box-shadow:0 12px 48px rgba(0,0,0,0.5);
-      color:#fff; font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-      font-size:13px; min-width:280px; max-width:420px;
-      opacity:0; transition:opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      pointer-events:auto; display:flex; align-items:center; gap:14px;
-      max-height:80vh; overflow-y:auto;
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-20px);
+    z-index:2147483647;
+    background: ${isLight ? "rgba(245,245,250,0.92)" : "rgba(20,20,25,0.92)"};
+    backdrop-filter:blur(20px);
+    border:1px solid ${isLight ? "rgba(60,100,180,0.2)" : "rgba(96,165,250,0.3)"};
+    border-radius:14px;
+    padding:16px 28px;
+    box-shadow:0 12px 48px ${isLight ? "rgba(60,80,120,0.15)" : "rgba(0,0,0,0.5)"};
+    color: ${isLight ? "#1a1a2e" : "#ffffff"};
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:13px;
+    min-width:280px;
+    max-width:420px;
+    opacity:0;
+    transition:opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events:auto;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    max-height:80vh;
+    overflow-y:auto;
   `;
 
     const beforeDisplay =
@@ -1856,26 +1871,23 @@ window.addEventListener("load", function () {
       afterValue !== undefined && afterValue !== null ? afterValue : "无";
 
     toast.innerHTML = `
-      <div style="width:36px;height:36px;border-radius:50%;background:rgba(96,165,250,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔔</div>
-      <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:#60a5fa;margin-bottom:4px;">${escapeHtml(monitor.name)}</div>
-          <div style="color:rgba(255,255,255,0.7);font-size:12px;word-break:break-all;">
-            变化前: <span style="color:rgba(255,255,255,0.5);">${escapeHtml(String(beforeDisplay).substring(0, 50))}</span>
-          </div>
-          <div style="color:rgba(255,255,255,0.7);font-size:12px;word-break:break-all;">
-            变化后: <span style="color:#4ade80;">${escapeHtml(String(afterDisplay).substring(0, 50))}</span>
-          </div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;">规则: ${monitor.rule}</div>
+    <div style="width:36px;height:36px;border-radius:50%;background:${isLight ? "rgba(59,130,246,0.15)" : "rgba(96,165,250,0.2)"};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔔</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:600;color:${isLight ? "#2563eb" : "#60a5fa"};margin-bottom:4px;">${escapeHtml(monitor.name)}</div>
+      <div style="color:${isLight ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.7)"};font-size:12px;word-break:break-all;">
+        变化前: <span style="color:${isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.5)"};">${escapeHtml(String(beforeDisplay).substring(0, 50))}</span>
       </div>
-      <div class="nopic-notification-close" style="padding:4px 12px;background:rgba(255,255,255,0.08);border-radius:6px;font-size:11px;color:rgba(255,255,255,0.5);cursor:pointer;flex-shrink:0;">✕</div>
+      <div style="color:${isLight ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.7)"};font-size:12px;word-break:break-all;">
+        变化后: <span style="color:${isLight ? "#16a34a" : "#4ade80"};">${escapeHtml(String(afterDisplay).substring(0, 50))}</span>
+      </div>
+      <div style="font-size:10px;color:${isLight ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.4)"};margin-top:2px;">规则: ${monitor.rule}</div>
+    </div>
+    <div class="nopic-notification-close" style="padding:4px 12px;background:${isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)"};border-radius:6px;font-size:11px;color:${isLight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.5)"};cursor:pointer;flex-shrink:0;">✕</div>
   `;
 
-    // 保存当前弹窗引用到全局
     window.currentNotificationToast = toast;
-
     document.body.appendChild(toast);
 
-    // 绑定关闭按钮事件
     const closeBtn = toast.querySelector(".nopic-notification-close");
     closeBtn.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -4852,12 +4864,12 @@ window.addEventListener("load", function () {
     <div class="nopic-col-title">页面工具</div>
     <div class="nopic-menu-item nopic-ext-btn nopic-ext-btn-parade" data-action="paradeMode" id="nopic-parade-menu-entry">
       <div class="nopic-app-icon">
-        <svg viewBox="0 0 24 24" fill="white" stroke="none">
-          <rect x="2" y="2" width="8" height="8" rx="1" fill="white"/>
-          <rect x="14" y="2" width="8" height="8" rx="1" fill="white"/>
-          <rect x="2" y="14" width="8" height="8" rx="1" fill="white"/>
-          <rect x="14" y="14" width="8" height="8" rx="1" fill="white"/>
-          <path d="M2 2l8 8M14 2l8 8M2 14l8 8M14 14l8 8" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <rect x="2" y="2" width="8" height="8" rx="1"/>
+          <rect x="14" y="2" width="8" height="8" rx="1"/>
+          <rect x="2" y="14" width="8" height="8" rx="1"/>
+          <rect x="14" y="14" width="8" height="8" rx="1"/>
+          <path d="M2 2l8 8M14 2l8 8M2 14l8 8M14 14l8 8" stroke="currentColor" stroke-opacity="0.3" stroke-width="1"/>
         </svg>
       </div>
       <span class="nopic-app-label">图片阅兵</span>
@@ -4975,6 +4987,16 @@ window.addEventListener("load", function () {
   settingsSubmenu.className = "nopic-submenu";
   settingsSubmenu.innerHTML = `
     <div class="nopic-menu-item" data-submenu-trigger="displayContent" style="justify-content:space-between;"><span>显示内容</span><span style="font-size:14px;opacity:0.6;">›</span></div>
+        <div class="nopic-menu-separator">主题模式</div>
+    <div class="nopic-menu-item" style="flex-direction: column; align-items: stretch; padding: 4px 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+    <span style="font-size: 11px; color: rgba(255,255,255,0.7);">主题</span>
+    <div class="nopic-theme-switcher" style="display: flex; gap: 4px; background: rgba(255,255,255,0.06); border-radius: 6px; padding: 2px;">        <div class="nopic-theme-option active" data-theme="dark" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">深</div>
+        <div class="nopic-theme-option" data-theme="light" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">浅</div>
+        <div class="nopic-theme-option" data-theme="system" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">跟随系统</div>
+    </div>
+</div>
+    </div>
     <div class="nopic-menu-separator">界面设置</div>
     <div class="nopic-menu-item"><span>自动贴边</span><div class="nopic-switch" data-key="autoSnap"></div></div>
     <div class="nopic-menu-item"><span>自动休眠</span><div class="nopic-switch" data-key="autoHideIdle"></div></div>
@@ -5300,7 +5322,7 @@ window.addEventListener("load", function () {
 </div>
 <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:8px;">注意，本功能只是轻量化防偷窥的手段。如有重要防护，仍需要通过电脑锁屏来实现。</div>
 <!-- 锁屏外观设置 -->
-<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;flex-wrap:wrap;align-items:center;border:1px solid rgba(255,255,255,0.04);">
+<div class="nopic-lock-appearance-card" style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;border-radius:10px;flex-wrap:wrap;align-items:center;">
   <div style="display:flex;align-items:center;gap:4px;">
     <span style="font-size:10px;color:rgba(255,255,255,0.5);">背景色</span>
     <input type="color" id="nopic-lock-bg-color" value="#1a1a2e" style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;padding:0;">
@@ -5320,7 +5342,7 @@ window.addEventListener("load", function () {
   <button id="nopic-lock-format-help" style="padding:2px 8px;background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.3);border-radius:4px;color:#60a5fa;font-size:10px;cursor:pointer;">占位符说明</button>
 </div>
 <!-- 快捷键上锁设置 -->
-<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;flex-wrap:wrap;align-items:center;border:1px solid rgba(255,255,255,0.04);">
+<div class="nopic-lock-appearance-card" style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;border-radius:10px;flex-wrap:wrap;align-items:center;">
   <span style="font-size:11px;color:rgba(255,255,255,0.7);">快捷键上锁</span>
   <input type="text" id="nopic-lock-shortcut-display" value="" readonly placeholder="未设置" style="flex:1;min-width:100px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:12px;padding:4px 8px;cursor:default;text-align:center;">
   <button id="nopic-lock-shortcut-record-btn" style="padding:4px 12px;background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);border-radius:4px;color:#60a5fa;font-size:11px;cursor:pointer;">录制</button>
@@ -5424,11 +5446,11 @@ window.addEventListener("load", function () {
       <div class="nopic-modal-close" id="nopic-autoclicker-close">×</div>
     </div>
     
-    <!-- 左右两栏容器 -->
+        <!-- 左右两栏容器 -->
     <div style="display: flex; gap: 16px; margin-top: 4px; min-height: 300px;">
       
       <!-- 左栏：流程列表 -->
-      <div style="flex: 0.8; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); padding-right: 12px;">
+      <div style="flex: 0.8; min-width: 0; display: flex; flex-direction: column; padding-right: 12px;" class="nopic-ac-left-panel">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.7);">执行流程</span>
           <span style="font-size: 10px; color: rgba(255,255,255,0.3);" id="nopic-ac-step-count">0 步</span>
@@ -5445,8 +5467,6 @@ window.addEventListener("load", function () {
     </div>
         
         <!-- 添加步骤按钮组 -->
-<!-- 添加步骤按钮组（按重要性排序：点击操作排前面） -->
-<!-- 添加步骤按钮组 -->
 <div style="display: flex; flex-wrap: wrap; gap: 5px;">
   
   <!-- 1. 点击元素 - 鼠标指针带点击轨迹 -->
@@ -5542,7 +5562,7 @@ window.addEventListener("load", function () {
 </div>
 
         <!-- 控制开关和输入 -->
-        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+        <div style="display: flex;flex-direction: column;gap: 8px;margin-top: 4px;padding-top: 8px;border-top: 1px solid rgba(255,255,255,0.06);" class="nopic-ac-controls-section">
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 11px; color: rgba(255,255,255,0.7);">循环次数</span>
@@ -5570,8 +5590,8 @@ window.addEventListener("load", function () {
           </div>
         </div>
 
-<!-- 提示信息（移到上面） -->
-<div style="margin-top: 4px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04);">
+<!-- 提示信息 -->
+<div style="margin-top: 4px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04);" class="nopic-ac-tip-box">
   <div style="font-size: 10px; color: rgba(255,255,255,0.35); line-height: 1.7;">
     <div>• 智能等待即等待元素加载才执行操作</div>
     <div>• 由于浏览器安全限制，快捷键可能受限</div>
@@ -5579,8 +5599,8 @@ window.addEventListener("load", function () {
   </div>
 </div>
 
-<!-- 操作按钮（移到下面） -->
-<div style="display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+<!-- 操作按钮 -->
+<div style="display: flex; gap: 6px; margin-top: 4px; padding-top: 8px;" class="nopic-ac-actions-section">
   <button class="nopic-privacy-btn primary" id="nopic-autoclicker-save-btn" style="flex: 1; padding: 5px 0; font-size: 12px; border-radius: 4px;">保存</button>
   <button class="nopic-privacy-btn primary" id="nopic-autoclicker-save-execute-btn" style="flex: 1; padding: 5px 0; font-size: 12px; border-radius: 4px; background: rgba(74,222,128,0.25); border-color: rgba(74,222,128,0.5); color: #4ade80;">保存并执行</button>
 </div>
@@ -5840,7 +5860,7 @@ window.addEventListener("load", function () {
         <span style="font-size:13px;color:rgba(255,255,255,0.9);">启用页面编辑模式</span>
         <div class="nopic-switch" id="nopic-pageedit-switch" style="cursor:pointer;"></div>
       </div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;margin-top:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);">
+<div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;margin-top:6px;padding-top:8px;border-top:1px solid var(--nopic-border, rgba(255,255,255,0.05));">
         <div>开启后可直接在页面上编辑文字内容</div>
         <div style="margin-top:4px;color:rgba(255,255,255,0.3);">关闭页面后自动重置，不记忆状态</div>
       </div>
@@ -6061,7 +6081,10 @@ window.addEventListener("load", function () {
       if (pinInputState.value === effective.password) {
         pinInputState.isActive = false;
         errorEl.textContent = "✓ 解锁成功";
-        errorEl.style.color = "#4ade80";
+        errorEl.style.color =
+          document.documentElement.getAttribute("data-nopic-theme") === "light"
+            ? "#16a34a"
+            : "#4ade80";
         setTimeout(function () {
           hidePrivacyLockOverlay(true);
           addPrivacyLog("pin_unlock", true);
@@ -6278,6 +6301,80 @@ window.addEventListener("load", function () {
     mouseDownTime = 0;
   let isHovering = false,
     hoverTimer = null;
+
+  // ===== 新增：深浅色主题管理 =====
+  let currentTheme = "dark"; // 'dark' | 'light' | 'system'
+
+  function getThemePreference() {
+    try {
+      const saved = localStorage.getItem("nopic_theme_preference");
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        return saved;
+      }
+    } catch (e) {}
+    return "system"; // 默认跟随系统
+  }
+
+  function applyTheme(theme) {
+    const isDark =
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute(
+      "data-nopic-theme",
+      isDark ? "dark" : "light",
+    );
+    currentTheme = isDark ? "dark" : "light";
+    // 更新开关状态
+    const themeSwitch = document.getElementById("nopic-theme-switch");
+    if (themeSwitch) {
+      themeSwitch.textContent = isDark ? "🌙" : "☀️";
+      themeSwitch.title = isDark ? "切换到浅色模式" : "切换到深色模式";
+    }
+    // 存储用户偏好
+    try {
+      localStorage.setItem("nopic_theme_preference", theme);
+    } catch (e) {}
+  }
+
+  function toggleTheme() {
+    const preference = getThemePreference();
+    let newPreference;
+    if (preference === "dark") newPreference = "light";
+    else if (preference === "light") newPreference = "system";
+    else newPreference = "dark";
+    applyTheme(newPreference);
+    // 同时更新UI中的高亮状态
+    updateThemeUI(newPreference);
+  }
+
+  function updateThemeUI(preference) {
+    const options = document.querySelectorAll(".nopic-theme-option");
+    options.forEach((opt) => {
+      opt.classList.toggle("active", opt.dataset.theme === preference);
+    });
+  }
+
+  // 初始化主题
+  function initTheme() {
+    const preference = getThemePreference();
+    applyTheme(preference);
+    // 监听系统主题变化
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (e) => {
+        if (getThemePreference() === "system") {
+          applyTheme("system");
+        }
+      });
+  }
+  // 在页面加载后初始化
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTheme);
+  } else {
+    initTheme();
+  }
+  // ===== 主题管理结束 =====
 
   function updateAllUI() {
     settingsSubmenu
@@ -6835,6 +6932,10 @@ window.addEventListener("load", function () {
     if (document.getElementById("nopic-disguise-list-url")) {
       renderDisguiseLists();
     }
+
+    // ===== 更新主题UI高亮 =====
+    const preference = getThemePreference();
+    updateThemeUI(preference);
   }
 
   // 网页隐私锁开关（开关状态独立存储在URL级别）
@@ -8386,22 +8487,51 @@ window.addEventListener("load", function () {
       // 如果没有配置数据，不降低透明度（保持可读性）
       if (!hasData) isEffective = false;
 
+      const isLight =
+        document.documentElement.getAttribute("data-nopic-theme") === "light";
       const opacity = isEffective ? "1" : "0.4";
+
+      // 根据深浅色模式决定颜色
+      const cardBg = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)";
+      const textColor = isLight ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.85)";
+      const mutedColor = isLight
+        ? "rgba(0,0,0,0.35)"
+        : "rgba(255,255,255,0.25)";
       const borderColor = isEffective
-        ? "rgba(96,165,250,0.3)"
-        : "rgba(255,255,255,0.05)";
+        ? isLight
+          ? "#2563eb"
+          : "#4ade80"
+        : isLight
+          ? "rgba(0,0,0,0.06)"
+          : "rgba(255,255,255,0.06)";
+      const activeColor = isEffective
+        ? isLight
+          ? "#2563eb"
+          : "#4ade80"
+        : "transparent";
+      const btnPrimaryBg = isLight
+        ? "rgba(59,130,246,0.12)"
+        : "rgba(96,165,250,0.08)";
+      const btnPrimaryBorder = isLight
+        ? "rgba(59,130,246,0.2)"
+        : "rgba(96,165,250,0.12)";
+      const btnPrimaryColor = isLight ? "#2563eb" : "#60a5fa";
+      const btnDangerBorder = isLight
+        ? "rgba(239,68,68,0.15)"
+        : "rgba(248,113,113,0.12)";
+      const btnDangerColor = isLight ? "#dc2626" : "#f87171";
 
       html += `
-  <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:3px;border-left:2px solid ${isEffective ? "#4ade80" : "rgba(255,255,255,0.06)"};transition:all 0.2s ease;cursor:default;opacity:${opacity};">
+  <div style="background:${cardBg};border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:3px;border-left:2px solid ${borderColor};transition:all 0.2s ease;cursor:default;opacity:${opacity};">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:11px;color:rgba(255,255,255,0.85);font-weight:400;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleLabel}</span>
-      <span style="font-size:9px;color:rgba(255,255,255,0.25);flex-shrink:0;margin-left:6px;">${iconLabel}</span>
+      <span style="font-size:11px;color:${textColor};font-weight:400;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${titleLabel}</span>
+      <span style="font-size:9px;color:${mutedColor};flex-shrink:0;margin-left:6px;">${iconLabel}</span>
     </div>
 <div style="display:flex;gap:4px;margin-top:2px;justify-content:flex-end;flex-shrink:0;">
-  <button class="nopic-disguise-btn primary" style="font-size:9px;padding:1px 8px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.12);border-radius:3px;color:#60a5fa;cursor:pointer;flex-shrink:0;white-space:nowrap;width:auto;min-width:0;display:inline-flex;" data-disguise-edit="${scope}">编辑</button>
-  <button class="nopic-disguise-btn danger" style="font-size:9px;padding:1px 8px;background:transparent;border:1px solid rgba(248,113,113,0.12);border-radius:3px;color:#f87171;cursor:pointer;flex-shrink:0;white-space:nowrap;width:auto;min-width:0;display:inline-flex;" data-disguise-clear="${scope}">清除</button>
+  <button class="nopic-disguise-btn primary" style="font-size:9px;padding:1px 8px;background:${btnPrimaryBg};border:1px solid ${btnPrimaryBorder};border-radius:3px;color:${btnPrimaryColor};cursor:pointer;flex-shrink:0;white-space:nowrap;width:auto;min-width:0;display:inline-flex;" data-disguise-edit="${scope}">编辑</button>
+  <button class="nopic-disguise-btn danger" style="font-size:9px;padding:1px 8px;background:transparent;border:1px solid ${btnDangerBorder};border-radius:3px;color:${btnDangerColor};cursor:pointer;flex-shrink:0;white-space:nowrap;width:auto;min-width:0;display:inline-flex;" data-disguise-clear="${scope}">清除</button>
 </div>
-    ${isEffective ? '<div style="font-size:8px;color:#4ade80;text-align:right;margin-top:1px;flex-shrink:0;">● 生效中</div>' : ""}
+    ${isEffective ? `<div style="font-size:8px;color:${activeColor};text-align:right;margin-top:1px;flex-shrink:0;">● 生效中</div>` : ""}
   </div>
 `;
 
@@ -10301,6 +10431,14 @@ window.addEventListener("load", function () {
   let dcSubmenuOpen = false;
 
   function showDCSubmenu() {
+    // 强制立即应用当前主题，避免闪烁
+    const theme = document.documentElement.getAttribute("data-nopic-theme");
+    if (!theme) {
+      // 如果还没有主题属性，根据偏好设置立即应用
+      const preference = getThemePreference();
+      applyTheme(preference);
+    }
+
     dcSubmenuOpen = true;
     showPopupAtTrigger(
       dataCollectSubmenu,
@@ -12140,8 +12278,9 @@ window.addEventListener("load", function () {
     var now = new Date();
     var timeStr = now.toLocaleString("zh-CN");
     var url = location.href;
+    var isLight =
+      document.documentElement.getAttribute("data-nopic-theme") === "light";
 
-    // 表格行
     var tableRows = rows
       .map(function (row) {
         return (
@@ -12156,12 +12295,29 @@ window.addEventListener("load", function () {
       })
       .join("");
 
-    // 表头
     var headerHtml = headers
       .map(function (h) {
         return "<th>" + h + "</th>";
       })
       .join("");
+
+    var bgColor = isLight ? "#f5f5fa" : "#0f0f12";
+    var textColor = isLight ? "#1a1a1e" : "#e8e8e8";
+    var borderColor = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+    var cardBg = isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)";
+    var thBg = isLight ? "#e8e8f0" : "#1a1a20";
+    var thColor = isLight ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.8)";
+    var tdColor = isLight ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.85)";
+    var tdBorder = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.04)";
+    var hoverBg = isLight ? "rgba(0,0,0,0.02)" : "rgba(96,165,250,0.04)";
+    var rowNumColor = isLight ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.25)";
+    var footerColor = isLight ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.25)";
+    var badgeBg = isLight ? "rgba(59,130,246,0.1)" : "rgba(96,165,250,0.15)";
+    var badgeColor = isLight ? "#2563eb" : "#60a5fa";
+    var badgeBorder = isLight
+      ? "rgba(59,130,246,0.15)"
+      : "rgba(96,165,250,0.2)";
+    var linkColor = isLight ? "#2563eb" : "#60a5fa";
 
     return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -12177,8 +12333,8 @@ window.addEventListener("load", function () {
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: #0f0f12;
-      color: #e8e8e8;
+      background: ${bgColor};
+      color: ${textColor};
       padding: 20px;
       min-height: 100vh;
     }
@@ -12191,22 +12347,22 @@ window.addEventListener("load", function () {
       justify-content: space-between;
       align-items: flex-end;
       padding: 16px 20px;
-      background: rgba(255,255,255,0.04);
+      background: ${cardBg};
       border-radius: 12px;
       margin-bottom: 20px;
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid ${borderColor};
       flex-wrap: wrap;
       gap: 12px;
     }
     .header-left h1 {
       font-size: 20px;
       font-weight: 600;
-      color: #fff;
+      color: ${textColor};
       letter-spacing: 0.5px;
     }
     .header-left .meta {
       font-size: 12px;
-      color: rgba(255,255,255,0.4);
+      color: ${footerColor};
       margin-top: 4px;
     }
     .header-left .meta span {
@@ -12217,21 +12373,21 @@ window.addEventListener("load", function () {
       gap: 12px;
       align-items: center;
       font-size: 12px;
-      color: rgba(255,255,255,0.4);
+      color: ${footerColor};
     }
     .badge {
       display: inline-block;
       padding: 2px 12px;
       border-radius: 12px;
       font-size: 11px;
-      background: rgba(96,165,250,0.15);
-      color: #60a5fa;
-      border: 1px solid rgba(96,165,250,0.2);
+      background: ${badgeBg};
+      color: ${badgeColor};
+      border: 1px solid ${badgeBorder};
     }
     .table-wrapper {
-      background: rgba(255,255,255,0.03);
+      background: ${cardBg};
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid ${borderColor};
       overflow: hidden;
     }
     .table-scroll {
@@ -12249,27 +12405,27 @@ window.addEventListener("load", function () {
       z-index: 10;
     }
     th {
-      background: #1a1a20;
+      background: ${thBg};
       padding: 10px 14px;
       text-align: left;
       font-weight: 600;
-      color: rgba(255,255,255,0.8);
-      border-bottom: 2px solid rgba(96,165,250,0.2);
+      color: ${thColor};
+      border-bottom: 2px solid ${badgeBorder};
       white-space: nowrap;
       font-size: 12px;
       letter-spacing: 0.3px;
     }
     td {
       padding: 8px 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      color: rgba(255,255,255,0.85);
+      border-bottom: 1px solid ${tdBorder};
+      color: ${tdColor};
       word-break: break-word;
       vertical-align: middle;
       line-height: 1.5;
       max-width: 300px;
     }
     td a {
-      color: #60a5fa;
+      color: ${linkColor};
       text-decoration: none;
       word-break: break-all;
     }
@@ -12277,10 +12433,10 @@ window.addEventListener("load", function () {
       text-decoration: underline;
     }
     tr:hover td {
-      background: rgba(96,165,250,0.04);
+      background: ${hoverBg};
     }
     .row-number {
-      color: rgba(255,255,255,0.25);
+      color: ${rowNumColor};
       font-size: 11px;
       text-align: center;
       min-width: 36px;
@@ -12289,8 +12445,8 @@ window.addEventListener("load", function () {
     .footer {
       padding: 12px 20px;
       font-size: 11px;
-      color: rgba(255,255,255,0.25);
-      border-top: 1px solid rgba(255,255,255,0.04);
+      color: ${footerColor};
+      border-top: 1px solid ${borderColor};
       display: flex;
       justify-content: space-between;
       flex-wrap: wrap;
@@ -12299,7 +12455,7 @@ window.addEventListener("load", function () {
     .empty-state {
       text-align: center;
       padding: 60px 20px;
-      color: rgba(255,255,255,0.3);
+      color: ${footerColor};
     }
     .empty-state .icon {
       font-size: 48px;
@@ -13082,8 +13238,8 @@ window.addEventListener("load", function () {
 
       if (hasPassword) {
         // 【有密码】：背景始终保持纯黑不透明，绝对不能变透明
-        bg.style.background = "rgba(0,0,0,1)";
-        bg.style.opacity = "1";
+        bg.style.background = "rgba(0,0,0,1) !important";
+        bg.style.opacity = "1 !important";
       } else {
         // 【无密码】：背景透明度随拖动进度变化 (1 -> 0)
         bg.style.background = "rgba(0,0,0,1)";
@@ -13494,14 +13650,39 @@ window.addEventListener("load", function () {
 
     list.innerHTML = autoClickerConfig.steps
       .map((step, index) => {
+        // 只有图标（左边用）
+        // 只有图标（左边用）
+        const typeIcons = {
+          delay:
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+          wait: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+          click:
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l6.5 15.5 2.5-7 7-2.5L4 4z"/><path d="M15 15l5 5"/></svg>',
+          position:
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>',
+          input:
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><line x1="4" y1="11" x2="20" y2="11"/></svg>',
+          shortcut:
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"/><path d="M8 3v7"/><path d="M16 3v7"/><path d="M3 14h18"/><path d="M8 21v-7"/><path d="M16 21v-7"/></svg>',
+          script:
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+        };
+
+        // 图标+文字（右边小字上方用），文字颜色与图标颜色一致
         const typeLabels = {
-          delay: "⏱ 延时等待",
-          wait: "⏳ 智能等待",
-          click: "🖱 点击元素",
-          position: "📍 点击位置",
-          input: "⌨️ 输入文字",
-          shortcut: "⚡ 执行快捷键",
-          script: "📜 运行脚本",
+          delay:
+            '<span style="display:flex;align-items:center;gap:4px;color:#fbbf24;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="5"/><polyline points="6 3 6 6 8 7"/></svg> 延时等待</span>',
+          wait: '<span style="display:flex;align-items:center;gap:4px;color:#fb923c;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1"/></svg> 智能等待</span>',
+          click:
+            '<span style="display:flex;align-items:center;gap:4px;color:#4ade80;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l3.25 7.75 1.25-3.5 3.5-1.25L2 2z"/><path d="M7.5 7.5l2.5 2.5"/></svg> 点击元素</span>',
+          position:
+            '<span style="display:flex;align-items:center;gap:4px;color:#60a5fa;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="1"/><line x1="6" y1="1" x2="6" y2="3"/><line x1="6" y1="9" x2="6" y2="11"/><line x1="1" y1="6" x2="3" y2="6"/><line x1="9" y1="6" x2="11" y2="6"/></svg> 点击位置</span>',
+          input:
+            '<span style="display:flex;align-items:center;gap:4px;color:#a78bfa;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.5" width="8" height="7" rx="1"/><line x1="2" y1="5.5" x2="10" y2="5.5"/></svg> 输入文字</span>',
+          shortcut:
+            '<span style="display:flex;align-items:center;gap:4px;color:#22d3ee;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5h9"/><path d="M4 1.5v3.5"/><path d="M8 1.5v3.5"/><path d="M1.5 7h9"/><path d="M4 10.5V7"/><path d="M8 10.5V7"/></svg> 执行快捷键</span>',
+          script:
+            '<span style="display:flex;align-items:center;gap:4px;color:#f472b6;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 9 11 6 8 3"/><polyline points="4 3 1 6 4 9"/></svg> 运行脚本</span>',
         };
         const typeLabel = typeLabels[step.type] || step.type;
 
@@ -13555,14 +13736,16 @@ window.addEventListener("load", function () {
         const borderColor = borderColors[step.type] || "#888";
 
         return `
-  <div class="nopic-autoclicker-step-item" data-step-index="${index}" style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;border-left:3px solid ${borderColor};transition:background 0.2s, transform 0.15s, opacity 0.2s;">
+<div class="nopic-autoclicker-step-item" data-step-index="${index}" style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:6px;border-left:3px solid ${borderColor} !important;transition:background 0.2s, transform 0.15s, opacity 0.2s;">
     <div style="display:flex;flex-direction:column;align-items:center;color:rgba(255,255,255,0.3);font-size:10px;flex-shrink:0;width:20px;user-select:none;cursor:grab;" draggable="true" class="nopic-drag-handle">
       <span>⠿</span>
       <span style="font-size:8px;margin-top:2px;">${index + 1}</span>
     </div>
-    <span style="font-size:16px;flex-shrink:0;">${typeLabels[step.type].split(" ")[0]}</span>
+    <span style="display:flex;align-items:center;justify-content:center;width:24px;flex-shrink:0;">${typeIcons[step.type]}</span>
     <div style="flex:1;min-width:0;">
-      <div style="font-size:12px;color:rgba(255,255,255,0.9);">${typeLabel}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.9);">
+  ${typeLabels[step.type]}
+</div>
       ${detailHtml}
     </div>
     <div class="nopic-mask-item-delete" data-delete-step="${index}" style="flex-shrink:0;cursor:pointer;">×</div>
@@ -16529,17 +16712,21 @@ window.addEventListener("load", function () {
         showConfirmModal(
           "📋 占位符说明",
           "{年} - 年份\n{月} - 月份(01-12)\n{日} - 日期(01-31)\n{周几} - 星期几(一~日)\n{时} - 小时(00-23)\n{分} - 分钟(00-59)\n{秒} - 秒钟(00-59)\n{时节} - 春夏秋冬\n{自定义} - 自定义文字\n\n示例: {年}年{月}月{日}日 {周几}\n       {时}:{分}:{秒} {时节}",
-          function () {},
+          function () {
+            hideConfirmModal();
+          },
         );
-        // 修改确认按钮文字
-        const confirmBtn = document.querySelector(
-          "#nopic-confirm-modal .nopic-confirm-btn.danger",
-        );
-        if (confirmBtn) {
-          confirmBtn.textContent = "知道了";
-          confirmBtn.classList.remove("danger");
-          confirmBtn.classList.add("cancel");
-        }
+        // 修改确认按钮文字 - 使用更可靠的选择器
+        // setTimeout(function () {
+        //   var confirmBtn = document.querySelector(
+        //     "#nopic-confirm-modal .nopic-confirm-btn.danger, #nopic-confirm-modal .nopic-confirm-btn.cancel",
+        //   );
+        //   if (confirmBtn) {
+        //     confirmBtn.textContent = "知道了";
+        //     confirmBtn.classList.remove("danger");
+        //     confirmBtn.classList.add("cancel");
+        //   }
+        // }, 50);
       });
     }
 
@@ -16836,6 +17023,16 @@ window.addEventListener("load", function () {
       logCurrentFilter = btn.dataset.filter;
       logCurrentPage = 1;
       renderPrivacyLogs();
+    });
+  });
+
+  // ===== 主题切换事件绑定 =====
+  document.querySelectorAll(".nopic-theme-option").forEach((opt) => {
+    opt.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const theme = this.dataset.theme;
+      applyTheme(theme);
+      updateThemeUI(theme);
     });
   });
 

@@ -1,3 +1,321 @@
+/* ===== 深浅色主题 ===== */
+:root {
+  --nopic-bg-primary: rgba(30, 30, 35, 0.95);
+  --nopic-bg-secondary: rgba(255, 255, 255, 0.06);
+  --nopic-bg-hover: rgba(255, 255, 255, 0.12);
+  --nopic-text-primary: #ffffff;
+  --nopic-text-secondary: rgba(255, 255, 255, 0.7);
+  --nopic-text-muted: rgba(255, 255, 255, 0.4);
+  --nopic-border: rgba(255, 255, 255, 0.1);
+  --nopic-shadow: rgba(0, 0, 0, 0.4);
+  --nopic-input-bg: rgba(255, 255, 255, 0.06);
+  --nopic-input-border: rgba(255, 255, 255, 0.1);
+  --nopic-code-bg: rgba(0, 0, 0, 0.2);
+}
+
+[data-nopic-theme="light"] {
+  --nopic-bg-primary: rgba(245, 245, 250, 0.95);
+  --nopic-bg-secondary: rgba(0, 0, 0, 0.05);
+  --nopic-bg-hover: rgba(0, 0, 0, 0.08);
+  --nopic-text-primary: #1a1a1e;
+  --nopic-text-secondary: rgba(0, 0, 0, 0.7);
+  --nopic-text-muted: rgba(0, 0, 0, 0.4);
+  --nopic-border: rgba(0, 0, 0, 0.1);
+  --nopic-shadow: rgba(0, 0, 0, 0.15);
+  --nopic-input-bg: rgba(0, 0, 0, 0.04);
+  --nopic-input-border: rgba(0, 0, 0, 0.1);
+  --nopic-code-bg: rgba(0, 0, 0, 0.06);
+}
+
+/* ===== 所有面板使用CSS变量 ===== */
+#nopic-tabdisguise-submenu,
+#nopic-mask-submenu,
+#nopic-privacylock-submenu,
+#nopic-textreplace-submenu,
+#nopic-autoclicker-submenu,
+#nopic-pageedit-submenu,
+#nopic-pagemonitor-submenu,
+#nopic-quicktext-submenu,
+.nopic-modal-popup,
+#nopic-about-modal,
+#nopic-menu,
+#nopic-confirm-modal .nopic-confirm-box,
+#nopic-privacy-log-panel,
+.nopic-parade-filter-panel,
+#nopic-autoclicker-status-panel {
+  background: var(--nopic-bg-primary) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  border-color: var(--nopic-border) !important;
+}
+
+[data-nopic-theme="light"] #nopic-widget {
+  background: var(--nopic-bg-primary) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+  /* border: 1px solid rgba(0, 0, 0, 0.15) !important; */
+}
+/* 浅色模式 - 收缩状态强制去掉边框 */
+[data-nopic-theme="light"] #nopic-widget.sleeping {
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ===== 文字颜色 ===== */
+[data-nopic-theme="light"] #nopic-menu .nopic-menu-item,
+[data-nopic-theme="light"] #nopic-menu .nopic-submenu-item,
+[data-nopic-theme="light"] .nopic-modal-title,
+[data-nopic-theme="light"] .nopic-col-title,
+[data-nopic-theme="light"] .nopic-app-label,
+[data-nopic-theme="light"] .nopic-disguise-section-title,
+[data-nopic-theme="light"] .nopic-mask-section-title,
+[data-nopic-theme="light"] .nopic-privacy-section-title {
+  color: var(--nopic-text-primary) !important;
+}
+
+[data-nopic-theme="light"] .nopic-text-secondary {
+  color: var(--nopic-text-secondary) !important;
+}
+
+[data-nopic-theme="light"] .nopic-text-muted {
+  color: var(--nopic-text-muted) !important;
+}
+
+/* ===== 输入框 ===== */
+[data-nopic-theme="light"] .nopic-disguise-input,
+[data-nopic-theme="light"] .nopic-textreplace-input,
+[data-nopic-theme="light"] .nopic-privacy-input,
+[data-nopic-theme="light"] .nopic-privacy-pin-input,
+[data-nopic-theme="light"] #nopic-custom-title-input,
+[data-nopic-theme="light"] #nopic-autoclicker-script-code,
+[data-nopic-theme="light"] .nopic-pm-input,
+[data-nopic-theme="light"] .nopic-pm-small-input,
+[data-nopic-theme="light"] .nopic-pm-select,
+[data-nopic-theme="light"] .nopic-delay-input,
+[data-nopic-theme="light"] .nopic-qt-edit-text,
+[data-nopic-theme="light"] .nopic-qt-shortcut-input {
+  background: var(--nopic-input-bg) !important;
+  border-color: var(--nopic-input-border) !important;
+  color: var(--nopic-text-primary) !important;
+}
+
+[data-nopic-theme="light"] .nopic-disguise-input:focus,
+[data-nopic-theme="light"] .nopic-textreplace-input:focus,
+[data-nopic-theme="light"] .nopic-privacy-input:focus,
+[data-nopic-theme="light"] .nopic-privacy-pin-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-nopic-theme="light"] .nopic-pm-select option {
+  background: #f5f5fa !important;
+  color: #1a1a1e !important;
+}
+
+/* ===== 开关 ===== */
+[data-nopic-theme="light"] .nopic-switch {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+[data-nopic-theme="light"] .nopic-switch.on {
+  background: #3b82f6 !important;
+}
+[data-nopic-theme="light"] .nopic-switch::after {
+  background: #ffffff !important;
+}
+
+/* ===== 分割线和边框 ===== */
+[data-nopic-theme="light"] .nopic-menu-separator,
+[data-nopic-theme="light"] .nopic-modal-header,
+[data-nopic-theme="light"] .nopic-disguise-actions,
+[data-nopic-theme="light"] .nopic-mask-actions,
+[data-nopic-theme="light"] .nopic-privacy-actions {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"] .nopic-col-1,
+[data-nopic-theme="light"] .nopic-col-2 {
+  border-right-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ===== 按钮和交互元素 ===== */
+[data-nopic-theme="light"] .nopic-ext-btn {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-ext-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"] .nopic-menu-item:hover,
+[data-nopic-theme="light"] .nopic-submenu-item:hover {
+  background: var(--nopic-bg-hover) !important;
+}
+
+[data-nopic-theme="light"] .nopic-range-btn.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+[data-nopic-theme="light"] .nopic-float-btn {
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: #ffffff !important;
+}
+[data-nopic-theme="light"] .nopic-float-btn:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* ===== 下拉菜单 ===== */
+[data-nopic-theme="light"] .nopic-custom-select-dropdown {
+  background: #f5f5fa !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-option {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-option:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-header {
+  color: #1a1a1e !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ===== 统计数字 ===== */
+[data-nopic-theme="light"] .stat-label {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .stat-value {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* ===== 隐私锁 ===== */
+[data-nopic-theme="light"] #nopic-privacy-lock-overlay .nopic-privacy-lock-bg {
+  background: rgba(255, 255, 255, 0.95);
+}
+[data-nopic-theme="light"]
+  #nopic-privacy-lock-overlay
+  .nopic-privacy-lock-wrapper {
+  background: rgba(245, 245, 250, 0.98) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-lock-time {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-lock-hint {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-lock-arrow {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ===== 日志面板 ===== */
+[data-nopic-theme="light"] #nopic-privacy-log-panel {
+  background: var(--nopic-bg-primary) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-item {
+  border-bottom-color: rgba(0, 0, 0, 0.05) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-time {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== 确认弹窗 ===== */
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box {
+  background: #f5f5fa !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-text {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-btn.cancel {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-confirm-modal
+  .nopic-confirm-btn.cancel:hover {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ===== 关于弹窗 ===== */
+[data-nopic-theme="light"] #nopic-about-modal .about-section {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-section-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-text {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-text.small {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide {
+  background: rgba(59, 130, 246, 0.06) !important;
+  border-color: rgba(59, 130, 246, 0.12) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide-title {
+  color: rgba(0, 0, 0, 0.8) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide-steps {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-close {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-close:hover {
+  color: #1a1a1e !important;
+}
+
+/* ===== 数据采集表格 ===== */
+[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-thead th {
+  background: #f5f5fa !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-tbody td {
+  color: rgba(0, 0, 0, 0.8) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.03) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  #nopic-dc-tbody
+  tr:hover
+  td {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* ===== 主题切换选项高亮 ===== */
+.nopic-theme-option.active {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+}
+[data-nopic-theme="light"] .nopic-theme-option.active {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #2563eb !important;
+}
+
+/* ===== 快捷文本列表 ===== */
+[data-nopic-theme="light"] .nopic-mask-item {
+  background: rgba(0, 0, 0, 0.02) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ===== 自动点击器状态面板 ===== */
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel {
+  background: var(--nopic-bg-primary) !important;
+}
+[data-nopic-theme="light"] #nopic-ac-status-text {
+  color: rgba(0, 0, 0, 0.8) !important;
+}
 /* 禁止选中脚本所有UI元素 */
 #nopic-widget,
 #nopic-menu,
@@ -300,7 +618,8 @@ svg:not(.nopic-clone),
   width: auto;
   padding: 6px 10px;
   border-radius: 14px;
-  background: rgba(25, 25, 30, 0.85);
+  background: rgba(25, 25, 30, 0);
+  opacity: 0;
   backdrop-filter: blur(3px);
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.25),
@@ -320,6 +639,10 @@ svg:not(.nopic-clone),
     width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
     background 0.8s ease;
 }
+html[data-nopic-theme] #nopic-widget {
+  background: rgba(25, 25, 30, 0.85);
+  opacity: 1;
+}
 #nopic-widget.snap-left {
   border-radius: 0 14px 14px 0;
 }
@@ -335,6 +658,12 @@ svg:not(.nopic-clone),
   width: 20px !important;
   min-width: 20px !important;
   padding: 4px;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 #nopic-widget.sleeping.transparent-bg {
   background: transparent !important;
@@ -4965,4 +5294,2290 @@ svg:not(.nopic-clone),
 .nopic-textreplace-add-btn:hover {
   transform: scale(1.03);
   filter: brightness(1.2);
+}
+
+/* ===== 强制浅色模式覆盖（解决 !important 问题） ===== */
+[data-nopic-theme="light"] #nopic-menu,
+[data-nopic-theme="light"] #nopic-settings-submenu,
+[data-nopic-theme="light"] #nopic-display-submenu,
+[data-nopic-theme="light"] #nopic-disguise-submenu,
+[data-nopic-theme="light"] #nopic-tabdisguise-submenu,
+[data-nopic-theme="light"] #nopic-mask-submenu,
+[data-nopic-theme="light"] #nopic-privacylock-submenu,
+[data-nopic-theme="light"] #nopic-textreplace-submenu,
+[data-nopic-theme="light"] #nopic-autoclicker-submenu,
+[data-nopic-theme="light"] #nopic-pageedit-submenu,
+[data-nopic-theme="light"] #nopic-pagemonitor-submenu,
+[data-nopic-theme="light"] #nopic-quicktext-submenu,
+[data-nopic-theme="light"] #nopic-datacollect-submenu,
+[data-nopic-theme="light"] .nopic-modal-popup,
+[data-nopic-theme="light"] #nopic-about-modal,
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box,
+[data-nopic-theme="light"] #nopic-privacy-log-panel,
+[data-nopic-theme="light"] .nopic-parade-filter-panel,
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel,
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box,
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box {
+  background: rgba(230, 235, 245, 0.85) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1a1a1e !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"] #nopic-menu,
+[data-nopic-theme="light"] #nopic-menu *,
+[data-nopic-theme="light"] #nopic-settings-submenu,
+[data-nopic-theme="light"] #nopic-settings-submenu *,
+[data-nopic-theme="light"] #nopic-display-submenu,
+[data-nopic-theme="light"] #nopic-display-submenu *,
+[data-nopic-theme="light"] #nopic-disguise-submenu,
+[data-nopic-theme="light"] #nopic-disguise-submenu *,
+[data-nopic-theme="light"] #nopic-tabdisguise-submenu,
+[data-nopic-theme="light"] #nopic-tabdisguise-submenu *,
+[data-nopic-theme="light"] #nopic-mask-submenu,
+[data-nopic-theme="light"] #nopic-mask-submenu *,
+[data-nopic-theme="light"] #nopic-privacylock-submenu,
+[data-nopic-theme="light"] #nopic-privacylock-submenu *,
+[data-nopic-theme="light"] #nopic-textreplace-submenu,
+[data-nopic-theme="light"] #nopic-textreplace-submenu *,
+[data-nopic-theme="light"] #nopic-autoclicker-submenu,
+[data-nopic-theme="light"] #nopic-autoclicker-submenu *,
+[data-nopic-theme="light"] #nopic-pageedit-submenu,
+[data-nopic-theme="light"] #nopic-pageedit-submenu *,
+[data-nopic-theme="light"] #nopic-pagemonitor-submenu,
+[data-nopic-theme="light"] #nopic-pagemonitor-submenu *,
+[data-nopic-theme="light"] #nopic-quicktext-submenu,
+[data-nopic-theme="light"] #nopic-quicktext-submenu *,
+[data-nopic-theme="light"] .nopic-modal-popup,
+[data-nopic-theme="light"] .nopic-modal-popup *,
+[data-nopic-theme="light"] #nopic-about-modal,
+[data-nopic-theme="light"] #nopic-about-modal *,
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box,
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box *,
+[data-nopic-theme="light"] .nopic-parade-filter-panel,
+[data-nopic-theme="light"] .nopic-parade-filter-panel *,
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel,
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel *,
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box,
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box *,
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box,
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box *,
+[data-nopic-theme="light"] .nopic-ext-btn,
+[data-nopic-theme="light"] .nopic-ext-btn * {
+  color: #1a1a1e !important;
+}
+
+/* ===== 主面板 ===== */
+[data-nopic-theme="light"] #nopic-widget {
+  background: rgba(238, 241, 248, 0.88) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 16px rgba(60, 80, 120, 0.1) !important;
+}
+
+/* ===== 所有文字 ===== */
+[data-nopic-theme="light"] #nopic-menu .nopic-menu-item,
+[data-nopic-theme="light"] #nopic-menu .nopic-submenu-item,
+[data-nopic-theme="light"] #nopic-settings-submenu .nopic-menu-item,
+[data-nopic-theme="light"] #nopic-display-submenu .nopic-submenu-item,
+[data-nopic-theme="light"] .nopic-modal-title,
+[data-nopic-theme="light"] .nopic-app-label,
+[data-nopic-theme="light"] .nopic-col-title,
+[data-nopic-theme="light"] .nopic-disguise-section-title,
+[data-nopic-theme="light"] .nopic-mask-section-title,
+[data-nopic-theme="light"] .nopic-privacy-section-title,
+[data-nopic-theme="light"] .nopic-mask-list-column-title,
+[data-nopic-theme="light"] .nopic-pm-monitor-name,
+[data-nopic-theme="light"] .nopic-pm-label,
+[data-nopic-theme="light"] .nopic-textreplace-section-title,
+[data-nopic-theme="light"] .nopic-privacy-log-title,
+[data-nopic-theme="light"] #nopic-ac-status-text,
+[data-nopic-theme="light"] .nopic-export-title,
+[data-nopic-theme="light"] .nopic-export-subtitle,
+[data-nopic-theme="light"] .nopic-export-checkbox-label,
+[data-nopic-theme="light"] .nopic-cell-del-title,
+[data-nopic-theme="light"] .nopic-cell-del-subtitle,
+[data-nopic-theme="light"] .nopic-cell-del-btn-label,
+[data-nopic-theme="light"] .nopic-cell-del-btn-hint {
+  color: #1a1a1e !important;
+}
+
+/* ===== 次级文字 ===== */
+[data-nopic-theme="light"] .nopic-text-muted,
+[data-nopic-theme="light"] .nopic-menu-separator,
+[data-nopic-theme="light"] .stat-label,
+[data-nopic-theme="light"] .nopic-pm-monitor-status.stopped,
+[data-nopic-theme="light"] .nopic-privacy-log-time,
+[data-nopic-theme="light"] .nopic-dc-row-num,
+[data-nopic-theme="light"] #nopic-dc-row-count,
+[data-nopic-theme="light"] #nopic-dc-col-count {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* ===== 所有输入框 ===== */
+[data-nopic-theme="light"] .nopic-disguise-input,
+[data-nopic-theme="light"] .nopic-textreplace-input,
+[data-nopic-theme="light"] .nopic-privacy-input,
+[data-nopic-theme="light"] .nopic-privacy-pin-input,
+[data-nopic-theme="light"] #nopic-custom-title-input,
+[data-nopic-theme="light"] #nopic-autoclicker-script-code,
+[data-nopic-theme="light"] .nopic-pm-input,
+[data-nopic-theme="light"] .nopic-pm-small-input,
+[data-nopic-theme="light"] .nopic-pm-select,
+[data-nopic-theme="light"] .nopic-delay-input,
+[data-nopic-theme="light"] .nopic-qt-edit-text,
+[data-nopic-theme="light"] .nopic-qt-shortcut-input,
+[data-nopic-theme="light"] #nopic-lock-time-format,
+[data-nopic-theme="light"] #nopic-lock-custom-text,
+[data-nopic-theme="light"] #nopic-autoclicker-loop-count,
+[data-nopic-theme="light"] #nopic-autoclicker-safety-delay,
+[data-nopic-theme="light"] .nopic-dc-col-edit-input {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1a1e !important;
+}
+
+[data-nopic-theme="light"] .nopic-disguise-input:focus,
+[data-nopic-theme="light"] .nopic-textreplace-input:focus,
+[data-nopic-theme="light"] .nopic-privacy-input:focus,
+[data-nopic-theme="light"] .nopic-privacy-pin-input:focus,
+[data-nopic-theme="light"] #nopic-custom-title-input:focus,
+[data-nopic-theme="light"] .nopic-pm-input:focus,
+[data-nopic-theme="light"] .nopic-pm-small-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-nopic-theme="light"] .nopic-pm-select option {
+  background: #ffffff !important;
+  color: #1a1a1e !important;
+}
+
+/* ===== 开关 ===== */
+[data-nopic-theme="light"] .nopic-switch {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+[data-nopic-theme="light"] .nopic-switch.on {
+  background: #3b82f6 !important;
+}
+[data-nopic-theme="light"] .nopic-switch::after {
+  background: #ffffff !important;
+}
+
+/* ===== 拓展图标按钮 ===== */
+[data-nopic-theme="light"] .nopic-ext-btn {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-ext-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-ext-btn .nopic-app-icon svg {
+  stroke: #1a1a1e !important;
+}
+
+/* ===== 自动点击器按钮 - 浅色模式颜色修复 ===== */
+[data-nopic-theme="light"] .nopic-textreplace-add-btn svg {
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+[data-nopic-theme="light"] .nopic-textreplace-add-btn {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] .nopic-textreplace-add-btn:hover {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-click {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.2) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-click:hover {
+  background: rgba(34, 197, 94, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-position {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-position:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-input {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-input:hover {
+  background: rgba(139, 92, 246, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-shortcut {
+  background: rgba(8, 145, 178, 0.12) !important;
+  border-color: rgba(8, 145, 178, 0.2) !important;
+  color: #0891b2 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-shortcut:hover {
+  background: rgba(8, 145, 178, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-delay {
+  background: rgba(180, 83, 9, 0.12) !important;
+  border-color: rgba(180, 83, 9, 0.2) !important;
+  color: #b45309 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-delay:hover {
+  background: rgba(180, 83, 9, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-wait {
+  background: rgba(194, 65, 12, 0.12) !important;
+  border-color: rgba(194, 65, 12, 0.2) !important;
+  color: #c2410c !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-wait:hover {
+  background: rgba(194, 65, 12, 0.2) !important;
+}
+[data-nopic-theme="light"] .nopic-ext-btn-parade .nopic-app-icon svg {
+  fill: #1a1a1e !important;
+  stroke: none !important;
+}
+
+/* ===== 菜单项悬停 ===== */
+[data-nopic-theme="light"] .nopic-menu-item:hover,
+[data-nopic-theme="light"] .nopic-submenu-item:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ===== 分割线 ===== */
+[data-nopic-theme="light"] .nopic-menu-separator,
+[data-nopic-theme="light"] .nopic-modal-header,
+[data-nopic-theme="light"] .nopic-disguise-actions,
+[data-nopic-theme="light"] .nopic-mask-actions,
+[data-nopic-theme="light"] .nopic-privacy-actions,
+[data-nopic-theme="light"] .nopic-export-actions,
+[data-nopic-theme="light"] .nopic-cell-del-header,
+[data-nopic-theme="light"] .nopic-dc-status-bar,
+[data-nopic-theme="light"] #nopic-dc-thead th {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ===== 列分隔线 ===== */
+[data-nopic-theme="light"] .nopic-col-1,
+[data-nopic-theme="light"] .nopic-col-2 {
+  border-right-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ===== 三列高亮选择器 ===== */
+[data-nopic-theme="light"] .nopic-scope-btn.active,
+[data-nopic-theme="light"] .nopic-privacy-select-btn.active,
+[data-nopic-theme="light"] .nopic-pm-scope-tab.active,
+[data-nopic-theme="light"] .nopic-ac-scope-tab.active {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #2563eb !important;
+}
+
+[data-nopic-theme="light"] .nopic-scope-btn,
+[data-nopic-theme="light"] .nopic-privacy-select-btn,
+[data-nopic-theme="light"] .nopic-pm-scope-tab,
+[data-nopic-theme="light"] .nopic-ac-scope-tab {
+  color: rgba(0, 0, 0, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+[data-nopic-theme="light"] .nopic-scope-btn:hover,
+[data-nopic-theme="light"] .nopic-privacy-select-btn:hover,
+[data-nopic-theme="light"] .nopic-pm-scope-tab:hover,
+[data-nopic-theme="light"] .nopic-ac-scope-tab:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ===== Range 按钮 ===== */
+[data-nopic-theme="light"] .nopic-range-btn {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-range-btn.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+[data-nopic-theme="light"] .nopic-range-btn:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-range-container {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ===== 复选框 ===== */
+[data-nopic-theme="light"] .nopic-checkbox {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+[data-nopic-theme="light"] .nopic-checkbox.checked {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* ===== 统计数值 ===== */
+[data-nopic-theme="light"] .stat-value {
+  color: #1a1a1e !important;
+}
+
+/* ===== 标签伪装 - 配置卡片 ===== */
+[data-nopic-theme="light"] .nopic-disguise-section {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-radio-row {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] .nopic-radio-row:hover {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] .nopic-radio {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+[data-nopic-theme="light"] .nopic-radio.checked {
+  border-color: #3b82f6 !important;
+  background: #3b82f6 !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-header {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-dropdown {
+  background: rgba(245, 245, 250, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-option {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-option:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-custom-select-option.selected {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #2563eb !important;
+}
+
+/* ===== 遮罩列表 ===== */
+[data-nopic-theme="light"] .nopic-mask-item {
+  background: rgba(0, 0, 0, 0.02) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-item-info {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ===== 隐私锁三列 ===== */
+[data-nopic-theme="light"] .nopic-pl-col {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ===== 自动点击器流程列表 ===== */
+[data-nopic-theme="light"] .nopic-autoclicker-step-item {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+[data-nopic-theme="light"] .nopic-autoclicker-step-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-autoclicker-step-item .nopic-drag-handle {
+  color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ===== 页面监控器 ===== */
+[data-nopic-theme="light"] .nopic-pm-monitor-item {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-pm-monitor-item:hover {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ===== 隐私锁 - 上锁界面 ===== */
+[data-nopic-theme="light"] #nopic-privacy-lock-overlay .nopic-privacy-lock-bg {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-privacy-lock-overlay
+  .nopic-privacy-lock-wrapper {
+  background: rgba(245, 245, 250, 0.92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-lock-time {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-lock-hint {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-lock-arrow {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] .nopic-lock-pin-message {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-lock-pin-dot {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+[data-nopic-theme="light"] .nopic-lock-pin-dot.filled {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* ===== 隐私锁 - 日志面板 ===== */
+[data-nopic-theme="light"] #nopic-privacy-log-panel {
+  background: rgba(245, 245, 250, 0.92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-item {
+  border-bottom-color: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-action {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-filter-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-filter-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-filter-btn.active {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+
+/* ===== 确认弹窗 ===== */
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box {
+  background: rgba(245, 245, 250, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-text {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-btn.cancel {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-confirm-modal
+  .nopic-confirm-btn.cancel:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-btn.danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-confirm-modal
+  .nopic-confirm-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+}
+
+/* ===== 关于弹窗 ===== */
+[data-nopic-theme="light"] #nopic-about-modal .about-section {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-section-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-section-desc {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-text {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-text.small {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide {
+  background: rgba(59, 130, 246, 0.04) !important;
+  border-color: rgba(59, 130, 246, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide-title {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide-steps {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-close {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-close:hover {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-sponsor {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .method-label {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .method-text {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .method-hint {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-edge {
+  background: #1a73e8 !important;
+  border-color: #1a73e8 !important;
+  color: #ffffff !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-edge:hover {
+  background: #1557b0 !important;
+  border-color: #1557b0 !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-zip {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-zip:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .badge-recommend {
+  background: rgba(250, 204, 21, 0.15) !important;
+  color: #b45309 !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .badge-pending {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ===== 导出弹窗 ===== */
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box {
+  background: rgba(245, 245, 250, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-subtitle {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-checkbox-label {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-cancel {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-cancel:hover {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ===== 删除单元格弹窗 ===== */
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box {
+  background: rgba(245, 245, 250, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-subtitle {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-highlight {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ===== 数据采集表格 ===== */
+[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-thead th {
+  background: rgba(245, 245, 250, 0.9) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-tbody td {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  #nopic-dc-tbody
+  tr:hover
+  td {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-status-bar {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ===== 滚动条（浅色） ===== */
+[data-nopic-theme="light"] .nopic-mask-list::-webkit-scrollbar-thumb,
+[data-nopic-theme="light"]
+  #nopic-autoclicker-flow-list::-webkit-scrollbar-thumb,
+[data-nopic-theme="light"] .nopic-qt-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-list::-webkit-scrollbar-thumb:hover,
+[data-nopic-theme="light"]
+  #nopic-autoclicker-flow-list::-webkit-scrollbar-thumb:hover,
+[data-nopic-theme="light"] .nopic-qt-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ===== 强力的按钮颜色修复（解决浅色模式按钮看不清的问题） ===== */
+
+/* 1. 主要操作按钮（蓝色系） */
+[data-nopic-theme="light"] .nopic-privacy-btn.primary,
+[data-nopic-theme="light"] .nopic-mask-btn.primary,
+[data-nopic-theme="light"] .nopic-disguise-btn.primary,
+[data-nopic-theme="light"] .nopic-pm-btn.primary,
+[data-nopic-theme="light"] .nopic-dc-btn.primary,
+[data-nopic-theme="light"] .nopic-dc-btn.export-btn,
+[data-nopic-theme="light"] #nopic-autoclicker-save-execute-btn,
+[data-nopic-theme="light"]
+  .nopic-privacy-btn.primary#nopic-privacy-lock-now-btn {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-btn.primary:hover,
+[data-nopic-theme="light"] .nopic-mask-btn.primary:hover,
+[data-nopic-theme="light"] .nopic-disguise-btn.primary:hover,
+[data-nopic-theme="light"] .nopic-pm-btn.primary:hover,
+[data-nopic-theme="light"] .nopic-dc-btn.primary:hover,
+[data-nopic-theme="light"] .nopic-dc-btn.export-btn:hover,
+[data-nopic-theme="light"] #nopic-autoclicker-save-execute-btn:hover {
+  background: rgba(59, 130, 246, 0.25) !important;
+}
+
+/* 2. 成功/启动按钮（绿色系） */
+[data-nopic-theme="light"] .nopic-dc-btn.success,
+[data-nopic-theme="light"] .nopic-pm-btn.success {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn.success:hover,
+[data-nopic-theme="light"] .nopic-pm-btn.success:hover {
+  background: rgba(34, 197, 94, 0.22) !important;
+}
+
+/* 3. 危险/删除按钮（红色系） */
+[data-nopic-theme="light"] .nopic-privacy-btn.danger,
+[data-nopic-theme="light"] .nopic-mask-btn.danger,
+[data-nopic-theme="light"] .nopic-disguise-btn.danger,
+[data-nopic-theme="light"] .nopic-pm-btn.danger,
+[data-nopic-theme="light"] .nopic-dc-btn.danger,
+[data-nopic-theme="light"] .nopic-dc-btn.danger-outline,
+[data-nopic-theme="light"] .nopic-confirm-btn.danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-btn.danger:hover,
+[data-nopic-theme="light"] .nopic-mask-btn.danger:hover,
+[data-nopic-theme="light"] .nopic-disguise-btn.danger:hover,
+[data-nopic-theme="light"] .nopic-pm-btn.danger:hover,
+[data-nopic-theme="light"] .nopic-dc-btn.danger:hover,
+[data-nopic-theme="light"] .nopic-dc-btn.danger-outline:hover,
+[data-nopic-theme="light"] .nopic-confirm-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* 4. 普通按钮 - 保持可见 */
+[data-nopic-theme="light"] .nopic-privacy-btn,
+[data-nopic-theme="light"] .nopic-mask-btn,
+[data-nopic-theme="light"] .nopic-disguise-btn,
+[data-nopic-theme="light"] .nopic-pm-btn,
+[data-nopic-theme="light"] .nopic-dc-btn,
+[data-nopic-theme="light"] .nopic-confirm-btn.cancel {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-btn:hover,
+[data-nopic-theme="light"] .nopic-mask-btn:hover,
+[data-nopic-theme="light"] .nopic-disguise-btn:hover,
+[data-nopic-theme="light"] .nopic-pm-btn:hover,
+[data-nopic-theme="light"] .nopic-dc-btn:hover,
+[data-nopic-theme="light"] .nopic-confirm-btn.cancel:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 5. 页面监控器的拾取按钮 */
+[data-nopic-theme="light"] .nopic-pm-pick-btn {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-pm-pick-btn:hover {
+  background: rgba(59, 130, 246, 0.22) !important;
+}
+[data-nopic-theme="light"] .nopic-pm-pick-btn.picking {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: #dc2626 !important;
+}
+
+/* 6. 文字替换和快捷文本的"添加"按钮 */
+[data-nopic-theme="light"] .nopic-textreplace-add-btn {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-textreplace-add-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 7. 自动点击器 - 各种添加按钮（带颜色） */
+[data-nopic-theme="light"] #nopic-autoclicker-add-click {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.2) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-click:hover {
+  background: rgba(34, 197, 94, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-position {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-position:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-input {
+  background: rgba(139, 92, 246, 0.1) !important;
+  border-color: rgba(139, 92, 246, 0.2) !important;
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-input:hover {
+  background: rgba(139, 92, 246, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-shortcut {
+  background: rgba(6, 182, 212, 0.1) !important;
+  border-color: rgba(6, 182, 212, 0.2) !important;
+  color: #0891b2 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-shortcut:hover {
+  background: rgba(6, 182, 212, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-delay {
+  background: rgba(234, 179, 8, 0.1) !important;
+  border-color: rgba(234, 179, 8, 0.2) !important;
+  color: #b45309 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-delay:hover {
+  background: rgba(234, 179, 8, 0.2) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-add-wait {
+  background: rgba(251, 146, 60, 0.1) !important;
+  border-color: rgba(251, 146, 60, 0.2) !important;
+  color: #c2410c !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-wait:hover {
+  background: rgba(251, 146, 60, 0.2) !important;
+}
+
+/* 8. 遮罩设置 - 滑块（浅色模式可见） */
+[data-nopic-theme="light"] .nopic-mask-opacity-slider {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-opacity-slider::-webkit-slider-thumb {
+  background: #3b82f6 !important;
+}
+[data-nopic-theme="light"] .nopic-mask-opacity-slider::-moz-range-thumb {
+  background: #3b82f6 !important;
+}
+[data-nopic-theme="light"]
+  .nopic-mask-opacity-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* 9. 遮罩设置 - 颜色选择器 */
+[data-nopic-theme="light"] .nopic-mask-color-picker {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 10. 遮罩设置 - 位置按钮 */
+[data-nopic-theme="light"] .nopic-mask-position-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-position-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-position-btn.active {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #2563eb !important;
+}
+
+/* 11. 清除配置按钮（红色小叉） */
+[data-nopic-theme="light"] .nopic-scope-clear-btn {
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-scope-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* 12. 下拉框背景 */
+[data-nopic-theme="light"] .nopic-pm-select {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(0,0,0,0.4)' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+}
+
+/* 13. 文本替换/快捷文本 - 规则列表项 */
+[data-nopic-theme="light"] .nopic-textreplace-rule {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* 14. 数据采集按钮（强化可见性） */
+[data-nopic-theme="light"] .nopic-dc-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"] .nopic-dc-btn.primary {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn.primary:hover {
+  background: rgba(59, 130, 246, 0.22) !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn.primary.picking {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #dc2626 !important;
+}
+
+[data-nopic-theme="light"] .nopic-dc-btn.success {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn.success:hover {
+  background: rgba(34, 197, 94, 0.22) !important;
+}
+
+[data-nopic-theme="light"] .nopic-dc-btn.danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+[data-nopic-theme="light"] .nopic-dc-btn.export-btn {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-dc-btn.export-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* 15. 自动点击器 - 保存按钮 */
+[data-nopic-theme="light"] #nopic-autoclicker-save-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-save-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-save-execute-btn {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-save-execute-btn:hover {
+  background: rgba(34, 197, 94, 0.22) !important;
+}
+
+/* 16. 导出选项弹窗按钮 */
+[data-nopic-theme="light"]
+  #nopic-export-overlay
+  .nopic-export-btn.nopic-export-csv-btn {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"]
+  #nopic-export-overlay
+  .nopic-export-btn.nopic-export-csv-btn:hover {
+  background: rgba(59, 130, 246, 0.22) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-export-overlay
+  .nopic-export-btn.nopic-export-html-btn {
+  background: rgba(236, 72, 153, 0.12) !important;
+  border-color: rgba(236, 72, 153, 0.25) !important;
+  color: #db2777 !important;
+}
+[data-nopic-theme="light"]
+  #nopic-export-overlay
+  .nopic-export-btn.nopic-export-html-btn:hover {
+  background: rgba(236, 72, 153, 0.22) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-export-overlay
+  .nopic-export-btn.nopic-export-json-btn {
+  background: rgba(234, 179, 8, 0.12) !important;
+  border-color: rgba(234, 179, 8, 0.25) !important;
+  color: #b45309 !important;
+}
+[data-nopic-theme="light"]
+  #nopic-export-overlay
+  .nopic-export-btn.nopic-export-json-btn:hover {
+  background: rgba(234, 179, 8, 0.22) !important;
+}
+
+/* ===== 删除单元格弹窗 ===== */
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box {
+  background: #f0f0f5 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-title {
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-subtitle {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-highlight {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-btn-primary {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"]
+  #nopic-cell-del-overlay
+  .nopic-cell-del-btn-primary:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-cell-del-overlay
+  .nopic-cell-del-btn-secondary {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-cell-del-overlay
+  .nopic-cell-del-btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-cancel {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-cell-del-overlay
+  .nopic-cell-del-cancel:hover {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== 数据采集表格 ===== */
+[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-thead th {
+  background: rgb(77 77 77) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-tbody td {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  #nopic-dc-tbody
+  tr:hover
+  td {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+/* [data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+} */
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-btn.primary {
+  color: rgb(60 121 255) !important;
+  background: rgb(60 121 255 / 0%) !important;
+  border: 1px solid rgb(60 121 255) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  .nopic-dc-btn.primary:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-btn.success {
+  color: rgb(19 131 11) !important;
+  background: rgb(60 121 255 / 0%) !important;
+  border: 1px solid rgb(19 131 11) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  .nopic-dc-btn.success:hover {
+  background: rgba(34, 197, 94, 0.2) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-btn.danger {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  .nopic-dc-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-btn.export-btn {
+  background: rgba(59, 130, 246, 0.08) !important;
+  border-color: rgba(59, 130, 246, 0.15) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  .nopic-dc-btn.export-btn:hover {
+  background: rgba(59, 130, 246, 0.18) !important;
+}
+[data-nopic-theme="light"] #nopic-datacollect-submenu .nopic-dc-status-bar {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ===== 滚动条（浅色） ===== */
+[data-nopic-theme="light"] .nopic-mask-list::-webkit-scrollbar-thumb,
+[data-nopic-theme="light"]
+  #nopic-autoclicker-flow-list::-webkit-scrollbar-thumb,
+[data-nopic-theme="light"] .nopic-qt-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+[data-nopic-theme="light"] .nopic-mask-list::-webkit-scrollbar-thumb:hover,
+[data-nopic-theme="light"]
+  #nopic-autoclicker-flow-list::-webkit-scrollbar-thumb:hover,
+[data-nopic-theme="light"] .nopic-qt-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-nopic-theme="light"] #nopic-menu,
+[data-nopic-theme="light"] #nopic-menu *,
+[data-nopic-theme="light"] #nopic-settings-submenu,
+[data-nopic-theme="light"] #nopic-settings-submenu *,
+[data-nopic-theme="light"] #nopic-display-submenu,
+[data-nopic-theme="light"] #nopic-display-submenu *,
+[data-nopic-theme="light"] #nopic-disguise-submenu,
+[data-nopic-theme="light"] #nopic-disguise-submenu *,
+[data-nopic-theme="light"] #nopic-tabdisguise-submenu,
+[data-nopic-theme="light"] #nopic-tabdisguise-submenu *,
+[data-nopic-theme="light"] #nopic-mask-submenu,
+[data-nopic-theme="light"] #nopic-mask-submenu *,
+[data-nopic-theme="light"] #nopic-privacylock-submenu,
+[data-nopic-theme="light"] #nopic-privacylock-submenu *,
+[data-nopic-theme="light"] #nopic-textreplace-submenu,
+[data-nopic-theme="light"] #nopic-textreplace-submenu *,
+[data-nopic-theme="light"] #nopic-autoclicker-submenu,
+[data-nopic-theme="light"] #nopic-autoclicker-submenu *,
+[data-nopic-theme="light"] #nopic-pageedit-submenu,
+[data-nopic-theme="light"] #nopic-pageedit-submenu *,
+[data-nopic-theme="light"] #nopic-pagemonitor-submenu,
+[data-nopic-theme="light"] #nopic-pagemonitor-submenu *,
+[data-nopic-theme="light"] #nopic-quicktext-submenu,
+[data-nopic-theme="light"] #nopic-quicktext-submenu *,
+[data-nopic-theme="light"] #nopic-datacollect-submenu,
+[data-nopic-theme="light"] #nopic-datacollect-submenu *,
+[data-nopic-theme="light"] .nopic-modal-popup,
+[data-nopic-theme="light"] .nopic-modal-popup *,
+[data-nopic-theme="light"] #nopic-about-modal,
+[data-nopic-theme="light"] #nopic-about-modal *,
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box,
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box *,
+[data-nopic-theme="light"] .nopic-parade-filter-panel,
+[data-nopic-theme="light"] .nopic-parade-filter-panel *,
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel,
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel *,
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box,
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box *,
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box,
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box *,
+[data-nopic-theme="light"] .nopic-ext-btn,
+[data-nopic-theme="light"] .nopic-ext-btn * {
+  color: #1a1a1e !important;
+}
+
+[data-nopic-theme="light"] .nopic-privacy-log-page-btn {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-page-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: rgba(0, 0, 0, 0.8) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-page-btn:disabled {
+  color: rgba(0, 0, 0, 0.25) !important;
+  opacity: 0.5;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-page-info {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== 但保留输入框的占位符颜色 ===== */
+[data-nopic-theme="light"] .nopic-disguise-input::placeholder,
+[data-nopic-theme="light"] .nopic-textreplace-input::placeholder,
+[data-nopic-theme="light"] .nopic-privacy-input::placeholder,
+[data-nopic-theme="light"] .nopic-privacy-pin-input::placeholder,
+[data-nopic-theme="light"] #nopic-custom-title-input::placeholder,
+[data-nopic-theme="light"] #nopic-autoclicker-script-code::placeholder,
+[data-nopic-theme="light"] .nopic-pm-input::placeholder,
+[data-nopic-theme="light"] .nopic-pm-small-input::placeholder,
+[data-nopic-theme="light"] #nopic-lock-time-format::placeholder,
+[data-nopic-theme="light"] #nopic-lock-custom-text::placeholder,
+[data-nopic-theme="light"] #nopic-autoclicker-loop-count::placeholder,
+[data-nopic-theme="light"] #nopic-autoclicker-safety-delay::placeholder,
+[data-nopic-theme="light"] .nopic-delay-input::placeholder {
+  color: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ===== 修复开关文字 ===== */
+[data-nopic-theme="light"] .nopic-switch.on + span,
+[data-nopic-theme="light"] .nopic-switch + span {
+  color: #1a1a1e !important;
+}
+
+/* ===== 修复统计数值 ===== */
+[data-nopic-theme="light"] .stat-row .stat-value {
+  color: #1a1a1e !important;
+}
+
+/* ===== 修复标签伪装列表中的文字 ===== */
+[data-nopic-theme="light"] #nopic-disguise-list-url div,
+[data-nopic-theme="light"] #nopic-disguise-list-domain div,
+[data-nopic-theme="light"] #nopic-disguise-list-global div {
+  color: #1a1a1e !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url .nopic-disguise-btn,
+[data-nopic-theme="light"] #nopic-disguise-list-domain .nopic-disguise-btn,
+[data-nopic-theme="light"] #nopic-disguise-list-global .nopic-disguise-btn {
+  color: #1a1a1e !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url .nopic-disguise-btn.primary,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-domain
+  .nopic-disguise-btn.primary,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-global
+  .nopic-disguise-btn.primary {
+  color: #2563eb !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url .nopic-disguise-btn.danger,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-domain
+  .nopic-disguise-btn.danger,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-global
+  .nopic-disguise-btn.danger {
+  color: #dc2626 !important;
+}
+
+/* ===== 修复图片阅兵图标（浅色模式） ===== */
+[data-nopic-theme="light"] .nopic-ext-btn-parade .nopic-app-icon svg {
+  fill: #1a1a1e !important;
+  stroke: none !important;
+}
+
+[data-nopic-theme="light"]
+  .nopic-ext-btn:not(.nopic-ext-btn-parade)
+  .nopic-app-icon
+  svg {
+  stroke: #1a1a1e !important;
+  fill: none !important;
+}
+
+/* ===== 修复按钮文字颜色 ===== */
+[data-nopic-theme="light"] .nopic-privacy-btn,
+[data-nopic-theme="light"] .nopic-mask-btn,
+[data-nopic-theme="light"] .nopic-disguise-btn,
+[data-nopic-theme="light"] .nopic-pm-btn,
+[data-nopic-theme="light"] .nopic-dc-btn {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-nopic-theme="light"] .nopic-privacy-btn.primary,
+[data-nopic-theme="light"] .nopic-mask-btn.primary,
+[data-nopic-theme="light"] .nopic-disguise-btn.primary {
+  color: #2563eb !important;
+}
+
+[data-nopic-theme="light"] .nopic-privacy-btn.danger,
+[data-nopic-theme="light"] .nopic-mask-btn.danger,
+[data-nopic-theme="light"] .nopic-disguise-btn.danger {
+  color: #dc2626 !important;
+}
+
+/* ===== 修复页面监控器状态文字 ===== */
+[data-nopic-theme="light"] .nopic-pm-monitor-status {
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] .nopic-pm-monitor-status.stopped {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== 修复下拉框文字 ===== */
+[data-nopic-theme="light"] .nopic-pm-select {
+  color: #1a1a1e !important;
+}
+
+/* ===== 修复"关于"弹窗文字 ===== */
+[data-nopic-theme="light"] #nopic-about-modal .about-title {
+  color: #1a1a1e !important;
+}
+
+/* ===== 修复日志面板文字 ===== */
+[data-nopic-theme="light"] .nopic-privacy-log-action.unlock {
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-action.lock {
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-action.error {
+  color: #b45309 !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-action.reset {
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-status.success {
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-status.fail {
+  color: #dc2626 !important;
+}
+/* ===== 修复浅色模式边框颜色 ===== */
+
+/* 1. 遮罩设置 - section 边框 */
+[data-nopic-theme="light"] .nopic-mask-section {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 2. 标签伪装 - section 边框 */
+[data-nopic-theme="light"] .nopic-disguise-section {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 3. 隐私锁 - section 边框 */
+[data-nopic-theme="light"] .nopic-privacy-section {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 4. 替换文字 - section 边框 */
+[data-nopic-theme="light"] .nopic-textreplace-section {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 5. 页面监控器 - 监控项边框 */
+[data-nopic-theme="light"] .nopic-pm-monitor-item {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 6. 自动点击器 - 步骤项边框 */
+[data-nopic-theme="light"] .nopic-autoclicker-step-item {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 7. 快捷文本 - 列表项边框 */
+[data-nopic-theme="light"] .nopic-mask-item {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 8. 遮罩列表 - 列边框 */
+[data-nopic-theme="light"] .nopic-mask-list-column {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 9. 所有带 border-bottom 的分隔线 */
+[data-nopic-theme="light"] .nopic-mask-list-column-title,
+[data-nopic-theme="light"] .nopic-disguise-section-title,
+[data-nopic-theme="light"] .nopic-mask-section-title {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 10. 输入框边框（已经存在，加深一下） */
+[data-nopic-theme="light"] .nopic-disguise-input,
+[data-nopic-theme="light"] .nopic-textreplace-input,
+[data-nopic-theme="light"] .nopic-privacy-input,
+[data-nopic-theme="light"] .nopic-privacy-pin-input,
+[data-nopic-theme="light"] #nopic-custom-title-input,
+[data-nopic-theme="light"] .nopic-pm-input,
+[data-nopic-theme="light"] .nopic-pm-small-input,
+[data-nopic-theme="light"] .nopic-pm-select {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 11. 页面监控器 - 选择器边框 */
+[data-nopic-theme="light"] .nopic-pm-select {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 12. 标签伪装 - 自定义下拉框边框 */
+[data-nopic-theme="light"] .nopic-custom-select-header {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 13. 遮罩绘制按钮边框 */
+[data-nopic-theme="light"] .nopic-mask-btn {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 14. 隐私锁 - 选择按钮边框 */
+[data-nopic-theme="light"] .nopic-privacy-select-btn {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 15. 范围选择器边框 */
+[data-nopic-theme="light"] .nopic-range-container {
+  border-color: rgba(0, 0, 0, 0.04) !important;
+}
+/* ===== 修复：隐私锁上锁界面强制保持深色 ===== */
+
+/* 1. 隐私锁遮罩背景 - 保持纯黑 */
+[data-nopic-theme="light"] #nopic-privacy-lock-overlay .nopic-privacy-lock-bg {
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 2. 隐私锁滑块容器 - 保持深色 */
+[data-nopic-theme="light"]
+  #nopic-privacy-lock-overlay
+  .nopic-privacy-lock-wrapper {
+  background: rgba(20, 20, 30, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* 3. 时间文字 - 保持白色 */
+[data-nopic-theme="light"] .nopic-privacy-lock-time {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* 4. 上拉提示文字 - 保持浅色半透明 */
+[data-nopic-theme="light"] .nopic-privacy-lock-hint {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 5. 上拉箭头 - 保持浅色半透明 */
+[data-nopic-theme="light"] .nopic-privacy-lock-arrow {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 6. PIN码输入提示 */
+[data-nopic-theme="light"] .nopic-lock-pin-message {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 7. PIN码圆点 - 保持深色风格 */
+[data-nopic-theme="light"] .nopic-lock-pin-dot {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+[data-nopic-theme="light"] .nopic-lock-pin-dot.filled {
+  background: #60a5fa !important;
+  border-color: #60a5fa !important;
+}
+
+/* 8. PIN码错误提示 */
+/* [data-nopic-theme="light"] .nopic-lock-pin-error {
+  color: #f87171 !important;
+} */
+
+/* 9. 跳过解锁按钮 */
+[data-nopic-theme="light"] .nopic-lock-pin-skip {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+[data-nopic-theme="light"] .nopic-lock-pin-skip:hover {
+  color: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+/* 浅色模式 - 二级菜单不透明 */
+[data-nopic-theme="light"] #nopic-settings-submenu,
+[data-nopic-theme="light"] #nopic-display-submenu,
+[data-nopic-theme="light"] #nopic-disguise-submenu {
+  background: rgba(230, 235, 245, 1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] {
+  --nopic-bg-primary: rgba(230, 235, 245, 0.92);
+  --nopic-border: rgba(80, 100, 150, 0.15);
+  --nopic-shadow: rgba(60, 80, 140, 0.08);
+}
+/* ===== 浅色模式边框统一 ===== */
+[data-nopic-theme="light"] .nopic-mask-section,
+[data-nopic-theme="light"] .nopic-disguise-section,
+[data-nopic-theme="light"] .nopic-privacy-section,
+[data-nopic-theme="light"] .nopic-textreplace-section,
+[data-nopic-theme="light"] .nopic-pm-monitor-item,
+[data-nopic-theme="light"] .nopic-autoclicker-step-item,
+[data-nopic-theme="light"] .nopic-mask-item,
+[data-nopic-theme="light"] .nopic-mask-list-column,
+[data-nopic-theme="light"] .nopic-pl-col,
+[data-nopic-theme="light"] .nopic-menu-separator,
+[data-nopic-theme="light"] .nopic-modal-header,
+[data-nopic-theme="light"] .nopic-disguise-actions,
+[data-nopic-theme="light"] .nopic-mask-actions,
+[data-nopic-theme="light"] .nopic-privacy-actions {
+  border-color: rgba(80, 100, 150, 0.1) !important;
+}
+
+/* 更深的边框（需要更明显的分割） */
+[data-nopic-theme="light"] .nopic-col-1,
+[data-nopic-theme="light"] .nopic-col-2 {
+  border-right-color: rgba(80, 100, 150, 0.12) !important;
+}
+
+/* 输入框边框稍深 */
+[data-nopic-theme="light"] .nopic-disguise-input,
+[data-nopic-theme="light"] .nopic-textreplace-input,
+[data-nopic-theme="light"] .nopic-privacy-input,
+[data-nopic-theme="light"] .nopic-privacy-pin-input,
+[data-nopic-theme="light"] .nopic-pm-input,
+[data-nopic-theme="light"] .nopic-pm-small-input,
+[data-nopic-theme="light"] .nopic-pm-select {
+  border-color: rgba(80, 100, 150, 0.15) !important;
+}
+/* ===== 浅色模式 - 卡片/区块背景适配 ===== */
+
+/* 1. 隐私锁三列卡片 */
+[data-nopic-theme="light"] .nopic-pl-col {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(80, 100, 150, 0.1) !important;
+}
+
+/* 2. 隐私锁 - PIN码设置区块 */
+[data-nopic-theme="light"]
+  .nopic-pl-col
+  div[style*="background:rgba(255,255,255,0.03)"] {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 3. 隐私锁 - 自动上锁区块 */
+[data-nopic-theme="light"]
+  .nopic-pl-col
+  div[style*="background:rgba(255,255,255,0.03)"]:last-child {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 4. PIN码圆点 - 浅色模式可见 */
+[data-nopic-theme="light"] .nopic-pin-dot {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 5. PIN码输入框 - 浅色模式可见 */
+[data-nopic-theme="light"] .nopic-privacy-pin-input {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a2e !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-pin-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-pin-input::placeholder {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* 6. 快捷键显示输入框 */
+[data-nopic-theme="light"] #nopic-lock-shortcut-display {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a2e !important;
+}
+[data-nopic-theme="light"] #nopic-lock-shortcut-display::placeholder {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* 7. 场景选择按钮（仅当前页/当前网站/全局通用）- 深色模式有背景，浅色模式适配 */
+[data-nopic-theme="light"] .nopic-privacy-select-btn {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(80, 100, 150, 0.1) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-select-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-select-btn.active {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+
+/* 8. 隐私锁 - 标题文字 */
+[data-nopic-theme="light"]
+  .nopic-pl-col
+  div[style*="font-size:10px;font-weight:600;color:#60a5fa"] {
+  color: #2563eb !important;
+  border-bottom-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+/* 9. 隐私锁 - 小标签文字（PIN码、自动上锁） */
+[data-nopic-theme="light"]
+  .nopic-pl-col
+  div[style*="font-size:10px;color:rgba(255,255,255,0.3)"] {
+  color: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 10. 隐私锁 - 超时输入框 */
+[data-nopic-theme="light"] .nopic-pl-timeout-row input {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1a2e !important;
+}
+[data-nopic-theme="light"] .nopic-pl-timeout-row span {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 11. 范围选择器（放大方式等）背景 */
+[data-nopic-theme="light"] .nopic-range-container {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(80, 100, 150, 0.06) !important;
+}
+
+/* 12. 范围选择器按钮 */
+[data-nopic-theme="light"] .nopic-range-btn {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-range-btn:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+[data-nopic-theme="light"] .nopic-range-btn.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* 13. 所有带 rgba(255,255,255,0.03) 背景的区块 - 统一适配 */
+[data-nopic-theme="light"] div[style*="background:rgba(255,255,255,0.03)"] {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 14. 所有带 rgba(255,255,255,0.06) 背景的输入框 - 统一适配 */
+[data-nopic-theme="light"] input[style*="background:rgba(255,255,255,0.06)"],
+[data-nopic-theme="light"] input[style*="background:rgba(255,255,255,0.08)"] {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1a2e !important;
+}
+
+/* 15. 所有带 rgba(255,255,255,0.1) 边框的输入框 */
+[data-nopic-theme="light"]
+  input[style*="border:1px solid rgba(255,255,255,0.1)"],
+[data-nopic-theme="light"]
+  input[style*="border:1px solid rgba(255,255,255,0.12)"] {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 16. 隐私锁 - 生效标签 */
+[data-nopic-theme="light"] #nopic-pl-active-url,
+[data-nopic-theme="light"] #nopic-pl-active-domain,
+[data-nopic-theme="light"] #nopic-pl-active-global {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #2563eb !important;
+  border-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+/* ===== 浅色模式 - 阴影与深色模式保持一致 ===== */
+
+[data-nopic-theme="light"] #nopic-menu,
+[data-nopic-theme="light"] #nopic-settings-submenu,
+[data-nopic-theme="light"] #nopic-display-submenu,
+[data-nopic-theme="light"] #nopic-disguise-submenu,
+[data-nopic-theme="light"] #nopic-tabdisguise-submenu,
+[data-nopic-theme="light"] #nopic-mask-submenu,
+[data-nopic-theme="light"] #nopic-privacylock-submenu,
+[data-nopic-theme="light"] #nopic-textreplace-submenu,
+[data-nopic-theme="light"] #nopic-autoclicker-submenu,
+[data-nopic-theme="light"] #nopic-pageedit-submenu,
+[data-nopic-theme="light"] #nopic-pagemonitor-submenu,
+[data-nopic-theme="light"] #nopic-quicktext-submenu,
+[data-nopic-theme="light"] #nopic-datacollect-submenu,
+[data-nopic-theme="light"] .nopic-modal-popup,
+[data-nopic-theme="light"] #nopic-about-modal,
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box,
+[data-nopic-theme="light"] #nopic-privacy-log-panel,
+[data-nopic-theme="light"] .nopic-parade-filter-panel,
+[data-nopic-theme="light"] #nopic-autoclicker-status-panel,
+[data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box,
+[data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box {
+  box-shadow: rgb(11 37 95 / 35%) 0px 8px 32px !important;
+}
+
+[data-nopic-theme="light"] #nopic-widget {
+  box-shadow: rgb(11 37 95 / 35%) 0px 8px 32px !important;
+}
+
+[data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box {
+  box-shadow: rgb(11 37 95 / 35%) 0px 8px 32px !important;
+}
+/* ===== 浅色模式 - 阅兵模式适配 ===== */
+
+/* 1. 遮罩层 - 白色半透明 */
+/* [data-nopic-theme="light"] #nopic-parade-overlay {
+  background: rgba(240, 242, 250, 0.85) !important;
+} */
+
+/* 2. 顶栏 - 白色半透明 + 模糊 */
+[data-nopic-theme="light"] #nopic-parade-header {
+  background: rgb(63 63 63 / 59%) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(60, 100, 180, 0.08) !important;
+  color: #1a1a2e !important;
+}
+
+/* 3. 顶栏标题文字 - 黑色 */
+[data-nopic-theme="light"] #nopic-parade-header .nopic-parade-title {
+  color: rgb(199 199 199) !important;
+}
+[data-nopic-theme="light"] #nopic-parade-header .nopic-parade-title strong {
+  color: #2563eb !important;
+}
+
+/* 4. 顶栏关闭按钮 - 深色 */
+[data-nopic-theme="light"] .nopic-parade-close-btn {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-parade-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+}
+
+/* 5. 阅兵模式 - 图片尺寸标签 */
+[data-nopic-theme="light"] .nopic-parade-size-label {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 6. 阅兵模式 - 克隆图阴影（浅色模式用更柔和的阴影） */
+[data-nopic-theme="light"] .nopic-parade-clone {
+  filter: drop-shadow(0 8px 24px rgba(60, 80, 120, 0.2)) !important;
+}
+/* ===== 取消按钮统一样式 ===== */
+
+/* 取消按钮 - 深色模式 */
+.nopic-confirm-btn.cancel,
+.nopic-qt-cancel-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  font-family: inherit;
+}
+.nopic-confirm-btn.cancel:hover,
+.nopic-qt-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 取消按钮 - 浅色模式 */
+[data-nopic-theme="light"] .nopic-confirm-btn.cancel,
+[data-nopic-theme="light"] .nopic-qt-cancel-btn {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.5);
+}
+[data-nopic-theme="light"] .nopic-confirm-btn.cancel:hover,
+[data-nopic-theme="light"] .nopic-qt-cancel-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.7);
+}
+/* ===== 标签伪装 - 浅色模式卡片适配 ===== */
+[data-nopic-theme="light"] #nopic-disguise-list-url > div,
+[data-nopic-theme="light"] #nopic-disguise-list-domain > div,
+[data-nopic-theme="light"] #nopic-disguise-list-global > div {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-left-color: #2563eb !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url > div span,
+[data-nopic-theme="light"] #nopic-disguise-list-domain > div span,
+[data-nopic-theme="light"] #nopic-disguise-list-global > div span {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-disguise-list-url
+  > div
+  .nopic-disguise-btn.primary,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-domain
+  > div
+  .nopic-disguise-btn.primary,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-global
+  > div
+  .nopic-disguise-btn.primary {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-disguise-list-url
+  > div
+  .nopic-disguise-btn.danger,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-domain
+  > div
+  .nopic-disguise-btn.danger,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-global
+  > div
+  .nopic-disguise-btn.danger {
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url > div > div:last-child,
+[data-nopic-theme="light"] #nopic-disguise-list-domain > div > div:last-child,
+[data-nopic-theme="light"] #nopic-disguise-list-global > div > div:last-child {
+  color: #2563eb !important;
+}
+
+/* ===== 自动点击器分隔线 - 浅色模式适配 ===== */
+[data-nopic-theme="light"] .nopic-ac-scope-tabs {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"] .nopic-ac-scope-tab {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] .nopic-ac-scope-tab.active {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+
+/* ===== 自动点击器提示区块 - 浅色模式适配 ===== */
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="background:rgba(255,255,255,0.03)"] {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="color:rgba(255,255,255,0.35)"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== 所有 rgba(255,255,255,0.08) 边框 - 浅色模式适配 ===== */
+[data-nopic-theme="light"]
+  div[style*="border-right:1px solid rgba(255,255,255,0.08)"] {
+  border-right-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"]
+  div[style*="border-bottom:1px solid rgba(255,255,255,0.06)"] {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"]
+  div[style*="border-top:1px solid rgba(255,255,255,0.06)"] {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ===== 自动点击器 - 添加按钮区域分隔线 ===== */
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="border-top:1px solid rgba(255,255,255,0.06)"] {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="border-bottom:1px solid rgba(255,255,255,0.06)"] {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+/* ===== 标签伪装 - 浅色模式卡片适配 ===== */
+[data-nopic-theme="light"] #nopic-disguise-list-url > div,
+[data-nopic-theme="light"] #nopic-disguise-list-domain > div,
+[data-nopic-theme="light"] #nopic-disguise-list-global > div {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-left-color: #2563eb !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url > div span,
+[data-nopic-theme="light"] #nopic-disguise-list-domain > div span,
+[data-nopic-theme="light"] #nopic-disguise-list-global > div span {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-disguise-list-url
+  > div
+  .nopic-disguise-btn.primary,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-domain
+  > div
+  .nopic-disguise-btn.primary,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-global
+  > div
+  .nopic-disguise-btn.primary {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  color: #2563eb !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-disguise-list-url
+  > div
+  .nopic-disguise-btn.danger,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-domain
+  > div
+  .nopic-disguise-btn.danger,
+[data-nopic-theme="light"]
+  #nopic-disguise-list-global
+  > div
+  .nopic-disguise-btn.danger {
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+}
+
+[data-nopic-theme="light"] #nopic-disguise-list-url > div > div:last-child,
+[data-nopic-theme="light"] #nopic-disguise-list-domain > div > div:last-child,
+[data-nopic-theme="light"] #nopic-disguise-list-global > div > div:last-child {
+  color: #2563eb !important;
+}
+
+/* ===== 自动点击器分隔线 - 浅色模式适配 ===== */
+[data-nopic-theme="light"] .nopic-ac-scope-tabs {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"] .nopic-ac-scope-tab {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] .nopic-ac-scope-tab.active {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+
+/* ===== 自动点击器提示区块 - 浅色模式适配 ===== */
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="background:rgba(255,255,255,0.03)"] {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="color:rgba(255,255,255,0.35)"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ===== 所有 rgba(255,255,255,0.08) 边框 - 浅色模式适配 ===== */
+[data-nopic-theme="light"]
+  div[style*="border-right:1px solid rgba(255,255,255,0.08)"] {
+  border-right-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"]
+  div[style*="border-bottom:1px solid rgba(255,255,255,0.06)"] {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"]
+  div[style*="border-top:1px solid rgba(255,255,255,0.06)"] {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ===== 自动点击器 - 添加按钮区域分隔线 ===== */
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="border-top:1px solid rgba(255,255,255,0.06)"] {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  div[style*="border-bottom:1px solid rgba(255,255,255,0.06)"] {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+/* 自动点击器左栏分隔线 */
+#nopic-autoclicker-submenu .nopic-ac-left-panel {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-submenu .nopic-ac-left-panel {
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+/* 自动点击器 - 浅色模式分割线 */
+
+/* 左栏分隔线（原 border-right） */
+[data-nopic-theme="light"] #nopic-autoclicker-submenu .nopic-ac-left-panel {
+  border-right-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 作用域标签底部边框 */
+[data-nopic-theme="light"] #nopic-autoclicker-submenu .nopic-ac-scope-tabs {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 控制区域顶部边框 */
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  .nopic-ac-controls-section {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 操作按钮顶部边框 */
+[data-nopic-theme="light"]
+  #nopic-autoclicker-submenu
+  .nopic-ac-actions-section {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 提示框边框和背景 */
+[data-nopic-theme="light"] #nopic-autoclicker-submenu .nopic-ac-tip-box {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"] #nopic-autoclicker-submenu .nopic-ac-tip-box div {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+/* 自动点击器 - 保存按钮和清空按钮颜色修复 */
+
+/* 保存按钮 - 蓝色 */
+[data-nopic-theme="light"] #nopic-autoclicker-save-btn {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-save-btn:hover {
+  background: rgba(59, 130, 246, 0.22) !important;
+}
+
+/* 保存并执行按钮 - 绿色 */
+[data-nopic-theme="light"] #nopic-autoclicker-save-execute-btn {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.25) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-save-execute-btn:hover {
+  background: rgba(34, 197, 94, 0.22) !important;
+}
+
+/* 三个清空按钮 - 红色 */
+[data-nopic-theme="light"] #nopic-autoclicker-clear-btn,
+[data-nopic-theme="light"] #nopic-autoclicker-clear-domain-btn,
+[data-nopic-theme="light"] #nopic-autoclicker-clear-global-btn {
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-clear-btn:hover,
+[data-nopic-theme="light"] #nopic-autoclicker-clear-domain-btn:hover,
+[data-nopic-theme="light"] #nopic-autoclicker-clear-global-btn:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+/* 浅色模式 - 流程背景加深 */
+[data-nopic-theme="light"] .nopic-autoclicker-step-item {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+/* 隐私锁 - 外观卡片 */
+.nopic-lock-appearance-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+[data-nopic-theme="light"] .nopic-lock-appearance-card {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+[data-nopic-theme="light"] .nopic-theme-option.active {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+[data-nopic-theme="light"] .nopic-theme-switcher {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+/* ===== 页面可编辑 - 浅色模式文字颜色 ===== */
+[data-nopic-theme="light"]
+  #nopic-pageedit-submenu
+  div[style*="font-size:11px"] {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-pageedit-submenu
+  div[style*="font-size:11px"]
+  div:first-child {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-pageedit-submenu
+  div[style*="font-size:11px"]
+  div:last-child {
+  color: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 分割线颜色 */
+[data-nopic-theme="light"] #nopic-pageedit-submenu div[style*="border-top"] {
+  border-top-color: rgba(0, 0, 0, 0.08) !important;
+}
+/* ===== 遮罩设置 - 浅色模式卡片背景 ===== */
+[data-nopic-theme="light"] .nopic-mask-section {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-nopic-theme="light"] .nopic-mask-section-title {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-nopic-theme="light"] .nopic-mask-color-row span {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-nopic-theme="light"] .nopic-mask-opacity-label {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 滑块轨道 - 浅色模式 */
+[data-nopic-theme="light"] .nopic-mask-opacity-slider {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-nopic-theme="light"] .nopic-mask-opacity-slider::-webkit-slider-thumb {
+  background: #3b82f6 !important;
+}
+
+[data-nopic-theme="light"] .nopic-mask-opacity-slider::-moz-range-thumb {
+  background: #3b82f6 !important;
+}
+/* ===== 浅色模式 - 各卡片提示文字修复 ===== */
+
+/* 文字替换 - 提示文字 */
+[data-nopic-theme="light"]
+  #nopic-textreplace-submenu
+  > div[style*="font-size:12px"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 快捷文本 - 提示文字 */
+[data-nopic-theme="light"]
+  #nopic-quicktext-submenu
+  > div[style*="font-size:12px"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 页面可编辑 - 提示文字 */
+[data-nopic-theme="light"]
+  #nopic-pageedit-submenu
+  .nopic-privacy-section
+  > div[style*="font-size:11px"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 标签伪装 - 提示文字 */
+[data-nopic-theme="light"]
+  #nopic-tabdisguise-submenu
+  > div[style*="font-size:10px"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 自动点击器 - 提示文字 */
+[data-nopic-theme="light"] #nopic-autoclicker-submenu .nopic-ac-tip-box div {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 数据采集 - 提示文字 */
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  > div[style*="font-size:11px"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 隐私锁 - 提示文字 */
+[data-nopic-theme="light"]
+  #nopic-privacylock-submenu
+  > div[style*="font-size:11px"][style*="color:rgba(255,255,255,0.35)"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+/* ===== 页面监控器 - 提示文字浅色模式 ===== */
+[data-nopic-theme="light"]
+  #nopic-pagemonitor-submenu
+  > div[style*="margin-top:10px"][style*="padding-top:10px"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-pagemonitor-submenu
+  > div[style*="margin-top:10px"][style*="padding-top:10px"]
+  div {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-pagemonitor-submenu
+  div[style*="text-align:center"][style*="color:rgba(255,255,255,0.4)"] {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-pagemonitor-submenu
+  > div[style*="font-size:11px"][style*="color:rgba(255,255,255,0.5)"] {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+/* ===== 自动点击器 - 浅色模式按钮颜色修复 ===== */
+
+/* 点击元素 - 绿色 */
+[data-nopic-theme="light"] #nopic-autoclicker-add-click {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-click svg {
+  stroke: #16a34a !important;
+}
+
+/* 点击位置 - 蓝色 */
+[data-nopic-theme="light"] #nopic-autoclicker-add-position {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-position svg {
+  stroke: #2563eb !important;
+}
+
+/* 输入文字 - 紫色 */
+[data-nopic-theme="light"] #nopic-autoclicker-add-input {
+  background: rgba(139, 92, 246, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-input svg {
+  stroke: #7c3aed !important;
+}
+
+/* 快捷键 - 青色 */
+[data-nopic-theme="light"] #nopic-autoclicker-add-shortcut {
+  background: rgba(8, 145, 178, 0.15) !important;
+  border-color: rgba(8, 145, 178, 0.3) !important;
+  color: #0891b2 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-shortcut svg {
+  stroke: #0891b2 !important;
+}
+
+/* 延时 - 黄色/橙色 */
+[data-nopic-theme="light"] #nopic-autoclicker-add-delay {
+  background: rgba(180, 83, 9, 0.15) !important;
+  border-color: rgba(180, 83, 9, 0.3) !important;
+  color: #b45309 !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-delay svg {
+  stroke: #b45309 !important;
+}
+
+/* 智能等待 - 橙色 */
+[data-nopic-theme="light"] #nopic-autoclicker-add-wait {
+  background: rgba(194, 65, 12, 0.15) !important;
+  border-color: rgba(194, 65, 12, 0.3) !important;
+  color: #c2410c !important;
+}
+[data-nopic-theme="light"] #nopic-autoclicker-add-wait svg {
+  stroke: #c2410c !important;
+}
+/* ===== 数据采集 - 浅色模式表格 ===== */
+[data-nopic-theme="light"] #nopic-dc-table-wrap {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-nopic-theme="light"] #nopic-dc-tbody.nopic-dc-empty td {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-nopic-theme="light"] #nopic-dc-thead th {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  #nopic-dc-tbody.nopic-dc-empty
+  td {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+/* ===== 数据采集 - 暂无数据垂直居中 ===== */
+#nopic-dc-tbody.nopic-dc-empty td {
+  vertical-align: middle !important;
+  height: 100% !important;
+  padding: 60px 20px !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  .nopic-dc-btn.danger-outline {
+  color: rgb(248, 113, 113) !important;
+  background: #ffffff00 !important;
+  border: 1px solid rgb(248, 113, 113) !important;
+}
+[data-nopic-theme="light"]
+  #nopic-datacollect-submenu
+  .nopic-dc-btn.danger-outline:hover {
+  background: #bb46464d !important;
+}
+[data-nopic-theme="light"] #nopic-menu .nopic-hide-item,
+[data-nopic-theme="light"] #nopic-menu .nopic-hide-item * {
+  color: #dc2626 !important;
+}
+
+[data-nopic-theme="light"] #nopic-menu .nopic-hide-item:hover,
+[data-nopic-theme="light"] #nopic-menu .nopic-hide-item:hover * {
+  color: #b91c1c !important;
+  background: rgba(220, 38, 38, 0.08) !important;
 }
