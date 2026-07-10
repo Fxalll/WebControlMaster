@@ -7532,10 +7532,30 @@ window.addEventListener("load", function () {
   function dcDeleteCellAndShiftUp(colId, rowIdx) {
     var data = dcState.columnData[colId] || [];
     if (rowIdx >= 0 && rowIdx < data.length) {
-      // 删除该位置元素，下方数据自动上移（splice 天然支持）
       data.splice(rowIdx, 1);
       dcState.columnData[colId] = data;
     }
+
+    // ★★★ 检查是否所有列都空了 ★★★
+    var hasAnyData = false;
+    dcState.columns.forEach(function (col) {
+      var colData = dcState.columnData[col.id] || [];
+      if (colData.length > 0) {
+        hasAnyData = true;
+      }
+    });
+
+    if (!hasAnyData) {
+      dcState.columns = [];
+      dcState.columnData = {};
+      localStorage.removeItem("nopic_dc_data_" + location.host);
+      dcState._savedIsWatching = false;
+      dcState._savedSubmenuOpen = false;
+      if (dcState.isWatching) {
+        dcStopWatching();
+      }
+    }
+
     dcRenderTable();
     dcSaveCache();
   }
@@ -10530,6 +10550,11 @@ window.addEventListener("load", function () {
         }
         return c;
       });
+      // ★★★ 关键修复：如果 columns 为空，直接删除缓存，不保存空数据 ★★★
+      if (cleanColumns.length === 0) {
+        localStorage.removeItem("nopic_dc_data_" + location.host);
+        return;
+      }
       localStorage.setItem(
         "nopic_dc_data_" + location.host,
         JSON.stringify({
@@ -10550,15 +10575,35 @@ window.addEventListener("load", function () {
       var raw = localStorage.getItem("nopic_dc_data_" + location.host);
       if (raw) {
         var parsed = JSON.parse(raw);
-        dcState.columns = parsed.columns || [];
-        dcState.columnData = parsed.columnData || {};
-        // 读取上次保存的采集状态（暂存，待UI就绪后再恢复）
-        dcState._savedIsWatching = !!parsed.isWatching;
-        dcState._savedSubmenuOpen = !!parsed.submenuOpen;
+        // ★★★ 关键修复：只有 columns 不为空时才加载 ★★★
+        if (parsed.columns && parsed.columns.length > 0) {
+          dcState.columns = parsed.columns || [];
+          dcState.columnData = parsed.columnData || {};
+          // 读取上次保存的采集状态（暂存，待UI就绪后再恢复）
+          dcState._savedIsWatching = !!parsed.isWatching;
+          dcState._savedSubmenuOpen = !!parsed.submenuOpen;
+        } else {
+          // 如果 columns 为空，重置所有状态
+          dcState.columns = [];
+          dcState.columnData = {};
+          dcState._savedIsWatching = false;
+          dcState._savedSubmenuOpen = false;
+        }
+      } else {
+        // 没有缓存数据，确保状态干净
+        dcState.columns = [];
+        dcState.columnData = {};
+        dcState._savedIsWatching = false;
+        dcState._savedSubmenuOpen = false;
       }
-    } catch (e) {}
-    // 重置每列的去重标记为新的 WeakSet（JSON 反序列化后会变成 {}，不可用；
-    // 且新页面 DOM 全新，应允许整页重新采集）
+    } catch (e) {
+      // 解析失败时重置
+      dcState.columns = [];
+      dcState.columnData = {};
+      dcState._savedIsWatching = false;
+      dcState._savedSubmenuOpen = false;
+    }
+    // 重置每列的去重标记为新的 WeakSet
     dcState.columns.forEach(function (col) {
       col._collected = new WeakSet();
     });
@@ -11687,6 +11732,29 @@ window.addEventListener("load", function () {
         dcState.columnData[col.id] = data;
       }
     });
+
+    // ★★★ 关键修复：检查是否所有列都空了，如果是则清空所有列 ★★★
+    var hasAnyData = false;
+    dcState.columns.forEach(function (col) {
+      var data = dcState.columnData[col.id] || [];
+      if (data.length > 0) {
+        hasAnyData = true;
+      }
+    });
+
+    if (!hasAnyData) {
+      // 所有列都空了，彻底清空
+      dcState.columns = [];
+      dcState.columnData = {};
+      // 清除缓存
+      localStorage.removeItem("nopic_dc_data_" + location.host);
+      dcState._savedIsWatching = false;
+      dcState._savedSubmenuOpen = false;
+      if (dcState.isWatching) {
+        dcStopWatching();
+      }
+    }
+
     dcRenderTable();
     dcSaveCache();
   }
@@ -12552,10 +12620,19 @@ window.addEventListener("load", function () {
     if (totalRows === 0 && dcState.columns.length === 0) return;
 
     showConfirmModal("确认清空", "确定清空所有数据和列吗？", function () {
+      // ★★★ 关键修复：先完全重置状态 ★★★
       dcState.columns = [];
       dcState.columnData = {};
+      // 如果正在采集，停止
+      if (dcState.isWatching) {
+        dcStopWatching();
+      }
       dcRenderTable();
-      dcSaveCache();
+      // ★★★ 清除 localStorage 缓存 ★★★
+      localStorage.removeItem("nopic_dc_data_" + location.host);
+      // ★★★ 重置保存的采集状态标记 ★★★
+      dcState._savedIsWatching = false;
+      dcState._savedSubmenuOpen = false;
       hideConfirmModal();
     });
   }

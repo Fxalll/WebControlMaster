@@ -5318,7 +5318,7 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-autoclicker-status-panel,
 [data-nopic-theme="light"] #nopic-export-overlay .nopic-export-box,
 [data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box {
-  background: rgba(230, 235, 245, 0.85) !important;
+  background: rgb(232 235 241 / 85%) !important;
   backdrop-filter: blur(3px) !important;
   -webkit-backdrop-filter: blur(3px) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
@@ -6314,8 +6314,8 @@ html[data-nopic-theme] #nopic-widget {
 
 /* ===== 数据采集表格 ===== */
 [data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-thead th {
-  background: rgb(77 77 77) !important;
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+  background: rgb(255 255 255) !important;
 }
 [data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-tbody td {
   color: rgba(255, 255, 255, 0.7) !important;
@@ -6733,13 +6733,13 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-settings-submenu,
 [data-nopic-theme="light"] #nopic-display-submenu,
 [data-nopic-theme="light"] #nopic-disguise-submenu {
-  background: rgba(230, 235, 245, 1) !important;
+  background: rgba(232, 235, 241, 1) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 [data-nopic-theme="light"] {
-  --nopic-bg-primary: rgba(230, 235, 245, 0.92);
+  --nopic-bg-primary: rgba(232, 235, 241, 0.92);
   --nopic-border: rgba(80, 100, 150, 0.15);
   --nopic-shadow: rgba(60, 80, 140, 0.08);
 }
@@ -7580,4 +7580,92 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-menu .nopic-hide-item:hover * {
   color: #b91c1c !important;
   background: rgba(220, 38, 38, 0.08) !important;
+}
+/* ===== 数据采集 - 浅色模式表格完整适配 ===== */
+
+/* 表格容器边框 */
+[data-nopic-theme="light"] #nopic-dc-table-wrap {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 表头背景和文字 */
+[data-nopic-theme="light"] #nopic-dc-thead th {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 表头列名文字 */
+[data-nopic-theme="light"] #nopic-dc-thead th .nopic-dc-col-name {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* 表头行数统计 */
+[data-nopic-theme="light"] #nopic-dc-thead th span[style*="font-size:9px"] {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 表头重命名图标 */
+[data-nopic-theme="light"] #nopic-dc-thead th .nopic-dc-col-rename {
+  color: rgba(0, 0, 0, 0.35) !important;
+}
+[data-nopic-theme="light"] #nopic-dc-thead th .nopic-dc-col-rename:hover {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 表头删除按钮 */
+[data-nopic-theme="light"] #nopic-dc-thead th .nopic-dc-col-delete {
+  color: #dc2626 !important;
+}
+
+/* 行号背景和文字 */
+[data-nopic-theme="light"] .nopic-dc-row-num {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 行号悬停删除按钮 */
+[data-nopic-theme="light"] .nopic-dc-row-del {
+  color: #dc2626 !important;
+}
+
+/* 数据单元格文字 */
+[data-nopic-theme="light"] .nopic-dc-cell span[style*="font-size:12px"] {
+  color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* 数据单元格删除按钮 */
+[data-nopic-theme="light"] .nopic-dc-cell-del {
+  color: #dc2626 !important;
+}
+
+/* 行分隔线 */
+[data-nopic-theme="light"] .nopic-dc-row {
+  border-bottom-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 悬停行背景 */
+[data-nopic-theme="light"] #nopic-dc-tbody tr:hover td {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+/* ===== 数据采集 - 浅色模式表头强制覆盖 ===== */
+[data-nopic-theme="light"]
+  #nopic-dc-thead
+  th[style*="background:rgba(0,0,0,0.5)"] {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-dc-thead
+  th[style*="background:rgba(0,0,0,0.5)"]
+  .nopic-dc-col-name {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-nopic-theme="light"]
+  #nopic-dc-thead
+  th[style*="background:rgba(0,0,0,0.5)"]
+  span[style*="color:rgba(255,255,255,0.3)"] {
+  color: rgba(0, 0, 0, 0.3) !important;
 }
