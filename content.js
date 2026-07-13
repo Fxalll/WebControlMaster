@@ -3761,7 +3761,7 @@ window.addEventListener("load", function () {
       -webkit-backface-visibility: hidden;
       transform: rotateY(180deg);
       border-radius: 4px;
-      background: ${isLight ? "#f0f0f5" : "#1a1a2e"};
+      background: ${isLight ? "#f0f0f5" : "#151516"};
       color: ${isLight ? "#1a1a2e" : "#ffffff"};
       display: flex;
       flex-direction: column;
