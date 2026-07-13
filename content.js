@@ -3694,21 +3694,19 @@ window.addEventListener("load", function () {
     const front = document.createElement("div");
     front.className = "nopic-flip-front";
     front.style.cssText = `
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-        overflow: hidden;
-        border-radius: 4px;
-        box-shadow: 0 15px 30px rgba(0,0,0,0.6);
-        pointer-events: none;
-        background: #000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    border-radius: 4px;
+    pointer-events: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+`;
     const clone = el.cloneNode(true);
     clone.id = "";
     clone.classList.remove(
@@ -3719,23 +3717,23 @@ window.addEventListener("load", function () {
     );
     clone.classList.add("nopic-clone");
     clone.style.cssText = `
-        width: 100% !important;
-        height: 100% !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        filter: none !important;
-        border: none !important;
-        object-fit: contain !important;
-        background-size: contain !important;
-        background-position: center !important;
-        background-repeat: no-repeat !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        pointer-events: none;
-        max-width: 100% !important;
-        max-height: 100% !important;
-    `;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    filter: none !important;
+    border: none !important;
+    object-fit: contain !important;
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none;
+    max-width: 100% !important;
+    max-height: 100% !important;
+`;
     front.appendChild(clone);
 
     // ★★★ 背面：图片信息（根据目标尺寸计算字体大小） ★★★
