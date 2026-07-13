@@ -2617,30 +2617,68 @@ window.addEventListener("load", function () {
     removeCountdownIndicator(el, immediate || false);
   }
 
-  function getCloneAtPoint(x, y) {
-    const clones = Array.from(zoomContainer.querySelectorAll(".nopic-clone"));
-    // 按 z-index 从高到低排序，确保先找到最上层的
-    clones.sort((a, b) => {
+  // 根据鼠标位置获取翻转容器
+  function getFlipContainerAtPoint(x, y) {
+    const containers = Array.from(
+      zoomContainer.querySelectorAll(".nopic-flip-container"),
+    );
+    // 按 z-index 从高到低排序
+    containers.sort((a, b) => {
       const za = parseInt(window.getComputedStyle(a).zIndex) || 0;
       const zb = parseInt(window.getComputedStyle(b).zIndex) || 0;
       return zb - za;
     });
-    for (const clone of clones) {
-      const rect = clone.getBoundingClientRect();
+    for (const container of containers) {
+      const rect = container.getBoundingClientRect();
       if (
         x >= rect.left &&
         x <= rect.right &&
         y >= rect.top &&
         y <= rect.bottom
       ) {
-        return clone;
+        return container;
       }
     }
     return null;
   }
 
+  function getCloneAtPoint(x, y) {
+    const containers = Array.from(
+      zoomContainer.querySelectorAll(".nopic-flip-container"),
+    );
+    // 按 z-index 从高到低排序
+    containers.sort((a, b) => {
+      const za = parseInt(window.getComputedStyle(a).zIndex) || 0;
+      const zb = parseInt(window.getComputedStyle(b).zIndex) || 0;
+      return zb - za;
+    });
+    for (const container of containers) {
+      const rect = container.getBoundingClientRect();
+      if (
+        x >= rect.left &&
+        x <= rect.right &&
+        y >= rect.top &&
+        y <= rect.bottom
+      ) {
+        // 返回容器本身（用于后续操作）
+        return container;
+      }
+    }
+    return null;
+  }
+
+  // 根据翻转容器找到对应的原始元素
+  function getElByFlipContainer(container) {
+    for (const [el, info] of zoomedClones) {
+      if (info.clone === container) return el;
+    }
+    return null;
+  }
+
   // 根据克隆图找到对应的原始元素
+  // 根据翻转容器找到对应的原始元素
   function getElByClone(clone) {
+    // clone 现在可能是 flipContainer
     for (const [el, info] of zoomedClones) {
       if (info.clone === clone) return el;
     }
@@ -3277,9 +3315,328 @@ window.addEventListener("load", function () {
     }, 500); // 延长清理时间，确保动画完成
   }
 
+  // ===== 获取图片信息 =====
+  function getImageInfo(el) {
+    // 1. 第一优先级：alt文本
+    let name = "未知图片";
+    const alt = el.alt || el.getAttribute("alt") || "";
+    if (alt && alt.trim().length > 0) {
+      name = alt.trim();
+    }
+
+    // 2. 第二优先级：从URL截取文件名（如果alt为空）
+    if (name === "未知图片") {
+      let src = el.src || el.getAttribute("src") || "";
+      if (src) {
+        try {
+          const urlWithoutQuery = src.split("?")[0];
+          const fileName = urlWithoutQuery.split("/").pop() || "";
+          if (fileName && fileName.length > 0) {
+            const nameWithoutExt = fileName.replace(/\.[^.]+$/, "");
+            if (nameWithoutExt && nameWithoutExt.length > 0) {
+              name = nameWithoutExt;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. 统一截断到12个字，超出补省略号
+    // if (name.length > 12) {
+    //   name = name.substring(0, 12) + "…";
+    // }
+
+    // 获取图片尺寸信息
+    let naturalWidth = el.naturalWidth || el.width || 0;
+    let naturalHeight = el.naturalHeight || el.height || 0;
+    if (naturalWidth === 0 || naturalHeight === 0) {
+      const rect = el.getBoundingClientRect();
+      naturalWidth = rect.width || 100;
+      naturalHeight = rect.height || 100;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const displayWidth = Math.round(rect.width);
+    const displayHeight = Math.round(rect.height);
+
+    // 文件格式检测 - 提取扩展名并校验
+    let format = "Unknown";
+    let src = el.src || el.getAttribute("src") || "";
+    if (src) {
+      try {
+        // 去掉查询参数
+        const urlWithoutQuery = src.split("?")[0];
+        // 提取扩展名
+        const ext = urlWithoutQuery.split(".").pop()?.toUpperCase() || "";
+        // 常见图片格式白名单
+        const validFormats = [
+          "PNG",
+          "JPG",
+          "JPEG",
+          "GIF",
+          "WEBP",
+          "SVG",
+          "BMP",
+          "ICO",
+          "TIFF",
+          "AVIF",
+        ];
+        if (ext && validFormats.includes(ext)) {
+          format = ext;
+        }
+        // 如果扩展名不在白名单，保持 Unknown
+      } catch (e) {}
+    }
+
+    // 检测是否含透明通道（只在格式有效时追加）
+    const hasAlpha =
+      el.tagName === "IMG" &&
+      format !== "Unknown" &&
+      (format === "PNG" ||
+        format === "WEBP" ||
+        format === "SVG" ||
+        format === "GIF");
+    format = format + (hasAlpha ? " | 含透明通道" : "");
+
+    return {
+      name: name,
+      naturalWidth: Math.round(naturalWidth),
+      naturalHeight: Math.round(naturalHeight),
+      displayWidth: displayWidth,
+      displayHeight: displayHeight,
+      format: format,
+    };
+  }
+
+  // ===== 绑定空白区域翻转拖拽（空白处拖动翻转图片，图片上拖动移动位置） =====
+  function bindFlipDragOnEmpty(container) {
+    let isDragging = false;
+    let startX = 0,
+      startY = 0;
+    let currentRotateX = 0,
+      currentRotateY = 0;
+    let velocityX = 0,
+      velocityY = 0;
+    let lastMoveTime = 0;
+    let lastMoveX = 0,
+      lastMoveY = 0;
+    let animFrame = null;
+    let hasDragged = false;
+
+    const flipCard = container._flipCard;
+
+    function getCurrentRotation() {
+      const transform = flipCard.style.transform;
+      if (transform && transform.includes("rotateX")) {
+        const matchX = transform.match(/rotateX\(([^)]+)\)/);
+        const matchY = transform.match(/rotateY\(([^)]+)\)/);
+        const x = matchX ? parseFloat(matchX[1]) : 0;
+        const y = matchY ? parseFloat(matchY[1]) : 0;
+        return { x, y };
+      }
+      return { x: 0, y: 0 };
+    }
+
+    function updateFlipState() {
+      const rot = getCurrentRotation();
+      const newFlipped = Math.abs(rot.y) > 90 || Math.abs(rot.y) < -90;
+      if (newFlipped !== container._isFlipped) {
+        container._isFlipped = newFlipped;
+      }
+    }
+
+    function applyRotation(x, y) {
+      flipCard.style.transition = "transform 0.08s ease-out";
+      const clampedX = Math.max(-85, Math.min(85, x));
+      flipCard.style.transform = `rotateX(${clampedX}deg) rotateY(${y}deg)`;
+      updateFlipState();
+    }
+
+    // ★★★ 判断是否点击在图片上（图片区域不触发翻转，让图片拖动逻辑处理） ★★★
+    function isClickOnImage(clientX, clientY) {
+      const clone = container.querySelector(".nopic-clone");
+      if (!clone) return false;
+      const rect = clone.getBoundingClientRect();
+      const margin = 5;
+      return (
+        clientX >= rect.left - margin &&
+        clientX <= rect.right + margin &&
+        clientY >= rect.top - margin &&
+        clientY <= rect.bottom + margin
+      );
+    }
+
+    function onStart(clientX, clientY) {
+      // ★★★ 如果点击在图片上，不处理（让图片拖动逻辑处理） ★★★
+      if (isClickOnImage(clientX, clientY)) {
+        return;
+      }
+      isDragging = true;
+      hasDragged = false;
+      const rot = getCurrentRotation();
+      currentRotateX = rot.x;
+      currentRotateY = rot.y;
+      startX = clientX;
+      startY = clientY;
+      lastMoveX = clientX;
+      lastMoveY = clientY;
+      lastMoveTime = Date.now();
+      velocityX = 0;
+      velocityY = 0;
+      container.style.cursor = "grabbing";
+      flipCard.style.transition = "none";
+      if (animFrame) {
+        cancelAnimationFrame(animFrame);
+        animFrame = null;
+      }
+    }
+
+    function onMove(clientX, clientY) {
+      if (!isDragging) return;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) hasDragged = true;
+
+      const now = Date.now();
+      const dt = now - lastMoveTime;
+      if (dt > 0) {
+        velocityX = ((clientX - lastMoveX) / dt) * 16;
+        velocityY = ((clientY - lastMoveY) / dt) * 16;
+      }
+      lastMoveX = clientX;
+      lastMoveY = clientY;
+      lastMoveTime = now;
+
+      const sensitivity = 0.5;
+      const newRotateY = currentRotateY + dx * sensitivity;
+      const newRotateX = currentRotateX - dy * sensitivity;
+      applyRotation(newRotateX, newRotateY);
+    }
+
+    function onEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      container.style.cursor = "default";
+
+      if (!hasDragged) {
+        flipCard.style.transition = "";
+        flipCard.style.transform = "";
+        container._isFlipped = false;
+        return;
+      }
+
+      const absV = Math.abs(velocityX) + Math.abs(velocityY);
+      if (absV > 0.5) {
+        let decelX = 0,
+          decelY = 0;
+        const friction = 0.95;
+
+        function animateInertia() {
+          if (isDragging) {
+            animFrame = null;
+            return;
+          }
+          decelX += (velocityX - decelX) * 0.1;
+          decelY += (velocityY - decelY) * 0.1;
+          velocityX *= friction;
+          velocityY *= friction;
+
+          const rot = getCurrentRotation();
+          const newY = rot.y + decelX * 0.3;
+          const newX = rot.x - decelY * 0.3;
+          const clampedX = Math.max(-85, Math.min(85, newX));
+          flipCard.style.transition = "none";
+          flipCard.style.transform = `rotateX(${clampedX}deg) rotateY(${newY}deg)`;
+          updateFlipState();
+
+          if (Math.abs(velocityX) > 0.05 || Math.abs(velocityY) > 0.05) {
+            animFrame = requestAnimationFrame(animateInertia);
+          } else {
+            animFrame = null;
+            const rot2 = getCurrentRotation();
+            if (Math.abs(rot2.y) < 45 && Math.abs(rot2.x) < 45) {
+              flipCard.style.transition =
+                "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+              flipCard.style.transform = `rotateX(0deg) rotateY(0deg)`;
+              container._isFlipped = false;
+              setTimeout(() => {
+                flipCard.style.transition = "";
+              }, 500);
+            }
+          }
+        }
+        animFrame = requestAnimationFrame(animateInertia);
+      } else {
+        const rot = getCurrentRotation();
+        if (Math.abs(rot.y) < 45 && Math.abs(rot.x) < 45) {
+          flipCard.style.transition =
+            "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          flipCard.style.transform = `rotateX(0deg) rotateY(0deg)`;
+          container._isFlipped = false;
+          setTimeout(() => {
+            flipCard.style.transition = "";
+          }, 500);
+        }
+      }
+    }
+
+    // ★★★ 鼠标事件：在容器空白区域按下触发翻转 ★★★
+    container.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      // ★★★ 如果点击在图片上，不处理（让图片拖动逻辑处理） ★★★
+      if (isClickOnImage(e.clientX, e.clientY)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      onStart(e.clientX, e.clientY);
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      onMove(e.clientX, e.clientY);
+    });
+
+    document.addEventListener("mouseup", (e) => {
+      if (e.button !== 0) return;
+      onEnd();
+    });
+
+    // 触摸事件
+    container.addEventListener(
+      "touchstart",
+      (e) => {
+        const touch = e.touches[0];
+        if (!touch) return;
+        // ★★★ 如果点击在图片上，不处理 ★★★
+        if (isClickOnImage(touch.clientX, touch.clientY)) {
+          return;
+        }
+        onStart(touch.clientX, touch.clientY);
+      },
+      { passive: true },
+    );
+
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        const touch = e.touches[0];
+        if (!touch) return;
+        onMove(touch.clientX, touch.clientY);
+      },
+      { passive: true },
+    );
+
+    document.addEventListener(
+      "touchend",
+      () => {
+        onEnd();
+      },
+      { passive: true },
+    );
+  }
   function zoomIn(el, btn, zoomBtn, fromHover) {
     if (el._isZoomed || zoomCooldown) return;
-    if (isParadeMode) return; // 确保有这行
+    if (isParadeMode) return;
     cancelHoverZoomTimer(el, true);
     el._isZoomed = true;
 
@@ -3295,39 +3652,7 @@ window.addEventListener("load", function () {
     el._savedVisibility = el.style.visibility;
     el.style.visibility = "hidden";
 
-    // zoomIn 函数中，创建 clone 后添加（第 1295-1315 行附近）
-    let clone = el.cloneNode(true);
-    clone.id = "";
-    clone.classList.remove(
-      "nopic-hidden",
-      "nopic-has-bg",
-      "nopic-outline-box",
-      "nopic-float-btn",
-    );
-    clone.classList.add("nopic-clone");
-
-    // ★★★ 添加阅兵模式的样式覆盖 ★★★
-    clone.style.setProperty("display", "block", "important");
-    clone.style.setProperty("visibility", "visible", "important");
-    clone.style.setProperty("opacity", "1", "important");
-    clone.style.setProperty("filter", "none", "important");
-    clone.style.setProperty("border", "none", "important");
-    clone.style.setProperty("max-width", "none", "important");
-    clone.style.setProperty("max-height", "none", "important");
-    clone.style.setProperty("min-width", "0", "important");
-    clone.style.setProperty("min-height", "0", "important");
-    // 如果是 img，还要重置 object-fit
-    if (clone.tagName === "IMG") {
-      clone.style.setProperty("object-fit", "fill", "important");
-    }
-
-    clone.style.left = rect.left + "px";
-    clone.style.top = rect.top + "px";
-    clone.style.width = rect.width + "px";
-    clone.style.height = rect.height + "px";
-    clone.style.filter = "drop-shadow(0 15px 30px rgba(0,0,0,0.6))";
-    clone.style.boxShadow = "none";
-
+    // ★★★ 先计算动画目标尺寸（放大后的尺寸） ★★★
     const vw = window.innerWidth * 0.9;
     const vh = window.innerHeight * 0.9;
     const targetScale = Math.min(vw / rect.width, vh / rect.height, 5);
@@ -3336,136 +3661,230 @@ window.addEventListener("load", function () {
     const targetLeft = (window.innerWidth - targetWidth) / 2;
     const targetTop = (window.innerHeight - targetHeight) / 2;
 
-    // 钉图模式：不清空容器，支持多图共存
+    // ★★★ 创建翻转容器 ★★★
+    const flipContainer = document.createElement("div");
+    flipContainer.className = "nopic-flip-container";
+    flipContainer.style.cssText = `
+        position: fixed !important;
+        left: ${rect.left}px;
+        top: ${rect.top}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
+        perspective: 1200px;
+        z-index: 2147483641;
+        pointer-events: auto;
+        cursor: default;
+        user-select: none;
+    `;
+
+    // ★★★ 创建翻转卡片 ★★★
+    const flipCard = document.createElement("div");
+    flipCard.className = "nopic-flip-card";
+    flipCard.style.cssText = `
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transition: transform 0.1s ease-out;
+        transform-style: preserve-3d;
+        pointer-events: none;
+        will-change: transform;
+    `;
+
+    // ★★★ 正面：图片 ★★★
+    const front = document.createElement("div");
+    front.className = "nopic-flip-front";
+    front.style.cssText = `
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        overflow: hidden;
+        border-radius: 4px;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+        pointer-events: none;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+    const clone = el.cloneNode(true);
+    clone.id = "";
+    clone.classList.remove(
+      "nopic-hidden",
+      "nopic-has-bg",
+      "nopic-outline-box",
+      "nopic-float-btn",
+    );
+    clone.classList.add("nopic-clone");
+    clone.style.cssText = `
+        width: 100% !important;
+        height: 100% !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        filter: none !important;
+        border: none !important;
+        object-fit: contain !important;
+        background-size: contain !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none;
+        max-width: 100% !important;
+        max-height: 100% !important;
+    `;
+    front.appendChild(clone);
+
+    // ★★★ 背面：图片信息（根据目标尺寸计算字体大小） ★★★
+    const back = document.createElement("div");
+    back.className = "nopic-flip-back";
+    const isLight =
+      document.documentElement.getAttribute("data-nopic-theme") === "light";
+    back.style.cssText = `
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform: rotateY(180deg);
+      border-radius: 4px;
+      background: ${isLight ? "#f0f0f5" : "#1a1a2e"};
+      color: ${isLight ? "#1a1a2e" : "#ffffff"};
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-sizing: border-box;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      pointer-events: none;
+      overflow: hidden;
+      text-align: center;
+      min-width: 0 !important;
+      min-height: 0 !important;
+  `;
+
+    // 获取图片信息
+    const imgInfo = getImageInfo(el);
+
+    // ★★★ 核心：根据目标尺寸动态计算字体大小的函数 ★★★
+    function buildBackContent(width, height) {
+      const minDim = Math.min(width, height);
+      // 字体大小随容器尺寸动态变化
+      let fontSize = minDim / 18;
+      let smallFontSize = minDim / 26;
+      let tinyFontSize = minDim / 32;
+
+      // 确保最小可读性
+      fontSize = Math.max(8, fontSize);
+      smallFontSize = Math.max(7, smallFontSize);
+      tinyFontSize = Math.max(6, tinyFontSize);
+
+      return `
+      <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 4px; color: ${isLight ? "#2563eb" : "#60a5fa"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
+      <div style="font-size: ${smallFontSize}px; color: ${isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)"}; line-height: 1.6; white-space: nowrap; padding: 0 8px;">
+          <div>原图尺寸：${imgInfo.naturalWidth} × ${imgInfo.naturalHeight} px</div>
+          <div>页面显示尺寸：${imgInfo.displayWidth} × ${imgInfo.displayHeight} px</div>
+          <div>文件格式：${imgInfo.format}</div>
+      </div>
+  `;
+    }
+
+    // ★★★ 初始化时直接用目标尺寸渲染背面 ★★★
+    back.innerHTML = buildBackContent(targetWidth, targetHeight);
+
+    // ★★★ 存储引用和构建函数，供滚轮缩放时更新 ★★★
+    back._buildBackContent = buildBackContent;
+
+    flipCard.appendChild(front);
+    flipCard.appendChild(back);
+    flipContainer.appendChild(flipCard);
+    zoomContainer.appendChild(flipContainer);
+
+    flipContainer._isFlipped = false;
+    flipContainer._el = el;
+    flipContainer._flipCard = flipCard;
+    flipContainer._front = front;
+    flipContainer._back = back;
+
     if (!zoomPinModeConfig) {
-      zoomContainer.innerHTML = "";
       zoomContainer.classList.add("active");
     }
-
-    zoomContainer.appendChild(clone);
-
-    // 钉图模式：添加独立关闭按钮
-    let closeBtn = null;
-    if (zoomPinModeConfig) {
-      closeBtn = document.createElement("div");
-      closeBtn.className = "nopic-pin-close-btn";
-      closeBtn.innerHTML = "×";
-      closeBtn.style.transition = "none";
-      closeBtn.style.left = "auto";
-      closeBtn.style.top = "-10px";
-      closeBtn.style.right = "-10px";
-      closeBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        zoomOut(el);
-      });
-      clone.appendChild(closeBtn); // 塞进 clone 里，跟着走
-    } else {
-      // 聚焦模式：顶部控制栏
-      let showCloseBtn =
-        !fromHover || (fromHover && zoomLeaveModeConfig === "button");
-      if (showCloseBtn) {
-        let controlPanel = document.createElement("div");
-        controlPanel.className = "nopic-zoom-controls";
-        let closeBtn2 = document.createElement("div");
-        closeBtn2.className = "nopic-float-btn";
-        closeBtn2.innerHTML = "×";
-        closeBtn2.style.fontSize = "20px";
-        closeBtn2.addEventListener("click", (e) => {
-          e.stopPropagation();
-          zoomOut(el);
-        });
-        controlPanel.appendChild(closeBtn2);
-        zoomContainer.appendChild(controlPanel);
-      }
-    }
-
-    // 记录克隆信息
-    zoomedClones.set(el, { clone: clone, closeBtn: closeBtn });
-
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const easing = "cubic-bezier(0.16, 1, 0.3, 1)";
-        clone.style.setProperty(
-          "transition",
-          "left 0.45s " +
-            easing +
-            ", top 0.45s " +
-            easing +
-            ", width 0.45s " +
-            easing +
-            ", height 0.45s " +
-            easing +
-            ", box-shadow 0.45s " +
-            easing,
-          "important",
-        );
-
-        clone.style.left = targetLeft + "px";
-        clone.style.top = targetTop + "px";
-        clone.style.width = targetWidth + "px";
-        clone.style.height = targetHeight + "px";
-        clone.style.filter = "drop-shadow(0 15px 30px rgba(0,0,0,0.6))";
-        clone.style.boxShadow = "none";
+        flipContainer.style.transition = `left 0.45s ${easing}, top 0.45s ${easing}, width 0.45s ${easing}, height 0.45s ${easing}`;
+        flipContainer.style.left = targetLeft + "px";
+        flipContainer.style.top = targetTop + "px";
+        flipContainer.style.width = targetWidth + "px";
+        flipContainer.style.height = targetHeight + "px";
       });
     });
-  }
 
+    zoomedClones.set(el, { clone: flipContainer, closeBtn: null });
+
+    // ★★★ 绑定空白区域翻转拖拽事件 ★★★
+    bindFlipDragOnEmpty(flipContainer);
+  }
   function zoomOut(el) {
     if (!el._isZoomed) return;
     el._isZoomed = false;
 
     const info = zoomedClones.get(el);
-    const clone = info ? info.clone : null;
-    const closeBtn = info ? info.closeBtn : null;
+    const container = info ? info.clone : null;
 
-    if (clone && el.isConnected) {
+    // ★★★ 获取翻转卡片 ★★★
+    let flipCard = null;
+    if (container && container._flipCard) {
+      flipCard = container._flipCard;
+    }
+
+    if (container && el.isConnected) {
       const rect = el.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
-        // === 原有逻辑：原位置还在，飞回原位（一字未动） ===
         const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
-        clone.style.setProperty(
-          "transition",
-          "left 0.35s " +
-            easing +
-            ", top 0.35s " +
-            easing +
-            ", width 0.35s " +
-            easing +
-            ", height 0.35s " +
-            easing +
-            ", box-shadow 0.35s " +
-            easing +
-            ", opacity 0.25s ease",
-          "important",
-        );
-        clone.style.left = rect.left + "px";
-        clone.style.top = rect.top + "px";
-        clone.style.width = rect.width + "px";
-        clone.style.height = rect.height + "px";
-        clone.style.opacity = "0";
-        clone.style.filter = "none";
-        clone.style.boxShadow = "none";
+
+        // ★★★ 翻转角度恢复为 0（正面朝前） ★★★
+        if (flipCard) {
+          flipCard.style.transition = `transform 0.35s ${easing}`;
+          flipCard.style.transform = "rotateX(0deg) rotateY(0deg)";
+          container._isFlipped = false;
+          if (flipCard._flipState) {
+            flipCard._flipState.rotX = 0;
+            flipCard._flipState.rotY = 0;
+          }
+        }
+
+        // ★★★ 位置保持不变，只飞回原始位置 ★★★
+        container.style.transition = `left 0.35s ${easing}, top 0.35s ${easing}, width 0.35s ${easing}, height 0.35s ${easing}, opacity 0.25s ease`;
+        container.style.left = rect.left + "px";
+        container.style.top = rect.top + "px";
+        container.style.width = rect.width + "px";
+        container.style.height = rect.height + "px";
       } else {
-        // === 新增逻辑：原图位置无效，原地高斯模糊+透明度降低 ===
         const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
-        clone.style.setProperty(
-          "transition",
-          "filter 0.4s " + easing + ", opacity 0.4s " + easing,
-          "important",
-        );
-        clone.style.setProperty("filter", "blur(20px)", "important");
-        clone.style.setProperty("opacity", "0", "important");
+
+        if (flipCard) {
+          flipCard.style.transition = `transform 0.35s ${easing}`;
+          flipCard.style.transform = "rotateX(0deg) rotateY(0deg)";
+          container._isFlipped = false;
+          if (flipCard._flipState) {
+            flipCard._flipState.rotX = 0;
+            flipCard._flipState.rotY = 0;
+          }
+        }
+
+        container.style.transition = `opacity 0.4s ${easing}`;
+        container.style.opacity = "0";
       }
-    } else if (clone) {
-      // === 新增逻辑：原图已不在文档流，原地高斯模糊+透明度降低 ===
+    } else if (container) {
       const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
-      clone.style.setProperty(
-        "transition",
-        "filter 0.4s " + easing + ", opacity 0.4s " + easing,
-        "important",
-      );
-      clone.style.setProperty("filter", "blur(20px)", "important");
-      clone.style.setProperty("opacity", "0", "important");
+      container.style.transition = `opacity 0.4s ${easing}`;
+      container.style.opacity = "0";
     }
 
     if (!zoomPinModeConfig) {
@@ -3483,10 +3902,9 @@ window.addEventListener("load", function () {
       const outline = imageOutlines.get(el);
       if (outline) outline.style.display = "";
 
-      if (clone && clone.parentNode) clone.remove();
+      if (container && container.parentNode) container.remove();
       zoomedClones.delete(el);
 
-      // 非钉图模式下，彻底清空容器内残留的控制面板等DOM，防止幽灵点击
       if (!zoomPinModeConfig) {
         zoomContainer.innerHTML = "";
       }
@@ -3497,15 +3915,19 @@ window.addEventListener("load", function () {
   zoomContainer.addEventListener(
     "wheel",
     (e) => {
-      let clone = getCloneAtPoint(e.clientX, e.clientY);
+      // ★★★ 修改：查找 .nopic-flip-container（翻转容器） ★★★
+      let flipContainer = getFlipContainerAtPoint(e.clientX, e.clientY);
 
       // 非钉图模式（聚焦模式）：只要有放大图，滚轮在容器任何位置都有效，作用于当前唯一图
-      if (!clone && !zoomPinModeConfig) {
-        const clones = zoomContainer.querySelectorAll(".nopic-clone");
-        if (clones.length > 0) clone = clones[clones.length - 1];
+      if (!flipContainer && !zoomPinModeConfig) {
+        const containers = zoomContainer.querySelectorAll(
+          ".nopic-flip-container",
+        );
+        if (containers.length > 0)
+          flipContainer = containers[containers.length - 1];
       }
 
-      if (!clone) {
+      if (!flipContainer) {
         // 钉图模式下且鼠标不在任何图上，不拦截，让页面滚动
         if (zoomPinModeConfig) return;
         // 聚焦模式下没有图也不处理
@@ -3514,9 +3936,9 @@ window.addEventListener("load", function () {
       e.preventDefault();
       e.stopPropagation();
 
-      clone.style.zIndex = ++pinZIndexCounter;
+      flipContainer.style.zIndex = ++pinZIndexCounter;
 
-      const rect = clone.getBoundingClientRect();
+      const rect = flipContainer.getBoundingClientRect();
       const scaleStep = e.deltaY < 0 ? 1.1 : 0.9;
       let newWidth = rect.width * scaleStep;
       let newHeight = rect.height * scaleStep;
@@ -3526,31 +3948,197 @@ window.addEventListener("load", function () {
       const newLeft = centerX - newWidth / 2;
       const newTop = centerY - newHeight / 2;
 
-      clone.style.setProperty("transition", "none", "important");
-      clone.style.left = newLeft + "px";
-      clone.style.top = newTop + "px";
-      clone.style.width = newWidth + "px";
-      clone.style.height = newHeight + "px";
+      // ★★★ 关键：移除 transition，让缩放立即响应，不迟钝 ★★★
+      flipContainer.style.setProperty("transition", "none", "important");
+      flipContainer.style.left = newLeft + "px";
+      flipContainer.style.top = newTop + "px";
+      flipContainer.style.width = newWidth + "px";
+      flipContainer.style.height = newHeight + "px";
+
+      // ★★★ 核心：根据新的容器尺寸，重新计算并更新背面文字的字体大小 ★★★
+      const back = flipContainer._back;
+      if (back && back._buildBackContent) {
+        back.innerHTML = back._buildBackContent(newWidth, newHeight);
+      }
     },
     { passive: false },
   );
 
   // 拖动逻辑 - 支持多图独立拖动
+  // 拖动逻辑 - 支持多图独立拖动（图片上拖动移动位置，空白处翻转）
   zoomContainer.addEventListener("mousedown", (e) => {
-    const clone = getCloneAtPoint(e.clientX, e.clientY);
-    if (!clone || e.button !== 0) return;
-    e.preventDefault();
-    clone.style.zIndex = ++pinZIndexCounter;
-    isDraggingClone = true;
-    wasDragged = false;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    dragStartLeft = parseFloat(clone.style.left);
-    dragStartTop = parseFloat(clone.style.top);
-    draggedCloneEl = getElByClone(clone);
-    clone.style.setProperty("transition", "none", "important");
-    clone.style.cursor = "grabbing !important";
-    zoomContainer.style.cursor = "grabbing";
+    // ===== ★★★ 图片上拖动：移动位置（使用 flipContainer） ★★★ =====
+    const flipContainer = getFlipContainerAtPoint(e.clientX, e.clientY);
+    if (flipContainer && e.button === 0) {
+      e.preventDefault();
+      flipContainer.style.zIndex = ++pinZIndexCounter;
+      isDraggingClone = true;
+      wasDragged = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragStartLeft = parseFloat(flipContainer.style.left);
+      dragStartTop = parseFloat(flipContainer.style.top);
+      draggedCloneEl = flipContainer._el || getElByFlipContainer(flipContainer);
+      flipContainer.style.setProperty("transition", "none", "important");
+      flipContainer.style.cursor = "grabbing !important";
+      zoomContainer.style.cursor = "grabbing";
+
+      const onDragMouseUp = function () {
+        document.removeEventListener("mousemove", onDragMouseMove);
+        document.removeEventListener("mouseup", onDragMouseUp);
+        isDraggingClone = false;
+        zoomContainer.style.cursor = "";
+        if (flipContainer) {
+          flipContainer.style.cursor = "";
+        }
+      };
+
+      const onDragMouseMove = function (ev) {
+        if (!isDraggingClone || !draggedCloneEl) {
+          document.removeEventListener("mousemove", onDragMouseMove);
+          document.removeEventListener("mouseup", onDragMouseUp);
+          return;
+        }
+        const info = zoomedClones.get(draggedCloneEl);
+        if (!info || !info.clone) {
+          document.removeEventListener("mousemove", onDragMouseMove);
+          document.removeEventListener("mouseup", onDragMouseUp);
+          return;
+        }
+        const dragContainer = info.clone;
+        const newLeft = dragStartLeft + ev.clientX - dragStartX;
+        const newTop = dragStartTop + ev.clientY - dragStartY;
+        dragContainer.style.transition = "none";
+        dragContainer.style.left = newLeft + "px";
+        dragContainer.style.top = newTop + "px";
+
+        if (
+          Math.abs(ev.clientX - dragStartX) > 3 ||
+          Math.abs(ev.clientY - dragStartY) > 3
+        ) {
+          wasDragged = true;
+        }
+      };
+
+      document.addEventListener("mousemove", onDragMouseMove);
+      document.addEventListener("mouseup", onDragMouseUp);
+      return;
+    }
+
+    // --- ★★★ 在图片外点击：3D翻转（空白区域翻转） ★★★ ---
+    if (!zoomPinModeConfig && !isParadeMode && e.button === 0) {
+      // 忽略关闭按钮
+      if (
+        e.target.closest(".nopic-zoom-controls") ||
+        e.target.closest(".nopic-float-btn")
+      ) {
+        return;
+      }
+
+      // 获取当前所有的翻转容器（而不是直接找 .nopic-clone）
+      const flipContainers = zoomContainer.querySelectorAll(
+        ".nopic-flip-container",
+      );
+      if (flipContainers.length > 0) {
+        const currentContainer = flipContainers[flipContainers.length - 1];
+        const flipCard = currentContainer._flipCard;
+        if (!flipCard) return;
+
+        // ★★★ 关键：检查点击是否在图片上，如果是则跳过翻转（图片拖动已在上方处理） ★★★
+        const clone = currentContainer.querySelector(".nopic-clone");
+        if (clone) {
+          const rect = clone.getBoundingClientRect();
+          const margin = 5;
+          const isOnImage =
+            e.clientX >= rect.left - margin &&
+            e.clientX <= rect.right + margin &&
+            e.clientY >= rect.top - margin &&
+            e.clientY <= rect.bottom + margin;
+          if (isOnImage) {
+            return; // 图片上由上面的拖动逻辑处理
+          }
+        }
+
+        e.stopPropagation();
+        wasDragged = false;
+        window._nopicIsFlipping = true;
+
+        if (!flipCard._flipState) {
+          flipCard._flipState = { rotX: 0, rotY: 0 };
+        }
+
+        flipCard.style.transition = "none";
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        let lastX = startX;
+        let lastY = startY;
+        let hasDragged = false;
+
+        const onMouseMove = (ev) => {
+          if (!flipCard.parentNode) {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+            return;
+          }
+
+          const deltaX = ev.clientX - lastX;
+          const deltaY = ev.clientY - lastY;
+
+          flipCard._flipState.rotY += deltaX * 0.3;
+          flipCard._flipState.rotX += deltaY * 0.3;
+
+          flipCard.style.transition = "none";
+          flipCard.style.transform = `rotateX(${flipCard._flipState.rotX}deg) rotateY(${flipCard._flipState.rotY}deg)`;
+
+          // 更新翻转状态
+          const rot = flipCard._flipState;
+          const newFlipped = Math.abs(rot.y) > 90 || Math.abs(rot.y) < -90;
+          if (newFlipped !== currentContainer._isFlipped) {
+            currentContainer._isFlipped = newFlipped;
+          }
+
+          lastX = ev.clientX;
+          lastY = ev.clientY;
+
+          if (
+            Math.abs(ev.clientX - startX) > 5 ||
+            Math.abs(ev.clientY - startY) > 5
+          ) {
+            hasDragged = true;
+            wasDragged = true;
+          }
+        };
+
+        const onMouseUp = () => {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+
+          if (!hasDragged) {
+            wasDragged = false;
+          }
+
+          window._nopicIsFlipping = false;
+
+          if (!hasDragged) {
+            setTimeout(function () {
+              if (!zoomPinModeConfig) {
+                zoomedClones.forEach(function (info, el) {
+                  if (el._isZoomed) {
+                    zoomOut(el);
+                  }
+                });
+              }
+            }, 5);
+          }
+
+          hasDragged = false;
+        };
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      }
+    }
   });
 
   document.addEventListener("mouseup", (e) => {
@@ -3604,30 +4192,57 @@ window.addEventListener("load", function () {
     }
   });
 
-  zoomContainer.addEventListener("click", (e) => {
-    if (wasDragged) {
-      wasDragged = false;
-      e.stopPropagation();
-      return;
-    }
-    // 点击放大图片本身也能关闭（钉图模式和聚焦模式都支持）
-    const clickedClone = e.target.closest(".nopic-clone");
-    if (clickedClone) {
-      const el = getElByClone(clickedClone);
-      if (el && el._isZoomed) {
-        zoomOut(el);
+  // ===== 点击关闭逻辑 =====
+  zoomContainer.addEventListener(
+    "click",
+    function (e) {
+      if (
+        e.target.closest(".nopic-zoom-controls") ||
+        e.target.closest(".nopic-float-btn")
+      ) {
         e.stopPropagation();
         return;
       }
-    }
-    // 聚焦模式下点击空白区关闭
-    if (e.target === zoomContainer && !zoomPinModeConfig) {
-      zoomedClones.forEach((info, el) => {
-        if (el._isZoomed) zoomOut(el);
-      });
-    }
-  });
 
+      if (window._nopicIsFlipping) {
+        e.stopPropagation();
+        return;
+      }
+
+      // ★★★ 修改：查找 flipContainer ★★★
+      const clickedContainer = e.target.closest(".nopic-flip-container");
+      if (clickedContainer) {
+        if (wasDragged) {
+          wasDragged = false;
+          e.stopPropagation();
+          return;
+        }
+
+        const el = getElByFlipContainer(clickedContainer);
+        if (el && el._isZoomed) {
+          zoomOut(el);
+          e.stopPropagation();
+          return;
+        }
+      }
+
+      if (!zoomPinModeConfig) {
+        if (wasDragged) {
+          wasDragged = false;
+          e.stopPropagation();
+          return;
+        }
+
+        zoomedClones.forEach(function (info, el) {
+          if (el._isZoomed) {
+            zoomOut(el);
+          }
+        });
+        e.stopPropagation();
+      }
+    },
+    true,
+  );
   // --- 4. 图片控制逻辑 ---
   const syncElementPosition = (el) => {
     const btn = imageControls.get(el),
@@ -4988,12 +5603,14 @@ window.addEventListener("load", function () {
   settingsSubmenu.innerHTML = `
     <div class="nopic-menu-item" data-submenu-trigger="displayContent" style="justify-content:space-between;"><span>显示内容</span><span style="font-size:14px;opacity:0.6;">›</span></div>
         <div class="nopic-menu-separator">主题模式</div>
-    <div class="nopic-menu-item" style="flex-direction: column; align-items: stretch; padding: 4px 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-    <span style="font-size: 11px; color: rgba(255,255,255,0.7);">主题</span>
-    <div class="nopic-theme-switcher" style="display: flex; gap: 4px; background: rgba(255,255,255,0.06); border-radius: 6px; padding: 2px;">        <div class="nopic-theme-option active" data-theme="dark" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">深</div>
-        <div class="nopic-theme-option" data-theme="light" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">浅</div>
-        <div class="nopic-theme-option" data-theme="system" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">跟随系统</div>
+   <div class="nopic-menu-item" style="flex-direction: column; align-items: stretch; padding: 4px 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+        <span style="font-size: 11px; color: rgba(255,255,255,0.7);">智能切换</span>
+        <div class="nopic-switch" id="nopic-theme-auto-switch"></div>
+    </div>
+    <div id="nopic-theme-manual-row" style="display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end;">
+        <div class="nopic-theme-option" data-theme="dark" style="padding: 2px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">深色模式</div>
+        <div class="nopic-theme-option" data-theme="light" style="padding: 2px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; color: rgba(255,255,255,0.5); transition: all 0.2s;">浅色模式</div>
     </div>
 </div>
     </div>
@@ -5266,19 +5883,23 @@ window.addEventListener("load", function () {
       <div class="nopic-privacy-select-btn" data-scope="global">全局通用</div>
     </div>
 <div class="nopic-mask-section">
-  <div class="nopic-mask-section-title">遮罩样式</div>
-  <div class="nopic-mask-color-row">
-    <input type="color" class="nopic-mask-color-picker" id="nopic-mask-color" value="#000000">
-    <span style="font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap;">遮罩颜色</span>
-  </div>
-  <div class="nopic-mask-opacity-row">
-    <span class="nopic-mask-opacity-label">透明度</span>
-    <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-opacity" min="10" max="100" value="100">
-  </div>
-  <div class="nopic-mask-opacity-row">
-    <span class="nopic-mask-opacity-label">圆角</span>
-    <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-radius" min="0" max="50" value="8">
-  </div>
+    <div class="nopic-mask-section-title">遮罩样式</div>
+    <div class="nopic-mask-color-row" id="nopic-mask-color-row">
+        <input type="color" class="nopic-mask-color-picker" id="nopic-mask-color" value="#000000">
+        <span style="font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap;">遮罩颜色</span>
+    </div>
+    <div class="nopic-mask-color-row" style="margin-top:4px;display:flex;align-items:center;gap:8px;">
+        <div class="nopic-switch on" id="nopic-mask-smart-color" style="cursor:pointer;"></div>
+        <span style="font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap;">智能取色（自动匹配背景）</span>
+    </div>
+    <div class="nopic-mask-opacity-row">
+        <span class="nopic-mask-opacity-label">透明度</span>
+        <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-opacity" min="10" max="100" value="100">
+    </div>
+    <div class="nopic-mask-opacity-row">
+        <span class="nopic-mask-opacity-label">圆角</span>
+        <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-radius" min="0" max="50" value="8">
+    </div>
 </div>
     <div class="nopic-mask-section">
       <div class="nopic-mask-section-title">位置模式</div>
@@ -6308,33 +6929,102 @@ window.addEventListener("load", function () {
   function getThemePreference() {
     try {
       const saved = localStorage.getItem("nopic_theme_preference");
-      if (saved === "light" || saved === "dark" || saved === "system") {
+      // 兼容旧值 'system' → 转为 'auto'
+      if (saved === "system") return "auto";
+      if (saved === "auto" || saved === "dark" || saved === "light")
         return saved;
-      }
     } catch (e) {}
-    return "system"; // 默认跟随系统
+    return "auto"; // 默认自动
   }
 
-  function applyTheme(theme) {
-    const isDark =
-      theme === "dark" ||
-      (theme === "system" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.documentElement.setAttribute(
-      "data-nopic-theme",
-      isDark ? "dark" : "light",
-    );
-    currentTheme = isDark ? "dark" : "light";
-    // 更新开关状态
-    const themeSwitch = document.getElementById("nopic-theme-switch");
-    if (themeSwitch) {
-      themeSwitch.textContent = isDark ? "🌙" : "☀️";
-      themeSwitch.title = isDark ? "切换到浅色模式" : "切换到深色模式";
+  function computeBackgroundBrightness() {
+    const htmlBg = getComputedStyle(document.documentElement).backgroundColor;
+    const bodyBg = getComputedStyle(document.body).backgroundColor;
+    let bgColor = bodyBg;
+    if (
+      !bgColor ||
+      bgColor === "rgba(0, 0, 0, 0)" ||
+      bgColor === "transparent"
+    ) {
+      bgColor = htmlBg;
     }
-    // 存储用户偏好
+    if (
+      !bgColor ||
+      bgColor === "rgba(0, 0, 0, 0)" ||
+      bgColor === "transparent"
+    ) {
+      bgColor = "#ffffff";
+    }
+    let r, g, b;
+    if (bgColor.startsWith("#")) {
+      const hex = bgColor.slice(1);
+      if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+      } else if (hex.length === 6) {
+        r = parseInt(hex.slice(0, 2), 16);
+        g = parseInt(hex.slice(2, 4), 16);
+        b = parseInt(hex.slice(4, 6), 16);
+      } else {
+        r = g = b = 255;
+      }
+    } else if (bgColor.startsWith("rgb")) {
+      const match = bgColor.match(/\d+/g);
+      if (match && match.length >= 3) {
+        r = parseInt(match[0]);
+        g = parseInt(match[1]);
+        b = parseInt(match[2]);
+      } else {
+        r = g = b = 255;
+      }
+    } else {
+      r = g = b = 255;
+    }
+    const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return brightness;
+  }
+
+  let _nopicThemeTimer = null;
+
+  function applyTheme(mode) {
+    // 清除旧定时器
+    if (_nopicThemeTimer) {
+      clearInterval(_nopicThemeTimer);
+      _nopicThemeTimer = null;
+    }
+
+    let theme;
+    if (mode === "auto") {
+      // 首次计算
+      const brightness = computeBackgroundBrightness();
+      theme = brightness >= 0.7 ? "light" : "dark";
+      localStorage.setItem("nopic_theme_actual", theme);
+
+      // 每隔 3 秒重新计算一次背景亮度
+      _nopicThemeTimer = setInterval(function () {
+        const newBrightness = computeBackgroundBrightness();
+        const newTheme = newBrightness >= 0.7 ? "light" : "dark";
+        const currentTheme =
+          document.documentElement.getAttribute("data-nopic-theme");
+        if (newTheme !== currentTheme) {
+          document.documentElement.setAttribute("data-nopic-theme", newTheme);
+          localStorage.setItem("nopic_theme_actual", newTheme);
+          // 更新UI高亮
+          updateThemeUI(mode);
+        }
+      }, 3000);
+    } else {
+      theme = mode;
+      localStorage.removeItem("nopic_theme_actual");
+    }
+
+    document.documentElement.setAttribute("data-nopic-theme", theme);
+    currentTheme = theme;
     try {
-      localStorage.setItem("nopic_theme_preference", theme);
+      localStorage.setItem("nopic_theme_preference", mode);
     } catch (e) {}
+    updateThemeUI(mode);
   }
 
   function toggleTheme() {
@@ -6348,25 +7038,43 @@ window.addEventListener("load", function () {
     updateThemeUI(newPreference);
   }
 
-  function updateThemeUI(preference) {
+  function updateThemeUI(mode) {
+    const autoSwitch = document.getElementById("nopic-theme-auto-switch");
+    const manualRow = document.getElementById("nopic-theme-manual-row");
     const options = document.querySelectorAll(".nopic-theme-option");
+    if (autoSwitch) {
+      if (mode === "auto") {
+        autoSwitch.classList.add("on");
+      } else {
+        autoSwitch.classList.remove("on");
+      }
+    }
+    if (manualRow) {
+      manualRow.style.display = mode === "auto" ? "none" : "flex";
+    }
     options.forEach((opt) => {
-      opt.classList.toggle("active", opt.dataset.theme === preference);
+      opt.classList.toggle("active", opt.dataset.theme === mode);
     });
+    if (mode === "auto") {
+      const actual = localStorage.getItem("nopic_theme_actual") || "dark";
+      options.forEach((opt) => {
+        opt.classList.toggle("active", opt.dataset.theme === actual);
+      });
+    }
   }
 
   // 初始化主题
   function initTheme() {
     const preference = getThemePreference();
     applyTheme(preference);
-    // 监听系统主题变化
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", (e) => {
-        if (getThemePreference() === "system") {
-          applyTheme("system");
-        }
-      });
+    // 不再监听系统主题变化
+    // ★★★ 页面关闭时清理定时器 ★★★
+    window.addEventListener("beforeunload", function () {
+      if (_nopicThemeTimer) {
+        clearInterval(_nopicThemeTimer);
+        _nopicThemeTimer = null;
+      }
+    });
   }
   // 在页面加载后初始化
   if (document.readyState === "loading") {
@@ -6531,6 +7239,30 @@ window.addEventListener("load", function () {
     // 更新场景按钮状态
     maskSubmenu.querySelectorAll("[data-scope]").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.scope === currentMaskScope);
+      // ===== 智能取色开关点击事件 =====
+      const smartSwitch = document.getElementById("nopic-mask-smart-color");
+      if (smartSwitch) {
+        // 移除可能存在的旧监听（防止重复绑定）
+        smartSwitch.removeEventListener("click", smartSwitch._clickHandler);
+
+        // 定义点击处理函数
+        smartSwitch._clickHandler = function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          this.classList.toggle("on");
+          const isOn = this.classList.contains("on");
+          localStorage.setItem(
+            "nopic_mask_smart_color",
+            isOn ? "true" : "false",
+          );
+          const colorRow = document.getElementById("nopic-mask-color-row");
+          if (colorRow) {
+            colorRow.style.display = isOn ? "none" : "flex";
+          }
+        };
+
+        smartSwitch.addEventListener("click", smartSwitch._clickHandler);
+      }
     });
 
     // ===== 网页隐私锁UI更新 =====
@@ -7106,6 +7838,71 @@ window.addEventListener("load", function () {
     menu.classList.remove("active");
   });
 
+  // ===== 欢迎教程弹窗 =====
+  const welcomeModal = document.createElement("div");
+  welcomeModal.id = "nopic-welcome-modal";
+  welcomeModal.style.cssText = `
+  display: none !important;
+  position: fixed;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: rgba(20, 20, 25, 0.96);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 28px 32px 24px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  max-width: 420px;
+  width: 90%;
+  text-align: left;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.95) translateY(20px);
+`;
+
+  welcomeModal.innerHTML = `
+  <div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #60a5fa;">欢迎使用</div>
+  <div style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px;">网页控制大师 · 快速上手指南</div>
+  
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: flex-start; gap: 10px;">
+      <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">1</span>
+      <div>
+        <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">隐藏图片</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击页面左侧的 <span style="color: #ea4c3d; background: rgba(225, 83, 67,0.1); padding: 0 6px; border-radius: 3px;">●</span> 指示灯，变绿后自动隐藏图片</div>
+      </div>
+    </div>
+    
+    <div style="display: flex; align-items: flex-start; gap: 10px;">
+      <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
+      <div>
+        <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与翻转图片</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片可放大查看；在空白处拖动可翻转图片，查看图片信息</div>
+      </div>
+    </div>
+    
+    <div style="display: flex; align-items: flex-start; gap: 10px;">
+      <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
+      <div>
+        <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更多功能</div>
+        <div style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标放在指示灯上可展开菜单，包含图片阅兵、隐私锁、自动点击器等工具</div>
+      </div>
+    </div>
+  </div>
+  
+  <div style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+   
+    <button id="nopic-welcome-start" style="flex: 1; padding: 8px 0; background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; color: #60a5fa; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">开始使用</button>
+  </div>
+`;
+
+  document.documentElement.appendChild(welcomeModal);
+
   // ===== 关于弹窗 =====
   const aboutModal = document.createElement("div");
   aboutModal.id = "nopic-about-modal";
@@ -7177,12 +7974,24 @@ window.addEventListener("load", function () {
   <!-- ===== 右列 ===== -->
   <div class="about-right">
     <div class="about-title">☕ 关于</div>
-    <div class="about-text">摸鱼的时候写的脚本，和我一起摸鱼吧～</div>
-    <div class="about-text small">永久免费 · 本地运行 · 开源 · MIT 协议</div>
-    <div class="about-text small" style="margin-top:6px;">如果这个小工具帮到了你，欢迎请我喝杯咖啡支持开发！</div>
+<div class="about-text small" style="margin-bottom: 4px;">永久免费 · 本地运行 · 开源 · MIT 协议</div>
+<div class="about-text small" style="margin-bottom: 6px;">如果这个小工具帮到了你，欢迎请我喝杯咖啡支持开发！</div>
+    <div class="about-text" style="margin-bottom: 8px;">一款提升浏览体验的效率工具，让网页控制更加得心应手。</div>
     <img id="nopic-about-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////////////////////////////////////2wBDAVVaWnhpeOuCguv/////////////////////////////////////////////////////////////////////////wAARCAFpAWIDASIAAhEBAxEB/8QAGQAAAwEBAQAAAAAAAAAAAAAAAAMEAgUB/8QAORAAAgIBAQMKBAQGAwEBAAAAAQIAAxEEEiExExQzQVFSYXGBkSIycqE0U7HBI0JiktHhJEOCY/D/xAAXAQEBAQEAAAAAAAAAAAAAAAAAAQID/8QAGhEBAAMBAQEAAAAAAAAAAAAAAAECETESUf/aAAwDAQACEQMRAD8AshCLe6us4dsHygMhE86p7/2P+Ic6p7/2P+IDoRPOqe/9j/iHOqe/9j/iA6ETzqnv/Y/4hzqnv/YwHQmK7ksyEOcT17FrALnGYGoRddyWNhGyZp7FrGXOBA1CJ51T3/sf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" style="width:200px;height:200px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;cursor:pointer;" title="点击放大查看">
 
     <div class="about-sponsor">扫码赞助 · 感谢支持</div>
+        <!-- ★★★ 放在这里，about-sponsor 下方 ★★★ -->
+    <div id="nopic-show-welcome-btn" style="
+        font-size: 12px;
+        color: rgba(255,255,255,0.25);
+        cursor: pointer;
+        padding: 10px 0 4px 0;
+        margin-top: 6px;
+        transition: color 0.2s;
+        text-align: center;
+    " onmouseover="this.style.color='rgba(255,255,255,0.5)'" onmouseout="this.style.color='rgba(255,255,255,0.25)'">
+        如何使用这个工具？
+    </div>
   </div>
 `;
   aboutModal.style.cssText =
@@ -8949,6 +9758,330 @@ window.addEventListener("load", function () {
   function generateMaskId() {
     return "mask_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
   }
+  // ===== 智能取色：使用 Canvas 截图采样 =====
+  function getAverageColorFromRegion(rect) {
+    try {
+      // 获取框选区域的尺寸
+      const width = rect.right - rect.left;
+      const height = rect.bottom - rect.top;
+
+      // 限制采样区域大小，避免性能问题
+      const maxSize = 300;
+      let sampleWidth = Math.min(width, maxSize);
+      let sampleHeight = Math.min(height, maxSize);
+
+      if (sampleWidth < 1 || sampleHeight < 1) {
+        console.warn("[nopic] 框选区域太小");
+        return "#888888";
+      }
+
+      // 方法：使用 html2canvas 截图（无第三方库替代方案）
+      // 由于我们不能引入外部库，使用离屏 Canvas + 页面截图 API
+
+      // 创建离屏 Canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = sampleWidth;
+      canvas.height = sampleHeight;
+      const ctx = canvas.getContext("2d");
+
+      // 使用 canvas 截图页面（Chrome/Edge/Safari 支持）
+      // 注意：这不会请求权限，因为 canvas 是离屏的
+      try {
+        // 尝试截图页面
+        ctx.drawWindow(
+          window,
+          rect.left,
+          rect.top,
+          sampleWidth,
+          sampleHeight,
+          "rgb(255,255,255)",
+        );
+      } catch (e) {
+        // drawWindow 在 Firefox 中可用，在 Chrome 中不可用
+        console.warn("[nopic] drawWindow 不可用，使用备用方案");
+        // 备用方案：采样 DOM 元素颜色
+        return getColorFromDOMSampling(rect);
+      }
+
+      // 读取像素数据
+      const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight);
+      const data = imageData.data;
+
+      if (data.length === 0) {
+        console.warn("[nopic] 未获取到像素数据");
+        return "#888888";
+      }
+
+      // 计算平均颜色（跳过透明像素）
+      let r = 0,
+        g = 0,
+        b = 0,
+        count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3];
+        if (alpha > 100) {
+          r += data[i];
+          g += data[i + 1];
+          b += data[i + 2];
+          count++;
+        }
+      }
+
+      if (count === 0) {
+        console.warn("[nopic] 没有有效像素");
+        return "#888888";
+      }
+
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+
+      const hex = rgbToHex(r, g, b);
+      console.log("[nopic] Canvas 取色成功:", hex);
+      return hex;
+    } catch (e) {
+      console.warn("[nopic] Canvas 取色失败:", e);
+      // 如果 Canvas 取色失败，使用 DOM 采样备用方案
+      return getColorFromDOMSampling(rect);
+    }
+  }
+
+  // ===== 备用方案：DOM 采样取色 =====
+  function getColorFromDOMSampling(rect) {
+    try {
+      const width = rect.right - rect.left;
+      const height = rect.bottom - rect.top;
+
+      // 在框选区域内均匀采样
+      const cols = 5;
+      const rows = 5;
+      const stepX = width / (cols + 1);
+      const stepY = height / (rows + 1);
+
+      let r = 0,
+        g = 0,
+        b = 0,
+        count = 0;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = rect.left + stepX * (col + 1);
+          const y = rect.top + stepY * (row + 1);
+
+          // 获取该点的 DOM 元素
+          const el = document.elementFromPoint(x, y);
+          if (!el) continue;
+
+          // 获取背景色（向上遍历父元素）
+          let bgColor = null;
+          let current = el;
+          let depth = 0;
+
+          while (current && depth < 6) {
+            const style = window.getComputedStyle(current);
+            const color = style.backgroundColor;
+            if (
+              color &&
+              color !== "rgba(0, 0, 0, 0)" &&
+              color !== "transparent"
+            ) {
+              bgColor = color;
+              break;
+            }
+            current = current.parentElement;
+            depth++;
+          }
+
+          if (!bgColor) continue;
+
+          const rgb = parseColorToRGB(bgColor);
+          if (rgb) {
+            r += rgb.r;
+            g += rgb.g;
+            b += rgb.b;
+            count++;
+          }
+        }
+      }
+
+      if (count === 0) {
+        // 如果 DOM 采样失败，尝试从 body 或 html 取背景色
+        const bodyStyle = window.getComputedStyle(document.body);
+        let bgColor = bodyStyle.backgroundColor;
+        if (
+          !bgColor ||
+          bgColor === "rgba(0, 0, 0, 0)" ||
+          bgColor === "transparent"
+        ) {
+          const htmlStyle = window.getComputedStyle(document.documentElement);
+          bgColor = htmlStyle.backgroundColor;
+        }
+        if (
+          bgColor &&
+          bgColor !== "rgba(0, 0, 0, 0)" &&
+          bgColor !== "transparent"
+        ) {
+          const rgb = parseColorToRGB(bgColor);
+          if (rgb) {
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            console.log("[nopic] DOM 采样（body）取色:", hex);
+            return hex;
+          }
+        }
+        console.warn("[nopic] DOM 采样失败，使用默认颜色");
+        return "#888888";
+      }
+
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+
+      const hex = rgbToHex(r, g, b);
+      console.log("[nopic] DOM 采样取色成功:", hex);
+      return hex;
+    } catch (e) {
+      console.warn("[nopic] DOM 采样异常:", e);
+      return "#888888";
+    }
+  }
+
+  // ===== 解析颜色字符串为 RGB =====
+  function parseColorToRGB(colorStr) {
+    if (!colorStr) return null;
+
+    // 处理 rgb(r, g, b)
+    let match = colorStr.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+    if (match) {
+      return {
+        r: parseInt(match[1]),
+        g: parseInt(match[2]),
+        b: parseInt(match[3]),
+      };
+    }
+
+    // 处理 rgba(r, g, b, a)
+    match = colorStr.match(
+      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/i,
+    );
+    if (match) {
+      return {
+        r: parseInt(match[1]),
+        g: parseInt(match[2]),
+        b: parseInt(match[3]),
+      };
+    }
+
+    // 处理十六进制 #rrggbb 或 #rgb
+    match = colorStr.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (match) {
+      let hex = match[1];
+      if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+      }
+      return {
+        r: parseInt(hex.substr(0, 2), 16),
+        g: parseInt(hex.substr(2, 2), 16),
+        b: parseInt(hex.substr(4, 2), 16),
+      };
+    }
+
+    return null;
+  }
+
+  // ===== RGB 转十六进制 =====
+  function rgbToHex(r, g, b) {
+    r = Math.min(255, Math.max(0, Math.round(r)));
+    g = Math.min(255, Math.max(0, Math.round(g)));
+    b = Math.min(255, Math.max(0, Math.round(b)));
+    return "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("");
+  }
+
+  // ===== 获取元素的真实背景色（包括伪元素） =====
+  function getElementBackgroundColor(el) {
+    if (!el) return null;
+
+    const style = window.getComputedStyle(el);
+    let bgColor = style.backgroundColor;
+
+    // 如果背景色透明，尝试从父元素继承
+    if (
+      !bgColor ||
+      bgColor === "rgba(0, 0, 0, 0)" ||
+      bgColor === "transparent"
+    ) {
+      let parent = el.parentElement;
+      let depth = 0;
+      while (parent && depth < 5) {
+        const parentStyle = window.getComputedStyle(parent);
+        bgColor = parentStyle.backgroundColor;
+        if (
+          bgColor &&
+          bgColor !== "rgba(0, 0, 0, 0)" &&
+          bgColor !== "transparent"
+        ) {
+          return bgColor;
+        }
+        parent = parent.parentElement;
+        depth++;
+      }
+      return null;
+    }
+
+    return bgColor;
+  }
+
+  // ===== 解析颜色字符串为RGB对象 =====
+  function parseColorToRGB(colorStr) {
+    if (!colorStr) return null;
+
+    // 处理 rgb(r, g, b) 格式
+    const rgbMatch = colorStr.match(
+      /rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i,
+    );
+    if (rgbMatch) {
+      return {
+        r: parseInt(rgbMatch[1]),
+        g: parseInt(rgbMatch[2]),
+        b: parseInt(rgbMatch[3]),
+      };
+    }
+
+    // 处理 rgba(r, g, b, a) 格式
+    const rgbaMatch = colorStr.match(
+      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/i,
+    );
+    if (rgbaMatch) {
+      return {
+        r: parseInt(rgbaMatch[1]),
+        g: parseInt(rgbaMatch[2]),
+        b: parseInt(rgbaMatch[3]),
+      };
+    }
+
+    // 处理十六进制颜色
+    const hexMatch = colorStr.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+      }
+      return {
+        r: parseInt(hex.substr(0, 2), 16),
+        g: parseInt(hex.substr(2, 2), 16),
+        b: parseInt(hex.substr(4, 2), 16),
+      };
+    }
+
+    return null;
+  }
+
+  // ===== RGB转十六进制 =====
+  function rgbToHex(r, g, b) {
+    r = Math.min(255, Math.max(0, Math.round(r)));
+    g = Math.min(255, Math.max(0, Math.round(g)));
+    b = Math.min(255, Math.max(0, Math.round(b)));
+    return "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("");
+  }
 
   // 创建遮罩层DOM
   function createMaskLayer(maskData) {
@@ -9196,7 +10329,6 @@ window.addEventListener("load", function () {
     const height = Math.abs(e.clientY - maskDrawStartY);
 
     if (width < 10 || height < 10) {
-      // 区域太小，不创建
       endMaskDraw();
       return;
     }
@@ -9204,9 +10336,6 @@ window.addEventListener("load", function () {
     const left = Math.min(e.clientX, maskDrawStartX);
     const top = Math.min(e.clientY, maskDrawStartY);
 
-    // 根据位置模式计算坐标
-    // fixed 模式：使用视口坐标
-    // absolute 模式：使用文档坐标（视口坐标 + 滚动偏移）
     let finalX = left;
     let finalY = top;
     if (maskDrawCurrentPosition === "absolute") {
@@ -9214,14 +10343,39 @@ window.addEventListener("load", function () {
       finalY = top + window.scrollY;
     }
 
-    // 创建遮罩数据
+    let finalColor = maskDrawCurrentColor;
+    const smartSwitch = document.getElementById("nopic-mask-smart-color");
+    if (smartSwitch && smartSwitch.classList.contains("on")) {
+      // ★★★ 关键：临时隐藏绘制层 ★★★
+      const overlay = document.getElementById("nopic-mask-draw-overlay");
+      if (overlay) {
+        overlay.style.pointerEvents = "none";
+        overlay.style.opacity = "0";
+      }
+
+      const rect = {
+        left: Math.min(e.clientX, maskDrawStartX),
+        top: Math.min(e.clientY, maskDrawStartY),
+        right: Math.max(e.clientX, maskDrawStartX),
+        bottom: Math.max(e.clientY, maskDrawStartY),
+      };
+      finalColor = getAverageColorFromRegion(rect);
+      console.log("[nopic] 智能取色结果:", finalColor);
+
+      // 恢复绘制层
+      if (overlay) {
+        overlay.style.pointerEvents = "";
+        overlay.style.opacity = "";
+      }
+    }
+
     const maskData = {
       id: generateMaskId(),
       x: finalX,
       y: finalY,
       width: width,
       height: height,
-      color: maskDrawCurrentColor,
+      color: finalColor,
       opacity: maskDrawCurrentOpacity,
       positionMode: maskDrawCurrentPosition,
       radius: parseInt(document.getElementById("nopic-mask-radius").value) || 0,
@@ -9229,13 +10383,10 @@ window.addEventListener("load", function () {
 
     maskConfig.masks.push(maskData);
     setMaskConfig(maskConfig);
-
-    // 创建遮罩层
     createMaskLayer(maskData);
     updateMaskList();
 
     endMaskDraw();
-    // 绘制完成后自动显示遮罩设置窗口
     maskSubmenuOpen = true;
     maskSubmenu.style.display = "flex";
   }
@@ -9544,6 +10695,36 @@ window.addEventListener("load", function () {
 
   // 初始化遮罩
   setTimeout(loadSavedMasks, 100);
+
+  // ===== 智能取色开关初始化（默认打开） =====
+  setTimeout(function () {
+    const smartSwitch = document.getElementById("nopic-mask-smart-color");
+    if (smartSwitch) {
+      // 从 localStorage 读取状态，如果没有则默认打开
+      let isOn = true;
+      try {
+        const saved = localStorage.getItem("nopic_mask_smart_color");
+        if (saved === "false") {
+          isOn = false;
+        }
+      } catch (e) {}
+
+      if (isOn) {
+        smartSwitch.classList.add("on");
+        const colorRow = document.getElementById("nopic-mask-color-row");
+        if (colorRow) {
+          colorRow.style.display = "none";
+        }
+      } else {
+        smartSwitch.classList.remove("on");
+        const colorRow = document.getElementById("nopic-mask-color-row");
+        if (colorRow) {
+          colorRow.style.display = "flex";
+        }
+      }
+      localStorage.setItem("nopic_mask_smart_color", isOn ? "true" : "false");
+    }
+  }, 200);
 
   // ===== 输入法输入状态跟踪 =====
   let isComposing = false;
@@ -11816,6 +12997,18 @@ window.addEventListener("load", function () {
     }
   });
 
+  // ===== 如何使用这个工具？按钮 =====
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("#nopic-show-welcome-btn");
+    if (btn) {
+      e.stopPropagation();
+      hideAboutModal();
+      setTimeout(function () {
+        showWelcomeModal();
+      }, 350);
+    }
+  });
+
   // ---- 导出选项点击 ----
   exportMenu
     .querySelectorAll(".nopic-dc-export-option")
@@ -13787,9 +14980,23 @@ window.addEventListener("load", function () {
             selectorText.length > 30
               ? selectorText.substring(0, 30) + "..."
               : selectorText;
-          detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${selectorText}">${shortText}</div>`;
+          detailHtml = `
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${selectorText}">${shortText}</div>
+    <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+      <span style="font-size:10px;color:rgba(255,255,255,0.4);">连点:</span>
+      <input type="number" class="nopic-click-count-input" value="${step.clickCount || 1}" min="0" step="1" style="width:50px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:11px;padding:2px 4px;text-align:right;" data-step-id="${step.id}" data-step-index="${index}">
+      <span style="font-size:9px;color:rgba(255,255,255,0.3);">次</span>
+    </div>
+  `;
         } else if (step.type === "position") {
-          detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);">X:${Math.round(step.x)} Y:${Math.round(step.y)}</div>`;
+          detailHtml = `
+    <div style="font-size:11px;color:rgba(255,255,255,0.5);">X:${Math.round(step.x)} Y:${Math.round(step.y)}</div>
+    <div style="display:flex;align-items:center;gap:4px;margin-top:2px;">
+      <span style="font-size:10px;color:rgba(255,255,255,0.4);">连点:</span>
+      <input type="number" class="nopic-click-count-input" value="${step.clickCount || 1}" min="0" step="1" style="width:50px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:11px;padding:2px 4px;text-align:right;" data-step-id="${step.id}" data-step-index="${index}">
+      <span style="font-size:9px;color:rgba(255,255,255,0.3);">次</span>
+    </div>
+  `;
         } else if (step.type === "input") {
           const textShort =
             step.text && step.text.length > 20
@@ -13839,6 +15046,17 @@ window.addEventListener("load", function () {
         autoClickerConfig.steps.splice(idx, 1);
         refreshAllWaitLinks();
         updateAutoClickerFlowList();
+      });
+    });
+
+    // 连点输入框即时保存
+    list.querySelectorAll(".nopic-click-count-input").forEach((input) => {
+      input.addEventListener("input", function (e) {
+        e.stopPropagation();
+        const idx = parseInt(this.dataset.stepIndex);
+        let val = parseInt(this.value);
+        if (isNaN(val) || val < 0) val = 1;
+        autoClickerConfig.steps[idx].clickCount = val;
       });
     });
 
@@ -15261,8 +16479,9 @@ window.addEventListener("load", function () {
           // 开始检查
           setTimeout(checkElement, 100);
         } else if (step.type === "click") {
-          // 点击元素
+          // 点击元素（支持连点）
           index++;
+
           let target = null;
           try {
             target = document.querySelector(step.selector);
@@ -15281,48 +16500,92 @@ window.addEventListener("load", function () {
           }
 
           if (target) {
-            let clicked = false;
-            try {
-              if (typeof target.click === "function") {
-                target.click();
-                clicked = true;
+            // ★★★ 连点逻辑 ★★★
+            const clickCount = step.clickCount || 1;
+            const totalClicks = clickCount === 0 ? Infinity : clickCount;
+            let clicksDone = 0;
+
+            function doClick() {
+              if (signal.aborted || isTerminated) {
+                isTerminated = true;
+                finishExecution("已手动终止");
+                return;
               }
-            } catch (e) {}
-            if (!clicked) {
-              target.dispatchEvent(
-                new MouseEvent("click", { bubbles: true, cancelable: true }),
-              );
-            }
-            if (!isTerminated) {
-              if (autoClickerConfig.showNotification) {
+
+              if (clicksDone >= totalClicks) {
+                // 所有点击完成
+                if (!isTerminated && autoClickerConfig.showNotification) {
+                  updateAutoClickerStatus(
+                    `第 ${currentLoop} 轮 - 步骤 ${stepNum} 点击完成 (共${clicksDone}次)`,
+                    "success",
+                  );
+                }
+                setTimeout(() => {
+                  if (!isTerminated) runNext();
+                }, 200);
+                return;
+              }
+
+              clicksDone++;
+
+              // 执行点击
+              try {
+                if (typeof target.click === "function") {
+                  target.click();
+                } else {
+                  target.dispatchEvent(
+                    new MouseEvent("click", {
+                      bubbles: true,
+                      cancelable: true,
+                    }),
+                  );
+                }
+              } catch (e) {}
+
+              // 视觉反馈（每次点击都闪烁）
+              try {
+                const flash = document.createElement("div");
+                flash.style.cssText =
+                  "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #4ade80;border-radius:4px;transition:opacity 0.2s;";
+                const rect = target.getBoundingClientRect();
+                flash.style.left = rect.left + window.scrollX + "px";
+                flash.style.top = rect.top + window.scrollY + "px";
+                flash.style.width = rect.width + "px";
+                flash.style.height = rect.height + "px";
+                document.body.appendChild(flash);
+                setTimeout(() => {
+                  flash.style.opacity = "0";
+                  setTimeout(() => flash.remove(), 200);
+                }, 150);
+              } catch (e) {}
+
+              // 计算下次点击的间隔（90ms ± 20ms 浮动）
+              const baseInterval = 90;
+              const variation = 20;
+              const nextInterval =
+                baseInterval + (Math.random() * variation * 2 - variation);
+
+              // 更新状态
+              if (!isTerminated && autoClickerConfig.showNotification) {
+                const totalDisplay =
+                  totalClicks === Infinity ? "∞" : totalClicks;
                 updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 步骤 ${stepNum} 点击成功`,
-                  "success",
-                );
-              } else {
-                updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 执行中 ${stepNum}/${totalSteps}`,
+                  `第 ${currentLoop} 轮 - 点击中 ${clicksDone}/${totalDisplay}`,
                   "pending",
                 );
               }
+
+              setTimeout(doClick, Math.max(30, nextInterval));
             }
-            // 视觉反馈
-            const flash = document.createElement("div");
-            flash.style.cssText =
-              "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #4ade80;border-radius:4px;transition:opacity 0.3s;";
-            const rect = target.getBoundingClientRect();
-            flash.style.left = rect.left + window.scrollX + "px";
-            flash.style.top = rect.top + window.scrollY + "px";
-            flash.style.width = rect.width + "px";
-            flash.style.height = rect.height + "px";
-            document.body.appendChild(flash);
-            setTimeout(() => {
-              flash.style.opacity = "0";
-              setTimeout(() => flash.remove(), 300);
-            }, 300);
-            setTimeout(() => {
-              if (!isTerminated) runNext();
-            }, 200);
+
+            // 开始连点
+            if (!isTerminated) {
+              updateAutoClickerStatus(
+                `第 ${currentLoop} 轮 - 开始连点 (${clickCount === 0 ? "无限" : clickCount}次)`,
+                "pending",
+              );
+            }
+            doClick();
           } else {
             if (!isTerminated) {
               updateAutoClickerStatus(
@@ -15335,20 +16598,18 @@ window.addEventListener("load", function () {
             }, 500);
           }
         } else if (step.type === "position") {
-          // 点击位置 - 修复滚动被覆盖问题
+          // 点击位置（支持连点）
           index++;
           try {
             const x = step.x || 0;
             const y = step.y || 0;
 
-            // 先滚动到目标位置
             window.scrollTo({
               left: Math.max(0, x - window.innerWidth / 2),
               top: Math.max(0, y - window.innerHeight / 2),
               behavior: "instant",
             });
 
-            // 等待滚动完成
             const waitForScrollComplete = function (callback) {
               const targetX = Math.max(0, x - window.innerWidth / 2);
               const targetY = Math.max(0, y - window.innerHeight / 2);
@@ -15375,18 +16636,14 @@ window.addEventListener("load", function () {
             waitForScrollComplete(function () {
               if (signal.aborted || isTerminated) return;
 
-              // ★★★ 重新计算视口坐标 ★★★
               let viewX = x - window.scrollX;
               let viewY = y - window.scrollY;
 
-              // 边界保护
               viewX = Math.max(0, Math.min(viewX, window.innerWidth - 1));
               viewY = Math.max(0, Math.min(viewY, window.innerHeight - 1));
 
-              // 获取目标元素
               let el = document.elementFromPoint(viewX, viewY);
 
-              // 如果没找到元素，尝试偏移
               if (!el) {
                 const offsets = [
                   [0, 0],
@@ -15416,131 +16673,168 @@ window.addEventListener("load", function () {
               }
 
               if (el) {
-                // ★★★ 关键修复：移除 scrollIntoView，它会重新滚动页面 ★★★
-                // 不再调用 el.scrollIntoView，因为我们已经滚动到目标位置了
+                // ★★★ 连点逻辑（位置点击） ★★★
+                const clickCount = step.clickCount || 1;
+                const totalClicks = clickCount === 0 ? Infinity : clickCount;
+                let clicksDone = 0;
 
-                // 聚焦
-                try {
-                  if (typeof el.focus === "function") {
-                    el.focus();
+                function doPositionClick() {
+                  if (signal.aborted || isTerminated) {
+                    isTerminated = true;
+                    finishExecution("已手动终止");
+                    return;
                   }
-                } catch (e) {}
 
-                // 模拟点击
-                try {
-                  el.dispatchEvent(
-                    new MouseEvent("mousedown", {
-                      bubbles: true,
-                      cancelable: true,
-                      clientX: viewX,
-                      clientY: viewY,
-                      button: 0,
-                    }),
-                  );
-                  el.dispatchEvent(
-                    new MouseEvent("mouseup", {
-                      bubbles: true,
-                      cancelable: true,
-                      clientX: viewX,
-                      clientY: viewY,
-                      button: 0,
-                    }),
-                  );
-                  el.dispatchEvent(
-                    new MouseEvent("click", {
-                      bubbles: true,
-                      cancelable: true,
-                      clientX: viewX,
-                      clientY: viewY,
-                      button: 0,
-                    }),
-                  );
-                } catch (e) {
-                  try {
-                    if (typeof el.click === "function") {
-                      el.click();
+                  if (clicksDone >= totalClicks) {
+                    if (!isTerminated && autoClickerConfig.showNotification) {
+                      updateAutoClickerStatus(
+                        `第 ${currentLoop} 轮 - 位置点击完成 (共${clicksDone}次)`,
+                        "success",
+                      );
                     }
-                  } catch (e2) {}
-                }
+                    setTimeout(() => {
+                      if (!isTerminated) runNext();
+                    }, 200);
+                    return;
+                  }
 
-                // 输入框处理
-                if (
-                  el.tagName === "INPUT" ||
-                  el.tagName === "TEXTAREA" ||
-                  el.isContentEditable
-                ) {
+                  clicksDone++;
+
                   try {
                     el.dispatchEvent(
-                      new FocusEvent("focus", { bubbles: true }),
+                      new MouseEvent("mousedown", {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: viewX,
+                        clientY: viewY,
+                        button: 0,
+                      }),
                     );
-                    if (el.setSelectionRange && el.value !== undefined) {
-                      const len = el.value.length;
-                      el.setSelectionRange(len, len);
-                    }
-                  } catch (e) {}
-                }
+                    el.dispatchEvent(
+                      new MouseEvent("mouseup", {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: viewX,
+                        clientY: viewY,
+                        button: 0,
+                      }),
+                    );
+                    el.dispatchEvent(
+                      new MouseEvent("click", {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: viewX,
+                        clientY: viewY,
+                        button: 0,
+                      }),
+                    );
+                  } catch (e) {
+                    try {
+                      if (typeof el.click === "function") {
+                        el.click();
+                      }
+                    } catch (e2) {}
+                  }
 
-                if (!isTerminated && autoClickerConfig.showNotification) {
-                  updateAutoClickerStatus(
-                    `第 ${currentLoop} 轮 - 位置点击成功 (${Math.round(x)}, ${Math.round(y)})`,
-                    "success",
-                  );
-                }
-
-                // 视觉反馈 - 圆圈扩散特效
-                try {
-                  const flash = document.createElement("div");
-                  flash.style.cssText =
-                    "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #60a5fa;border-radius:50%;width:20px;height:20px;transform:translate(-50%,-50%);transition:all 0.3s ease-out;";
-                  flash.style.left = viewX + "px";
-                  flash.style.top = viewY + "px";
-                  document.body.appendChild(flash);
-                  setTimeout(() => {
-                    flash.style.width = "60px";
-                    flash.style.height = "60px";
-                    flash.style.opacity = "0";
+                  // 视觉反馈
+                  try {
+                    const flash = document.createElement("div");
+                    flash.style.cssText =
+                      "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #60a5fa;border-radius:50%;width:20px;height:20px;transform:translate(-50%,-50%);transition:all 0.25s ease-out;";
+                    flash.style.left = viewX + "px";
+                    flash.style.top = viewY + "px";
+                    document.body.appendChild(flash);
                     setTimeout(() => {
-                      try {
-                        flash.remove();
-                      } catch (e) {}
-                    }, 300);
-                  }, 50);
-                } catch (e) {}
+                      flash.style.width = "60px";
+                      flash.style.height = "60px";
+                      flash.style.opacity = "0";
+                      setTimeout(() => {
+                        try {
+                          flash.remove();
+                        } catch (e) {}
+                      }, 250);
+                    }, 50);
+                  } catch (e) {}
 
-                setTimeout(() => {
-                  if (!isTerminated) runNext();
-                }, 300);
-              } else {
-                // 没找到元素，坐标点击
-                try {
-                  document.dispatchEvent(
-                    new MouseEvent("click", {
-                      bubbles: true,
-                      cancelable: true,
-                      clientX: viewX,
-                      clientY: viewY,
-                      button: 0,
-                    }),
-                  );
+                  const baseInterval = 90;
+                  const variation = 20;
+                  const nextInterval =
+                    baseInterval + (Math.random() * variation * 2 - variation);
 
-                  if (!isTerminated) {
+                  if (!isTerminated && autoClickerConfig.showNotification) {
+                    const totalDisplay =
+                      totalClicks === Infinity ? "∞" : totalClicks;
                     updateAutoClickerStatus(
-                      `第 ${currentLoop} 轮 - 位置点击 (坐标点击，无目标元素)`,
-                      "warning",
+                      `第 ${currentLoop} 轮 - 位置点击 ${clicksDone}/${totalDisplay}`,
+                      "pending",
                     );
                   }
-                } catch (e) {
-                  if (!isTerminated) {
-                    updateAutoClickerStatus(
-                      `第 ${currentLoop} 轮 - 位置点击失败：无元素`,
-                      "error",
-                    );
-                  }
+
+                  setTimeout(doPositionClick, Math.max(30, nextInterval));
                 }
 
-                setTimeout(() => {
-                  if (!isTerminated) runNext();
-                }, 300);
+                if (!isTerminated) {
+                  updateAutoClickerStatus(
+                    `第 ${currentLoop} 轮 - 开始位置连点 (${clickCount === 0 ? "无限" : clickCount}次)`,
+                    "pending",
+                  );
+                }
+                doPositionClick();
+              } else {
+                // 没找到元素，坐标点击（也支持连点）
+                const clickCount = step.clickCount || 1;
+                const totalClicks = clickCount === 0 ? Infinity : clickCount;
+                let clicksDone = 0;
+
+                function doCoordClick() {
+                  if (signal.aborted || isTerminated) {
+                    isTerminated = true;
+                    finishExecution("已手动终止");
+                    return;
+                  }
+
+                  if (clicksDone >= totalClicks) {
+                    if (!isTerminated) {
+                      updateAutoClickerStatus(
+                        `第 ${currentLoop} 轮 - 坐标点击完成 (共${clicksDone}次)`,
+                        "success",
+                      );
+                    }
+                    setTimeout(() => {
+                      if (!isTerminated) runNext();
+                    }, 200);
+                    return;
+                  }
+
+                  clicksDone++;
+
+                  try {
+                    document.dispatchEvent(
+                      new MouseEvent("click", {
+                        bubbles: true,
+                        cancelable: true,
+                        clientX: viewX,
+                        clientY: viewY,
+                        button: 0,
+                      }),
+                    );
+                  } catch (e) {}
+
+                  const baseInterval = 90;
+                  const variation = 20;
+                  const nextInterval =
+                    baseInterval + (Math.random() * variation * 2 - variation);
+
+                  setTimeout(doCoordClick, Math.max(30, nextInterval));
+                }
+
+                if (!isTerminated) {
+                  updateAutoClickerStatus(
+                    `第 ${currentLoop} 轮 - 开始坐标连点 (${clickCount === 0 ? "无限" : clickCount}次)`,
+                    "warning",
+                  );
+                }
+                doCoordClick();
               }
             });
           } catch (e) {
@@ -17104,14 +18398,46 @@ window.addEventListener("load", function () {
   });
 
   // ===== 主题切换事件绑定 =====
+  // 手动深/浅点击
+  // 手动深色/浅色点击
   document.querySelectorAll(".nopic-theme-option").forEach((opt) => {
     opt.addEventListener("click", function (e) {
       e.stopPropagation();
       const theme = this.dataset.theme;
+      // 关闭自动，切换到手动模式
+      localStorage.setItem("nopic_theme_preference", theme);
       applyTheme(theme);
-      updateThemeUI(theme);
     });
   });
+
+  // 自动开关点击
+  const autoSwitch = document.getElementById("nopic-theme-auto-switch");
+  if (autoSwitch) {
+    autoSwitch.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const isAuto = this.classList.contains("on");
+      if (isAuto) {
+        // 当前是自动，点击后关闭自动，切换到之前手动记录的主题
+        this.classList.remove("on");
+        // ★★★ 清除定时器 ★★★
+        if (_nopicThemeTimer) {
+          clearInterval(_nopicThemeTimer);
+          _nopicThemeTimer = null;
+        }
+        const prev = localStorage.getItem("nopic_theme_manual") || "dark";
+        localStorage.setItem("nopic_theme_preference", prev);
+        applyTheme(prev);
+      } else {
+        // 当前是手动，点击后开启自动
+        this.classList.add("on");
+        const current =
+          localStorage.getItem("nopic_theme_preference") || "dark";
+        localStorage.setItem("nopic_theme_manual", current);
+        localStorage.setItem("nopic_theme_preference", "auto");
+        applyTheme("auto");
+      }
+    });
+  }
 
   document
     .getElementById("nopic-log-prev-btn")
@@ -18032,6 +19358,78 @@ window.addEventListener("load", function () {
     return false;
   }
 
+  // ===== 首次打开检测（全局共用，只弹一次） =====
+  function checkFirstTimeAndShowWelcome() {
+    var storageKey = "nopic_welcome_shown_global";
+
+    // 直接使用 chrome.storage.local（扩展全局共享）
+    if (
+      typeof chrome !== "undefined" &&
+      chrome.storage &&
+      chrome.storage.local
+    ) {
+      chrome.storage.local.get([storageKey], function (result) {
+        if (result[storageKey] !== true) {
+          showWelcomeModal();
+          chrome.storage.local.set({ [storageKey]: true });
+        }
+      });
+      return;
+    }
+
+    // 如果 chrome.storage 不可用（理论上不会发生），什么都不做
+  }
+
+  function showWelcomeModal() {
+    var modal = document.getElementById("nopic-welcome-modal");
+    if (!modal) return;
+
+    modal.style.display = "block";
+    modal.style.visibility = "visible";
+    modal.style.pointerEvents = "auto";
+
+    // 强制回流后启动动画
+    void modal.offsetHeight;
+    modal.style.transition =
+      "opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+    modal.style.opacity = "1";
+    modal.style.transform = "translate(-50%, -50%) scale(1) translateY(0)";
+  }
+
+  function hideWelcomeModal() {
+    var modal = document.getElementById("nopic-welcome-modal");
+    if (!modal) return;
+    modal.style.pointerEvents = "none";
+    modal.style.opacity = "0";
+    modal.style.transform =
+      "translate(-50%, -50%) scale(0.95) translateY(20px)";
+    setTimeout(function () {
+      modal.style.display = "none";
+    }, 400);
+  }
+
+  // 绑定按钮事件
+  document.addEventListener("DOMContentLoaded", function () {
+    var skipBtn = document.getElementById("nopic-welcome-skip");
+    var startBtn = document.getElementById("nopic-welcome-start");
+
+    if (skipBtn) {
+      skipBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        hideWelcomeModal();
+      });
+    }
+    if (startBtn) {
+      startBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        hideWelcomeModal();
+      });
+    }
+  });
+
+  // 执行检测
+  checkFirstTimeAndShowWelcome();
+
   // 调用初始化
   setTimeout(initAutoClickerOnLoad, 300);
 
@@ -18046,6 +19444,9 @@ window.addEventListener("load", function () {
   _nopicRunWhenReady(function () {
     // 1. 初始化存储（之前被注释掉了）
     _initStorage();
+
+    // ★★★ 首次打开检测（放在存储初始化之后） ★★★
+    checkFirstTimeAndShowWelcome();
 
     // 2. 重新读取依赖存储的配置变量
     //    因为原来的代码在 (function() { ... })() 里已经执行过了，

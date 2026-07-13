@@ -5369,7 +5369,7 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box *,
 [data-nopic-theme="light"] .nopic-ext-btn,
 [data-nopic-theme="light"] .nopic-ext-btn * {
-  color: #1a1a1e !important;
+  color: #3e3e3e !important;
 }
 
 /* ===== 主面板 ===== */
@@ -6436,7 +6436,7 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-cell-del-overlay .nopic-cell-del-box *,
 [data-nopic-theme="light"] .nopic-ext-btn,
 [data-nopic-theme="light"] .nopic-ext-btn * {
-  color: #1a1a1e !important;
+  color: #3e3e3e !important;
 }
 
 [data-nopic-theme="light"] .nopic-privacy-log-page-btn {
