@@ -3359,16 +3359,28 @@ window.addEventListener("load", function () {
     const displayWidth = Math.round(rect.width);
     const displayHeight = Math.round(rect.height);
 
-    // 文件格式检测 - 提取扩展名并校验
-    let format = "Unknown";
+    // ★★★ 提取图片域名 ★★★
+    let domain = "";
     let src = el.src || el.getAttribute("src") || "";
     if (src) {
       try {
-        // 去掉查询参数
+        const url = new URL(src);
+        domain = url.hostname;
+        // 去掉 www. 前缀，更简洁
+        if (domain.startsWith("www.")) {
+          domain = domain.substring(4);
+        }
+      } catch (e) {
+        domain = "";
+      }
+    }
+
+    // 文件格式检测 - 提取扩展名并校验
+    let format = "Unknown";
+    if (src) {
+      try {
         const urlWithoutQuery = src.split("?")[0];
-        // 提取扩展名
         const ext = urlWithoutQuery.split(".").pop()?.toUpperCase() || "";
-        // 常见图片格式白名单
         const validFormats = [
           "PNG",
           "JPG",
@@ -3384,7 +3396,6 @@ window.addEventListener("load", function () {
         if (ext && validFormats.includes(ext)) {
           format = ext;
         }
-        // 如果扩展名不在白名单，保持 Unknown
       } catch (e) {}
     }
 
@@ -3400,6 +3411,7 @@ window.addEventListener("load", function () {
 
     return {
       name: name,
+      domain: domain,
       naturalWidth: Math.round(naturalWidth),
       naturalHeight: Math.round(naturalHeight),
       displayWidth: displayWidth,
@@ -3772,12 +3784,10 @@ window.addEventListener("load", function () {
     // ★★★ 核心：根据目标尺寸动态计算字体大小的函数 ★★★
     function buildBackContent(width, height) {
       const minDim = Math.min(width, height);
-      // 字体大小随容器尺寸动态变化
       let fontSize = minDim / 18;
       let smallFontSize = minDim / 26;
       let tinyFontSize = minDim / 32;
 
-      // 确保最小可读性
       fontSize = Math.max(8, fontSize);
       smallFontSize = Math.max(7, smallFontSize);
       tinyFontSize = Math.max(6, tinyFontSize);
@@ -3787,6 +3797,7 @@ window.addEventListener("load", function () {
       <div style="font-size: ${smallFontSize}px; color: ${isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)"}; line-height: 1.6; white-space: nowrap; padding: 0 8px;">
           <div>原图尺寸：${imgInfo.naturalWidth} × ${imgInfo.naturalHeight} px</div>
           <div>页面显示尺寸：${imgInfo.displayWidth} × ${imgInfo.displayHeight} px</div>
+          ${imgInfo.domain ? `<div>图片域名：${imgInfo.domain}</div>` : ""}
           <div>文件格式：${imgInfo.format}</div>
       </div>
   `;
