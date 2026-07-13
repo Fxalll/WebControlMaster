@@ -3723,12 +3723,19 @@ window.addEventListener("load", function () {
     clone.id = "";
     clone.classList.remove(
       "nopic-hidden",
-      "nopic-has-bg",
       "nopic-outline-box",
       "nopic-float-btn",
+      // ★★★ 关键：不要移除 nopic-has-bg，但后续会根据情况处理 ★★★
     );
     clone.classList.add("nopic-clone");
-    clone.style.cssText = `
+
+    // ★★★ 核心修复：针对背景图元素的特殊处理 ★★★
+    const isBgImage =
+      el.classList.contains("nopic-has-bg") ||
+      window.getComputedStyle(el).backgroundImage !== "none";
+
+    // 基础样式（所有克隆体共用）
+    let cloneStyles = `
     width: 100% !important;
     height: 100% !important;
     display: block !important;
@@ -3736,16 +3743,48 @@ window.addEventListener("load", function () {
     opacity: 1 !important;
     filter: none !important;
     border: none !important;
-    object-fit: contain !important;
-    background-size: contain !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
     margin: 0 !important;
     padding: 0 !important;
     pointer-events: none;
     max-width: 100% !important;
     max-height: 100% !important;
-`;
+  `;
+
+    if (isBgImage) {
+      // ★★★ 是背景图元素：保留背景相关样式，并强制适配容器 ★★★
+      // 获取原始背景图
+      const originalBgImage = window.getComputedStyle(el).backgroundImage;
+      const originalBgSize =
+        window.getComputedStyle(el).backgroundSize || "contain";
+      const originalBgPosition =
+        window.getComputedStyle(el).backgroundPosition || "center";
+      const originalBgRepeat =
+        window.getComputedStyle(el).backgroundRepeat || "no-repeat";
+
+      // 追加背景样式，同时保持 object-fit 类行为，但背景图用 contain 保证完整显示
+      cloneStyles += `
+      background-image: ${originalBgImage} !important;
+      background-size: contain !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+      /* 确保内容为空，避免干扰背景显示 */
+      content: '' !important;
+      /* 如果是内联元素，转为块级 */
+      display: block !important;
+    `;
+      // 清空内部文本，防止干扰（对于纯背景图元素）
+      clone.textContent = "";
+    } else {
+      // ★★★ 是普通 <img>：保留原有对象适配逻辑 ★★★
+      cloneStyles += `
+      object-fit: contain !important;
+      background-size: contain !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+    `;
+    }
+
+    clone.style.cssText = cloneStyles;
     front.appendChild(clone);
 
     // ★★★ 背面：图片信息（根据目标尺寸计算字体大小） ★★★
