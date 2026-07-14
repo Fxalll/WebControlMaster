@@ -3792,6 +3792,16 @@ window.addEventListener("load", function () {
     back.className = "nopic-flip-back";
     const isLight =
       document.documentElement.getAttribute("data-nopic-theme") === "light";
+
+    // 提取图片主题色
+    var themeRGB = getImageThemeColor(el);
+    var darkBg = adjustColor(themeRGB, 0.55);
+    var darkTitle = adjustColor(themeRGB, 0, 0.55);
+    var darkSub = adjustColor(themeRGB, 0, 0.25);
+    var lightBg = adjustColor(themeRGB, 0, 0.75);
+    var lightTitle = adjustColor(themeRGB, 0.45);
+    var lightSub = adjustColor(themeRGB, 0.4);
+
     back.style.cssText = `
       position: absolute;
       width: 100%;
@@ -3800,8 +3810,8 @@ window.addEventListener("load", function () {
       -webkit-backface-visibility: hidden;
       transform: rotateY(180deg);
       border-radius: 4px;
-      background: ${isLight ? "#f0f0f5" : "#151516"};
-      color: ${isLight ? "#1a1a2e" : "#ffffff"};
+      background: ${isLight ? rgbToStr(lightBg) : rgbToStr(darkBg)};
+      color: ${isLight ? rgbToStr(lightTitle) : "#ffffff"};
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -3832,8 +3842,8 @@ window.addEventListener("load", function () {
       tinyFontSize = Math.max(6, tinyFontSize);
 
       return `
-      <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 4px; color: ${isLight ? "#2563eb" : "#60a5fa"}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
-      <div style="font-size: ${smallFontSize}px; color: ${isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)"}; line-height: 1.6; white-space: nowrap; padding: 0 8px;">
+      <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 4px; color: ${isLight ? rgbToStr(lightTitle) : rgbToStr(darkTitle)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
+      <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lightSub, 0.8) : rgbToStr(darkSub, 0.55)}; line-height: 1.6; white-space: nowrap; padding: 0 8px;">
           <div>原图尺寸：${imgInfo.naturalWidth} × ${imgInfo.naturalHeight} px</div>
           <div>页面显示尺寸：${imgInfo.displayWidth} × ${imgInfo.displayHeight} px</div>
           ${imgInfo.domain ? `<div>图片域名：${imgInfo.domain}</div>` : ""}
@@ -4673,6 +4683,7 @@ window.addEventListener("load", function () {
       syncElementPosition(el);
     });
     button.addEventListener("mouseleave", () => {
+      if (!el || !el.isConnected) return;
       el._btnHovering = false;
       const rect = el.getBoundingClientRect();
       const inImg =
@@ -4694,6 +4705,7 @@ window.addEventListener("load", function () {
     button.addEventListener("click", (e) => {
       e.stopPropagation();
       e.preventDefault();
+      if (!el || !el.isConnected) return;
       const isCurrentlyHidden = el.dataset.isHidden === "true";
       el.dataset.isHidden = isCurrentlyHidden ? "false" : "true";
       button.innerText = isCurrentlyHidden ? "隐" : "显";
@@ -4730,6 +4742,7 @@ window.addEventListener("load", function () {
         syncElementPosition(el);
       });
       zoomBtn.addEventListener("mouseleave", () => {
+        if (!el || !el.isConnected) return;
         el._btnHovering = false;
         const rect = el.getBoundingClientRect();
         const inImg =
@@ -5450,6 +5463,13 @@ window.addEventListener("load", function () {
     lastMouseY = e.clientY;
     if (Math.random() < 0.05) saveGlobalStats();
   });
+
+  // 图片加载失败自动隐藏（替代内联 onerror，避免 CSP 报错）
+  document.addEventListener("error", function (e) {
+    if (e.target.tagName === "IMG" && e.target.classList.contains("nopic-dc-img")) {
+      e.target.style.display = "none";
+    }
+  }, true);
 
   document.addEventListener("click", (e) => {
     if (
@@ -6566,30 +6586,30 @@ window.addEventListener("load", function () {
     <div class="nopic-mask-list-column" style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;">
       <div class="nopic-mask-list-column-title" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
         <span>仅当前页</span>
-        <span class="nopic-scope-clear-btn" data-tr-clear="url" title="清除当前URL配置" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:11px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(248,113,113,0.12)'" onmouseout="this.style.background='transparent'">✕</span>
+        <span class="nopic-scope-clear-btn" data-tr-clear="url" title="清除当前URL配置" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:11px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
       </div>
       <div class="nopic-mask-list" id="nopic-tr-list-url" style="flex:1;"></div>
-      <div class="nopic-textreplace-add-btn" data-tr-add="url" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(96,165,250,0.18)';this.style.borderColor='rgba(96,165,250,0.35)'" onmouseout="this.style.background='rgba(96,165,250,0.08)';this.style.borderColor='rgba(96,165,250,0.2)'">+ 添加</div>
+      <div class="nopic-textreplace-add-btn" data-tr-add="url" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;">+ 添加</div>
     </div>
 
     <!-- 当前网站 -->
     <div class="nopic-mask-list-column" style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;">
       <div class="nopic-mask-list-column-title" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
         <span>当前网站</span>
-        <span class="nopic-scope-clear-btn" data-tr-clear="domain" title="清除域名配置" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:11px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(248,113,113,0.12)'" onmouseout="this.style.background='transparent'">✕</span>
+        <span class="nopic-scope-clear-btn" data-tr-clear="domain" title="清除域名配置" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:11px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
       </div>
       <div class="nopic-mask-list" id="nopic-tr-list-domain" style="flex:1;"></div>
-      <div class="nopic-textreplace-add-btn" data-tr-add="domain" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(96,165,250,0.18)';this.style.borderColor='rgba(96,165,250,0.35)'" onmouseout="this.style.background='rgba(96,165,250,0.08)';this.style.borderColor='rgba(96,165,250,0.2)'">+ 添加</div>
+      <div class="nopic-textreplace-add-btn" data-tr-add="domain" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;">+ 添加</div>
     </div>
 
     <!-- 全局通用 -->
     <div class="nopic-mask-list-column" style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;">
       <div class="nopic-mask-list-column-title" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
         <span>全局通用</span>
-        <span class="nopic-scope-clear-btn" data-tr-clear="global" title="清除全局配置" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:11px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(248,113,113,0.12)'" onmouseout="this.style.background='transparent'">✕</span>
+        <span class="nopic-scope-clear-btn" data-tr-clear="global" title="清除全局配置" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:11px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
       </div>
       <div class="nopic-mask-list" id="nopic-tr-list-global" style="flex:1;"></div>
-      <div class="nopic-textreplace-add-btn" data-tr-add="global" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(96,165,250,0.18)';this.style.borderColor='rgba(96,165,250,0.35)'" onmouseout="this.style.background='rgba(96,165,250,0.08)';this.style.borderColor='rgba(96,165,250,0.2)'">+ 添加</div>
+      <div class="nopic-textreplace-add-btn" data-tr-add="global" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;">+ 添加</div>
     </div>
 
   </div>
@@ -6616,30 +6636,30 @@ window.addEventListener("load", function () {
     <div class="nopic-mask-list-column" style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;">
       <div class="nopic-mask-list-column-title" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
         <span>仅当前页</span>
-        <span class="nopic-scope-clear-btn" data-qt-clear="url" title="清除当前URL配置" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:13px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(248,113,113,0.12)'" onmouseout="this.style.background='transparent'">✕</span>
+        <span class="nopic-scope-clear-btn" data-qt-clear="url" title="清除当前URL配置" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:13px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
       </div>
       <div class="nopic-mask-list" id="nopic-qt-list-url" style="flex:1;"></div>
-      <div class="nopic-textreplace-add-btn" data-qt-add="url" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(96,165,250,0.18)';this.style.borderColor='rgba(96,165,250,0.35)'" onmouseout="this.style.background='rgba(96,165,250,0.08)';this.style.borderColor='rgba(96,165,250,0.2)'">+ 添加</div>
+      <div class="nopic-textreplace-add-btn" data-qt-add="url" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;">+ 添加</div>
     </div>
 
     <!-- 当前网站 -->
     <div class="nopic-mask-list-column" style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;">
       <div class="nopic-mask-list-column-title" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
         <span>当前网站</span>
-        <span class="nopic-scope-clear-btn" data-qt-clear="domain" title="清除域名配置" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:13px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(248,113,113,0.12)'" onmouseout="this.style.background='transparent'">✕</span>
+        <span class="nopic-scope-clear-btn" data-qt-clear="domain" title="清除域名配置" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:13px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
       </div>
       <div class="nopic-mask-list" id="nopic-qt-list-domain" style="flex:1;"></div>
-      <div class="nopic-textreplace-add-btn" data-qt-add="domain" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(96,165,250,0.18)';this.style.borderColor='rgba(96,165,250,0.35)'" onmouseout="this.style.background='rgba(96,165,250,0.08)';this.style.borderColor='rgba(96,165,250,0.2)'">+ 添加</div>
+      <div class="nopic-textreplace-add-btn" data-qt-add="domain" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;">+ 添加</div>
     </div>
 
     <!-- 全局通用 -->
     <div class="nopic-mask-list-column" style="flex:1;min-width:0;background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 10px 8px 10px;border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;">
       <div class="nopic-mask-list-column-title" style="display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:rgba(255,255,255,0.5);padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
         <span>全局通用</span>
-        <span class="nopic-scope-clear-btn" data-qt-clear="global" title="清除全局配置" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:13px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(248,113,113,0.12)'" onmouseout="this.style.background='transparent'">✕</span>
+        <span class="nopic-scope-clear-btn" data-qt-clear="global" title="清除全局配置" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;font-size:13px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
       </div>
       <div class="nopic-mask-list" id="nopic-qt-list-global" style="flex:1;"></div>
-      <div class="nopic-textreplace-add-btn" data-qt-add="global" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='rgba(96,165,250,0.18)';this.style.borderColor='rgba(96,165,250,0.35)'" onmouseout="this.style.background='rgba(96,165,250,0.08)';this.style.borderColor='rgba(96,165,250,0.2)'">+ 添加</div>
+      <div class="nopic-textreplace-add-btn" data-qt-add="global" style="display:flex;align-items:center;justify-content:center;padding:6px 0;margin-top:6px;background:rgba(96,165,250,0.08);border:1px dashed rgba(96,165,250,0.2);border-radius:6px;cursor:pointer;font-size:12px;color:#60a5fa;transition:all 0.2s;flex-shrink:0;">+ 添加</div>
     </div>
 
   </div>
@@ -8063,7 +8083,7 @@ window.addEventListener("load", function () {
         margin-top: 6px;
         transition: color 0.2s;
         text-align: center;
-    " onmouseover="this.style.color='rgba(255,255,255,0.5)'" onmouseout="this.style.color='rgba(255,255,255,0.25)'">
+    ">
         如何使用这个工具？
     </div>
   </div>
@@ -8266,12 +8286,14 @@ window.addEventListener("load", function () {
 
   // 专门用于安全警告的弹窗 - 点击"我知道了"仅关闭弹窗，不清除标志
   function showConfirmModalWithAck(title, text) {
-    confirmModal.querySelector(".nopic-confirm-title").textContent = title;
-    confirmModal.querySelector(".nopic-confirm-text").textContent = text;
-
-    // 重置按钮样式
+    var titleEl = confirmModal.querySelector(".nopic-confirm-title");
+    var textEl = confirmModal.querySelector(".nopic-confirm-text");
     var confirmBtn = confirmModal.querySelector(".nopic-confirm-btn.danger");
     var cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
+    if (!confirmBtn || !cancelBtn) return;
+
+    if (titleEl) titleEl.textContent = title;
+    if (textEl) textEl.textContent = text;
 
     // 隐藏取消按钮
     cancelBtn.style.display = "none";
@@ -8467,16 +8489,20 @@ window.addEventListener("load", function () {
     // 强制重绘 - 关键！确保 transition 重新生效
     void confirmModal.offsetHeight;
 
-    confirmModal.querySelector(".nopic-confirm-title").textContent = title;
-    confirmModal.querySelector(".nopic-confirm-text").textContent = text;
+    var titleEl = confirmModal.querySelector(".nopic-confirm-title");
+    var textEl = confirmModal.querySelector(".nopic-confirm-text");
+    const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
+    const confirmBtn = confirmModal.querySelector(".nopic-confirm-btn.danger");
+    if (!confirmBtn || !cancelBtn) return;
+
+    if (titleEl) titleEl.textContent = title;
+    if (textEl) textEl.textContent = text;
 
     // 重置取消按钮文字为"取消"
-    const cancelBtn = confirmModal.querySelector(".nopic-confirm-btn.cancel");
     cancelBtn.textContent = "取消";
     cancelBtn.style.display = "";
 
     // 重置确认按钮
-    const confirmBtn = confirmModal.querySelector(".nopic-confirm-btn.danger");
     confirmBtn.textContent = "确认";
     confirmBtn.classList.add("danger");
     confirmBtn.classList.remove("cancel");
@@ -9872,8 +9898,6 @@ window.addEventListener("load", function () {
         );
       } catch (e) {
         // drawWindow 在 Firefox 中可用，在 Chrome 中不可用
-        console.warn("[nopic] drawWindow 不可用，使用备用方案");
-        // 备用方案：采样 DOM 元素颜色
         return getColorFromDOMSampling(rect);
       }
 
@@ -10164,6 +10188,73 @@ window.addEventListener("load", function () {
     return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
   }
 
+  // ===== 图片主题色提取 =====
+  function getImageThemeColor(img) {
+    try {
+      var canvas = document.createElement("canvas");
+      var size = 48;
+      canvas.width = size;
+      canvas.height = size;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, size, size);
+      var data = ctx.getImageData(0, 0, size, size).data;
+      // 直方图量化：每通道8档，共512个色桶
+      var bins = new Array(512);
+      var binR = new Array(512);
+      var binG = new Array(512);
+      var binB = new Array(512);
+      for (var j = 0; j < 512; j++) { bins[j] = 0; binR[j] = 0; binG[j] = 0; binB[j] = 0; }
+      for (var i = 0; i < data.length; i += 4) {
+        var pr = data[i], pg = data[i + 1], pb = data[i + 2], pa = data[i + 3];
+        if (pa < 128) continue;
+        var lum = 0.299 * pr + 0.587 * pg + 0.114 * pb;
+        if (lum < 10 || lum > 245) continue;
+        var ri = pr >> 5, gi = pg >> 5, bi = pb >> 5;
+        var key = (ri << 6) | (gi << 3) | bi;
+        bins[key]++;
+        binR[key] += pr;
+        binG[key] += pg;
+        binB[key] += pb;
+      }
+      // 找最大色桶
+      var maxKey = 0, maxCount = 0;
+      for (var k = 0; k < 512; k++) {
+        if (bins[k] > maxCount) { maxCount = bins[k]; maxKey = k; }
+      }
+      if (maxCount === 0) return { r: 128, g: 128, b: 128 };
+      return {
+        r: Math.round(binR[maxKey] / maxCount),
+        g: Math.round(binG[maxKey] / maxCount),
+        b: Math.round(binB[maxKey] / maxCount),
+      };
+    } catch (e) {
+      return { r: 128, g: 128, b: 128 };
+    }
+  }
+
+  function adjustColor(rgb, darkAmount, lightAmount) {
+    if (darkAmount) {
+      return {
+        r: Math.round(rgb.r * (1 - darkAmount)),
+        g: Math.round(rgb.g * (1 - darkAmount)),
+        b: Math.round(rgb.b * (1 - darkAmount)),
+      };
+    }
+    if (lightAmount) {
+      return {
+        r: Math.round(rgb.r + (255 - rgb.r) * lightAmount),
+        g: Math.round(rgb.g + (255 - rgb.g) * lightAmount),
+        b: Math.round(rgb.b + (255 - rgb.b) * lightAmount),
+      };
+    }
+    return rgb;
+  }
+
+  function rgbToStr(rgb, alpha) {
+    if (alpha !== undefined) return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
+    return "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")";
+  }
+
   // ===== 统一设置遮罩层背景和透明度（根据blur自动选择hex或rgba） =====
   function applyMaskVisualStyle(layer, color, opacity, blur) {
     if (blur && blur > 0 && opacity < 100) {
@@ -10449,8 +10540,8 @@ window.addEventListener("load", function () {
           layerEl.style.width = newData.width + "px";
           layerEl.style.height = newData.height + "px";
           applyMaskVisualStyle(layerEl, newData.color, newData.opacity, newData.blur);
+          updateControlsPosition(controls, layerEl);
         }
-        updateControlsPosition(controls, layerEl);
         updateMaskList();
       }
     }
@@ -11569,13 +11660,18 @@ window.addEventListener("load", function () {
     if (scope === "domain") {
       key = "nopic_autoclicker_domain_" + location.host;
     } else {
-      // url 级别
       key = "nopic_autoclicker_" + encodeURIComponent(basePath);
     }
     const saved = localStorage.getItem(key);
-    return saved
-      ? JSON.parse(saved)
-      : { ...defaultAutoClickerConfig, steps: [] };
+    try {
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.steps && Array.isArray(parsed.steps)) {
+          return parsed;
+        }
+      }
+    } catch (e) { /* corrupted config */ }
+    return { ...defaultAutoClickerConfig, steps: [] };
   }
 
   // 保存配置到指定作用域
@@ -13305,7 +13401,7 @@ window.addEventListener("load", function () {
           rowHtml +=
             '<img src="' +
             dcEscapeHtml(val) +
-            '" style="max-height:30px;max-width:60px;border-radius:3px;object-fit:contain;background:rgba(255,255,255,0.05);display:block;" onerror="this.style.display=\'none\'">';
+            '" class="nopic-dc-img" style="max-height:30px;max-width:60px;border-radius:3px;object-fit:contain;background:rgba(255,255,255,0.05);display:block;">';
           rowHtml +=
             '<span style="font-size:9px;color:rgba(255,255,255,0.3);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;">' +
             dcEscapeHtml(val.substring(0, 40)) +
@@ -13328,7 +13424,7 @@ window.addEventListener("load", function () {
               rowHtml +=
                 '<img src="' +
                 dcEscapeHtml(parsed.image) +
-                '" style="max-height:40px;max-width:70px;border-radius:3px;object-fit:contain;background:rgba(255,255,255,0.05);display:block;" onerror="this.style.display=\'none\'">';
+                '" class="nopic-dc-img" style="max-height:40px;max-width:70px;border-radius:3px;object-fit:contain;background:rgba(255,255,255,0.05);display:block;">';
               rowHtml += "</a>";
             }
             if (parsed.text) {
@@ -14267,16 +14363,19 @@ window.addEventListener("load", function () {
     var now = new Date();
     var timeStr = now.toLocaleString("zh-CN");
     var url = location.href;
+    headers = headers || [];
+    rows = rows || [];
     var isLight =
       document.documentElement.getAttribute("data-nopic-theme") === "light";
 
     var tableRows = rows
+      .filter(function (row) { return row; })
       .map(function (row) {
         return (
           "<tr>" +
           row
             .map(function (cell) {
-              return "<td>" + cell + "</td>";
+              return "<td>" + (cell != null ? cell : "") + "</td>";
             })
             .join("") +
           "</tr>"
@@ -16490,7 +16589,7 @@ window.addEventListener("load", function () {
       transition:border-color 0.25s ease, background 0.25s ease;
       letter-spacing:0.5px;
       user-select:none;
-    " onmouseover="this.style.borderColor='rgba(96,165,250,0.3)';this.style.background='rgba(96,165,250,0.06)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.04)'">
+    ">
       点击后按下快捷键
     </div>
 
@@ -16510,7 +16609,7 @@ window.addEventListener("load", function () {
       cursor:pointer;
       transition:color 0.15s, background 0.15s;
       font-weight:400;
-    " onmouseover="this.style.color='rgba(255,255,255,0.6)';this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.color='rgba(255,255,255,0.35)';this.style.background='transparent'">
+    ">
       取消
     </button>
     <button id="nopic-autoclicker-shortcut-confirm" style="
@@ -16523,7 +16622,7 @@ window.addEventListener("load", function () {
       cursor:pointer;
       transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
       font-weight:500;
-    " onmouseover="this.style.background='rgba(96,165,250,0.25)';this.style.borderColor='rgba(96,165,250,0.5)';this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(96,165,250,0.15)';this.style.borderColor='rgba(96,165,250,0.3)';this.style.transform='scale(1)'">
+    ">
       确定
     </button>
   </div>

@@ -7755,3 +7755,33 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-transform-container .nopic-transform-handle:active {
   transform: scale(0.85);
 }
+
+/* ===== 事件处理 - hover 效果 (替代 inline onmouseover/onmouseout) ===== */
+.nopic-scope-clear-btn:hover {
+  background: rgba(248,113,113,0.12) !important;
+}
+
+.nopic-textreplace-add-btn:hover {
+  background: rgba(96,165,250,0.18) !important;
+  border-color: rgba(96,165,250,0.35) !important;
+}
+
+#nopic-show-welcome-btn:hover {
+  color: rgba(255,255,255,0.5) !important;
+}
+
+#nopic-shortcut-input-area:hover {
+  border-color: rgba(96,165,250,0.3) !important;
+  background: rgba(96,165,250,0.06) !important;
+}
+
+#nopic-autoclicker-shortcut-cancel:hover {
+  color: rgba(255,255,255,0.6) !important;
+  background: rgba(255,255,255,0.05) !important;
+}
+
+#nopic-autoclicker-shortcut-confirm:hover {
+  background: rgba(96,165,250,0.25) !important;
+  border-color: rgba(96,165,250,0.5) !important;
+  transform: scale(1.02);
+}
