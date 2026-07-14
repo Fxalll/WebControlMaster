@@ -3699,7 +3699,7 @@ html[data-nopic-theme] #nopic-widget {
 
 /* ===== 左列 ===== */
 #nopic-about-modal .about-left {
-  flex: 0 0 270px !important;
+  flex: 0 0 364px !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 10px !important;
@@ -3746,6 +3746,7 @@ html[data-nopic-theme] #nopic-widget {
   gap: 4px !important;
   font-size: 12px !important;
   padding: 2px 0 !important;
+  flex-wrap: nowrap !important;
 }
 
 #nopic-about-modal .about-method .method-label {
@@ -3758,9 +3759,9 @@ html[data-nopic-theme] #nopic-widget {
 /* ===== Edge 按钮 - 实心蓝底白字 ===== */
 #nopic-about-modal .btn-edge {
   display: inline-flex !important;
-  padding: 4px 14px !important;
+  padding: 3px 10px !important;
   border-radius: 4px !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 500 !important;
   background: #1a73e8 !important;
   border: 1px solid #1a73e8 !important;
@@ -3768,6 +3769,8 @@ html[data-nopic-theme] #nopic-widget {
   text-decoration: none !important;
   cursor: pointer !important;
   transition: all 0.2s !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 #nopic-about-modal .btn-edge:hover {
   background: #1557b0 !important;
@@ -3819,6 +3822,14 @@ html[data-nopic-theme] #nopic-widget {
   padding: 1px 7px !important;
   border-radius: 3px !important;
 }
+#nopic-about-modal .badge-incomplete {
+  font-size: 9px !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  padding: 1px 7px !important;
+  border-radius: 3px !important;
+  font-weight: 500 !important;
+}
 
 #nopic-about-modal .method-hint {
   font-size: 10px !important;
@@ -3827,6 +3838,7 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-about-modal .method-text {
   font-size: 12px !important;
   color: rgba(255, 255, 255, 0.5) !important;
+  white-space: nowrap !important;
 }
 
 /* ===== 方式二通用说明 ===== */
@@ -6006,6 +6018,29 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-about-modal .about-sponsor {
   color: rgba(0, 0, 0, 0.3) !important;
 }
+[data-nopic-theme="light"] #nopic-about-modal .nopic-data-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-show-welcome-btn,
+[data-nopic-theme="light"] #nopic-reset-all-btn {
+  color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-reset-all-btn:hover {
+  color: rgba(239, 68, 68, 0.8) !important;
+}
+[data-nopic-theme="light"] #nopic-show-welcome-btn:hover {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] #nopic-export-data-btn,
+[data-nopic-theme="light"] #nopic-import-data-btn {
+  color: rgba(0, 0, 0, 0.35) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+[data-nopic-theme="light"] #nopic-export-data-btn:hover,
+[data-nopic-theme="light"] #nopic-import-data-btn:hover {
+  color: rgba(0, 0, 0, 0.6) !important;
+  border-color: rgba(0, 0, 0, 0.25) !important;
+}
 [data-nopic-theme="light"] #nopic-about-modal .method-label {
   color: rgba(0, 0, 0, 0.3) !important;
 }
@@ -6040,6 +6075,10 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-about-modal .badge-pending {
   background: rgba(0, 0, 0, 0.04) !important;
   color: rgba(0, 0, 0, 0.3) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .badge-incomplete {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #dc2626 !important;
 }
 
 /* ===== 导出弹窗 ===== */
@@ -7954,6 +7993,16 @@ html[data-nopic-theme] #nopic-widget {
   color: rgba(255, 255, 255, 0.5) !important;
 }
 
+#nopic-reset-all-btn:hover {
+  color: rgba(239, 68, 68, 0.7) !important;
+}
+
+#nopic-export-data-btn:hover,
+#nopic-import-data-btn:hover {
+  color: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
 #nopic-shortcut-input-area:hover {
   border-color: rgba(96, 165, 250, 0.3) !important;
   background: rgba(96, 165, 250, 0.06) !important;
@@ -7976,7 +8025,9 @@ html[data-nopic-theme] #nopic-widget {
   backdrop-filter: blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.08) !important;
   color: #1a1a2e !important;
 }
 [data-nopic-theme="light"] #nopic-welcome-modal > div:nth-child(1) {
