@@ -5943,11 +5943,19 @@ window.addEventListener("load", function () {
     <div class="nopic-mask-opacity-row">
         <span class="nopic-mask-opacity-label">透明度</span>
         <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-opacity" min="10" max="100" value="100">
+        <span id="nopic-mask-opacity-val" style="font-size:11px;color:rgba(255,255,255,0.5);min-width:32px;text-align:right;">100%</span>
     </div>
     <div class="nopic-mask-opacity-row">
         <span class="nopic-mask-opacity-label">圆角</span>
         <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-radius" min="0" max="50" value="8">
+        <span id="nopic-mask-radius-val" style="font-size:11px;color:rgba(255,255,255,0.5);min-width:32px;text-align:right;">8px</span>
     </div>
+    <div class="nopic-mask-opacity-row">
+        <span class="nopic-mask-opacity-label">模糊度</span>
+        <input type="range" class="nopic-mask-opacity-slider" id="nopic-mask-blur" min="0" max="30" value="0">
+        <span id="nopic-mask-blur-val" style="font-size:11px;color:rgba(255,255,255,0.5);min-width:32px;text-align:right;">0px</span>
+    </div>
+    <div id="nopic-mask-blur-warn" style="display:none;padding:0 10px 2px;font-size:10px;color:rgba(255,200,60,0.7);line-height:1.3;">⚠ 仅透明度&lt;100%时生效·可能影响性能</div>
 </div>
     <div class="nopic-mask-section">
       <div class="nopic-mask-section-title">位置模式</div>
@@ -7306,6 +7314,24 @@ window.addEventListener("load", function () {
           const colorRow = document.getElementById("nopic-mask-color-row");
           if (colorRow) {
             colorRow.style.display = isOn ? "none" : "flex";
+          }
+
+          // ★ 实时影响：开关切换后仅更新当前选中的遮罩 ★
+          var info = findEditingMask();
+          if (info) {
+            if (isOn) {
+              // 智能取色开启：采样背景色
+              var rect = { left: info.md.x, top: info.md.y, right: info.md.x + info.md.width, bottom: info.md.y + info.md.height };
+              var sampled = getAverageColorFromRegion(rect);
+              if (sampled && sampled !== "#888888") {
+                info.md.color = sampled;
+              }
+            } else {
+              // 智能取色关闭：切换到手动选择的颜色
+              info.md.color = document.getElementById("nopic-mask-color").value;
+            }
+            applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
+            saveMaskToScope(info.config, info.scope);
           }
         };
 
@@ -10131,6 +10157,30 @@ window.addEventListener("load", function () {
     return "#" + [r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("");
   }
 
+  // ===== 十六进制转rgba =====
+  function hexToRgba(hex, alpha) {
+    var rgb = parseColorToRGB(hex);
+    if (!rgb) return "rgba(0,0,0," + alpha + ")";
+    return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
+  }
+
+  // ===== 统一设置遮罩层背景和透明度（根据blur自动选择hex或rgba） =====
+  function applyMaskVisualStyle(layer, color, opacity, blur) {
+    if (blur && blur > 0 && opacity < 100) {
+      // blur模式：用rgba背景实现透明，element opacity固定为1
+      layer.style.background = hexToRgba(color, opacity / 100);
+      layer.style.opacity = "1";
+      layer.style.backdropFilter = "blur(" + blur + "px)";
+      layer.style.webkitBackdropFilter = layer.style.backdropFilter;
+    } else {
+      // 普通模式：hex背景 + element opacity
+      layer.style.background = color;
+      layer.style.opacity = opacity / 100;
+      layer.style.backdropFilter = "";
+      layer.style.webkitBackdropFilter = "";
+    }
+  }
+
   // 创建遮罩层DOM
   function createMaskLayer(maskData) {
     const layer = document.createElement("div");
@@ -10139,8 +10189,7 @@ window.addEventListener("load", function () {
     layer.style.left = maskData.x + "px";
     layer.style.width = maskData.width + "px";
     layer.style.height = maskData.height + "px";
-    layer.style.background = maskData.color;
-    layer.style.opacity = maskData.opacity / 100;
+    applyMaskVisualStyle(layer, maskData.color, maskData.opacity, maskData.blur);
     layer.style.borderRadius =
       (maskData.radius != null ? maskData.radius : 8) + "px";
     void layer.offsetWidth;
@@ -10157,18 +10206,58 @@ window.addEventListener("load", function () {
     document.body.appendChild(layer);
     maskLayers.push(layer);
 
-    // 点击触发光效动画
-    layer.addEventListener("click", () => {
-      layer.style.animation = "none";
-      void layer.offsetWidth;
-      layer.style.animation = "nopic-mask-glow 1.2s ease-out forwards";
-      layer.addEventListener(
-        "animationend",
-        () => {
+    // 单击遮罩进入编辑模式（仅当面板打开时）
+    layer.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (e.target === layer) {
+        // ★★★ 只有面板打开时才能进入编辑模式 ★★★
+        if (!maskSubmenuOpen) {
+          // 面板未打开：闪一下光效提示可点击
           layer.style.animation = "none";
-        },
-        { once: true },
-      );
+          void layer.offsetWidth;
+          layer.style.animation = "nopic-mask-tap 0.5s ease-out forwards";
+          clearTimeout(layer._tapTimer);
+          layer._tapTimer = setTimeout(function () {
+            layer.style.animation = "none";
+          }, 550);
+          return;
+        }
+        // 清除其他遮罩的编辑状态
+        document
+          .querySelectorAll(".nopic-mask-layer.editing")
+          .forEach(function (el) {
+            if (el.id !== layer.id) {
+              el.classList.remove("editing");
+              if (el._transformControls && el._transformControls.parentNode) {
+                el._transformControls.remove();
+                el._transformControls = null;
+              }
+            }
+          });
+        // 移除所有变换控件
+        document
+          .querySelectorAll(".nopic-mask-transform-controls")
+          .forEach(function (el) {
+            if (el.dataset.maskId !== layer.id) {
+              if (el._cleanup) el._cleanup();
+              el.remove();
+            }
+          });
+        // 进入编辑模式 —— 在所有 scope 中查找该遮罩
+        let scope = "url";
+        ["url", "domain", "global"].forEach(function (s) {
+          const config = getMaskConfigByScope(s);
+          if (
+            config.masks &&
+            config.masks.some(function (m) {
+              return m.id === layer.id;
+            })
+          ) {
+            scope = s;
+          }
+        });
+        enterMaskEditMode(layer.id, scope);
+      }
     });
 
     // 双击进入编辑模式
@@ -10182,6 +10271,7 @@ window.addEventListener("load", function () {
 
   // 编辑模式
   let editingMaskId = null;
+  let editingMaskScope = null;
   let editDragStartX = 0;
   let editDragStartY = 0;
   let editMaskStartLeft = 0;
@@ -10197,6 +10287,368 @@ window.addEventListener("load", function () {
     layer.addEventListener("mousedown", startEditDrag);
     document.addEventListener("mousemove", onEditDrag);
     document.addEventListener("mouseup", endEditDrag);
+  }
+
+  // ===== 遮罩变换控件 =====
+  function enterMaskEditMode(maskId, scope) {
+    const layer = document.getElementById(maskId);
+    if (!layer) return;
+
+    editingMaskId = maskId;
+    editingMaskScope = scope;
+    highlightMaskListItem(maskId);
+
+    // 移除已有的控件
+    if (layer._transformControls && layer._transformControls.parentNode) {
+      layer._transformControls.remove();
+      layer._transformControls = null;
+    }
+    document
+      .querySelectorAll(".nopic-mask-transform-controls")
+      .forEach(function (el) {
+        if (el !== layer._transformControls) el.remove();
+      });
+
+    // 标记为编辑状态
+    layer.classList.add("editing");
+
+    // 创建变换控件容器
+    const controls = document.createElement("div");
+    controls.className = "nopic-mask-transform-controls";
+    controls.style.cssText = `
+    position: fixed;
+    z-index: 2147483645;
+    pointer-events: none;
+    border: 2px dashed #60a5fa;
+    border-radius: 4px;
+    box-sizing: border-box;
+  `;
+    controls.dataset.maskId = maskId;
+    controls.dataset.scope = scope;
+
+    // 获取遮罩当前位置
+    updateControlsPosition(controls, layer);
+
+    // 创建8个拖拽手柄
+    const handles = [
+      { id: "tl", cursor: "nw-resize", x: 0, y: 0 },
+      { id: "tc", cursor: "n-resize", x: 0.5, y: 0 },
+      { id: "tr", cursor: "ne-resize", x: 1, y: 0 },
+      { id: "ml", cursor: "w-resize", x: 0, y: 0.5 },
+      { id: "mr", cursor: "e-resize", x: 1, y: 0.5 },
+      { id: "bl", cursor: "sw-resize", x: 0, y: 1 },
+      { id: "bc", cursor: "s-resize", x: 0.5, y: 1 },
+      { id: "br", cursor: "se-resize", x: 1, y: 1 },
+    ];
+
+    handles.forEach(function (h) {
+      const handle = document.createElement("div");
+      handle.className = "nopic-mask-handle";
+      handle.dataset.handle = h.id;
+      handle.style.cssText = `
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #60a5fa;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      cursor: ${h.cursor};
+      pointer-events: auto;
+      left: calc(${h.x * 100}% - 6px);
+      top: calc(${h.y * 100}% - 6px);
+      box-shadow: 0 0 8px rgba(96,165,250,0.5);
+      z-index: 10;
+      transition: transform 0.15s;
+    `;
+      handle.addEventListener("mouseenter", function () {
+        this.style.transform = "scale(1.3)";
+      });
+      handle.addEventListener("mouseleave", function () {
+        this.style.transform = "scale(1)";
+      });
+      controls.appendChild(handle);
+    });
+
+    // 中心拖拽手柄（整个遮罩区域都可拖拽）
+    const centerHandle = document.createElement("div");
+    centerHandle.className = "nopic-mask-handle-center";
+    centerHandle.style.cssText = `
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    cursor: move;
+    pointer-events: auto;
+    left: 0;
+    top: 0;
+    z-index: 5;
+    background: transparent;
+  `;
+    controls.appendChild(centerHandle);
+
+    document.body.appendChild(controls);
+    layer._transformControls = controls;
+
+    // 监听滚动和 resize，实时更新控件位置
+    function updateControlsOnScroll() {
+      const layerEl = document.getElementById(maskId);
+      if (layerEl && controls && controls.parentNode) {
+        updateControlsPosition(controls, layerEl);
+      }
+    }
+
+    controls._scrollHandler = updateControlsOnScroll;
+    window.addEventListener("scroll", controls._scrollHandler);
+    window.addEventListener("resize", controls._scrollHandler);
+
+    // 绑定拖拽事件
+    bindTransformEvents(controls, layer);
+  }
+
+  function updateControlsPosition(controls, layer) {
+    const rect = layer.getBoundingClientRect();
+    controls.style.left = rect.left + "px";
+    controls.style.top = rect.top + "px";
+    controls.style.width = rect.width + "px";
+    controls.style.height = rect.height + "px";
+  }
+
+  function bindTransformEvents(controls, layer) {
+    let isDragging = false;
+    let dragType = "";
+    let lastX, lastY;
+    let maskId = controls.dataset.maskId;
+    let scope = controls.dataset.scope;
+
+    function getMaskData() {
+      const config = getMaskConfigByScope(scope);
+      return config.masks.find(function (m) {
+        return m.id === maskId;
+      });
+    }
+
+    function updateMaskData(newData) {
+      const config = getMaskConfigByScope(scope);
+      const idx = config.masks.findIndex(function (m) {
+        return m.id === maskId;
+      });
+      if (idx !== -1) {
+        config.masks[idx] = newData;
+        if (scope === "global") {
+          GM_setValue("nopic_mask_global", config);
+        } else {
+          const key = nopicGetConfigStorageKey("nopic_mask", scope);
+          localStorage.setItem(key, JSON.stringify(config));
+        }
+        if (scope === currentMaskScope) {
+          maskConfig.masks = config.masks;
+        }
+        const layerEl = document.getElementById(maskId);
+        if (layerEl) {
+          layerEl.style.left = newData.x + "px";
+          layerEl.style.top = newData.y + "px";
+          layerEl.style.width = newData.width + "px";
+          layerEl.style.height = newData.height + "px";
+          applyMaskVisualStyle(layerEl, newData.color, newData.opacity, newData.blur);
+        }
+        updateControlsPosition(controls, layerEl);
+        updateMaskList();
+      }
+    }
+
+    function onStart(e, type) {
+      const isTouch = e.type === "touchstart";
+      const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+      const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+      isDragging = true;
+      dragType = type;
+      lastX = clientX;
+      lastY = clientY;
+      maskDragging = true;
+
+      // 拖拽结束后的 click 事件会冒泡到 document 导致编辑状态被清除，这里拦截
+      function stopDragClick(ev) {
+        ev.stopPropagation();
+        document.removeEventListener("click", stopDragClick, true);
+      }
+      document.addEventListener("click", stopDragClick, true);
+
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function onMove(e) {
+      if (!isDragging) return;
+      const isTouch = e.type === "touchmove";
+      const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+      const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+      const dx = clientX - lastX;
+      const dy = clientY - lastY;
+      lastX = clientX;
+      lastY = clientY;
+
+      const maskData = getMaskData();
+      if (!maskData) return;
+
+      let newX = maskData.x;
+      let newY = maskData.y;
+      let newWidth = maskData.width;
+      let newHeight = maskData.height;
+
+      if (dragType === "move") {
+        newX = maskData.x + dx;
+        newY = maskData.y + dy;
+      } else {
+        if (dragType === "tl") {
+          newX = maskData.x + dx;
+          newY = maskData.y + dy;
+          newWidth = maskData.width - dx;
+          newHeight = maskData.height - dy;
+        } else if (dragType === "tc") {
+          newY = maskData.y + dy;
+          newHeight = maskData.height - dy;
+        } else if (dragType === "tr") {
+          newY = maskData.y + dy;
+          newWidth = maskData.width + dx;
+          newHeight = maskData.height - dy;
+        } else if (dragType === "ml") {
+          newX = maskData.x + dx;
+          newWidth = maskData.width - dx;
+        } else if (dragType === "mr") {
+          newWidth = maskData.width + dx;
+        } else if (dragType === "bl") {
+          newX = maskData.x + dx;
+          newWidth = maskData.width - dx;
+          newHeight = maskData.height + dy;
+        } else if (dragType === "bc") {
+          newHeight = maskData.height + dy;
+        } else if (dragType === "br") {
+          newWidth = maskData.width + dx;
+          newHeight = maskData.height + dy;
+        }
+      }
+
+      if (newWidth < 10) newWidth = 10;
+      if (newHeight < 10) newHeight = 10;
+      if (newX < 0) {
+        newWidth += newX;
+        newX = 0;
+      }
+      if (newY < 0) {
+        newHeight += newY;
+        newY = 0;
+      }
+      if (newWidth < 10) newWidth = 10;
+      if (newHeight < 10) newHeight = 10;
+
+      // ★★★ 取色逻辑：临时隐藏遮罩和控件，避免蓝色污染采样 ★★★
+      const smartSwitch = document.getElementById("nopic-mask-smart-color");
+      const isSmart = smartSwitch && smartSwitch.classList.contains("on");
+      let newColor = maskData.color;
+
+      if (isSmart) {
+        // 临时隐藏遮罩层自身 + 变换控件，让 elementFromPoint 穿透到页面背景
+        layer.style.display = "none";
+        controls.style.display = "none";
+
+        const rect = {
+          left: newX,
+          top: newY,
+          right: newX + newWidth,
+          bottom: newY + newHeight,
+        };
+        if (rect.right > rect.left && rect.bottom > rect.top) {
+          const sampledColor = getAverageColorFromRegion(rect);
+          if (sampledColor && sampledColor !== "#888888") {
+            newColor = sampledColor;
+          }
+        }
+
+        // 立即恢复（同步代码，浏览器不会中间重绘，无闪烁）
+        layer.style.display = "";
+        controls.style.display = "";
+      }
+
+      const updatedData = {
+        id: maskData.id,
+        x: Math.round(newX),
+        y: Math.round(newY),
+        width: Math.round(newWidth),
+        height: Math.round(newHeight),
+        color: newColor,
+        opacity: maskData.opacity,
+        positionMode: maskData.positionMode,
+        radius: maskData.radius,
+        blur: maskData.blur || 0,
+      };
+
+      updateMaskData(updatedData);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function onEnd(e) {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.userSelect = "";
+        setTimeout(function () { maskDragging = false; }, 100);
+        const maskData = getMaskData();
+        if (maskData) {
+          updateMaskData(maskData);
+        }
+      }
+    }
+
+    const allHandles = controls.querySelectorAll("[data-handle]");
+    allHandles.forEach(function (handle) {
+      const handleType = handle.dataset.handle;
+      handle.addEventListener("mousedown", function (e) {
+        e.stopPropagation();
+        onStart(e, handleType);
+      });
+      handle.addEventListener(
+        "touchstart",
+        function (e) {
+          e.stopPropagation();
+          onStart(e, handleType);
+        },
+        { passive: false },
+      );
+    });
+
+    const centerHandle = controls.querySelector(".nopic-mask-handle-center");
+    if (centerHandle) {
+      centerHandle.addEventListener("mousedown", function (e) {
+        e.stopPropagation();
+        onStart(e, "move");
+      });
+      centerHandle.addEventListener(
+        "touchstart",
+        function (e) {
+          e.stopPropagation();
+          onStart(e, "move");
+        },
+        { passive: false },
+      );
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onEnd);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+
+    controls._cleanup = function () {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onEnd);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+      if (controls._scrollHandler) {
+        window.removeEventListener("scroll", controls._scrollHandler);
+        window.removeEventListener("resize", controls._scrollHandler);
+      }
+    };
   }
 
   function exitEditMode() {
@@ -10427,6 +10879,7 @@ window.addEventListener("load", function () {
       opacity: maskDrawCurrentOpacity,
       positionMode: maskDrawCurrentPosition,
       radius: parseInt(document.getElementById("nopic-mask-radius").value) || 0,
+      blur: parseInt(document.getElementById("nopic-mask-blur").value) || 0,
     };
 
     maskConfig.masks.push(maskData);
@@ -10447,7 +10900,27 @@ window.addEventListener("load", function () {
 
   // 清除所有遮罩
   function clearAllMasks() {
-    // 只清除当前选中层级的遮罩数据
+    // ★★★ 清理所有变换控件 ★★★
+    document
+      .querySelectorAll(".nopic-mask-transform-controls")
+      .forEach(function (el) {
+        if (el._cleanup) el._cleanup();
+        el.remove();
+      });
+    document
+      .querySelectorAll(".nopic-mask-layer.editing")
+      .forEach(function (el) {
+        el.classList.remove("editing");
+        if (el._transformControls) {
+          el._transformControls = null;
+        }
+        if (el._highlightTimer) {
+          clearTimeout(el._highlightTimer);
+          el._highlightTimer = null;
+        }
+      });
+
+    // 原有的清除逻辑
     const scope = nopicGetConfigScope("nopic_mask");
     if (scope === "global") {
       GM_setValue("nopic_mask_global", { masks: [] });
@@ -10457,7 +10930,6 @@ window.addEventListener("load", function () {
     }
     maskConfig.masks = [];
     updateMaskList();
-    // 重新加载页面上的遮罩（保留其他层级的）
     loadSavedMasks();
   }
 
@@ -10517,6 +10989,8 @@ window.addEventListener("load", function () {
       masks.forEach((mask) => {
         const item = document.createElement("div");
         item.className = "nopic-mask-item";
+        item.dataset.id = mask.id;
+        item.dataset.scope = scope;
         item.innerHTML = `
           <div class="nopic-mask-item-color" style="background:${mask.color};opacity:${
             mask.opacity / 100
@@ -10539,26 +11013,49 @@ window.addEventListener("load", function () {
           enterEditModeByScope(mask.id, scope);
         });
         // 单击定位并高亮
-        item.addEventListener("click", (e) => {
+        // 单击定位并高亮，同时显示变换控件
+        item.addEventListener("click", function (e) {
           // 排除点击删除按钮的情况
           if (e.target.classList.contains("nopic-mask-item-delete")) return;
 
           const layer = document.getElementById(mask.id);
           if (!layer) return;
 
-          // 平滑滚动到遮罩所在位置（absolute模式会自动计算文档流位置，fixed模式不受影响）
+          // 清除所有遮罩的编辑状态
+          document
+            .querySelectorAll(".nopic-mask-layer.editing")
+            .forEach(function (el) {
+              el.classList.remove("editing");
+            });
+          // 移除所有变换控件
+          document
+            .querySelectorAll(".nopic-mask-transform-controls")
+            .forEach(function (el) {
+              el.remove();
+            });
+
+          // 如果点击的是同一个遮罩且已经有控件，则移除（切换效果）
+          if (layer._transformControls && layer._transformControls.parentNode) {
+            layer._transformControls.remove();
+            layer._transformControls = null;
+            layer.classList.remove("editing");
+            return;
+          }
+
+          // 滚动到遮罩位置
           layer.scrollIntoView({ behavior: "smooth", block: "center" });
 
           // 添加高亮动画
           layer.classList.remove("nopic-mask-highlight");
-          void layer.offsetWidth; // 强制重排，重置动画
+          void layer.offsetWidth;
           layer.classList.add("nopic-mask-highlight");
-
-          // 2秒后自动移除高亮
           if (layer._highlightTimer) clearTimeout(layer._highlightTimer);
-          layer._highlightTimer = setTimeout(() => {
+          layer._highlightTimer = setTimeout(function () {
             layer.classList.remove("nopic-mask-highlight");
           }, 2000);
+
+          // 进入编辑模式，显示变换控件
+          enterMaskEditMode(mask.id, scope);
         });
       });
     }
@@ -10566,25 +11063,48 @@ window.addEventListener("load", function () {
     renderList(listUrl, urlMasks, "url");
     renderList(listDomain, domainMasks, "domain");
     renderList(listGlobal, globalMasks, "global");
+    highlightMaskListItem(editingMaskId);
   }
 
   // 按scope删除遮罩
   function deleteMaskByScope(maskId, scope) {
+    // ★★★ 先清理变换控件 ★★★
+    const layer = document.getElementById(maskId);
+    if (layer) {
+      if (layer._transformControls && layer._transformControls.parentNode) {
+        layer._transformControls.remove();
+        layer._transformControls = null;
+      }
+      layer.classList.remove("editing");
+      if (layer._highlightTimer) {
+        clearTimeout(layer._highlightTimer);
+        layer._highlightTimer = null;
+      }
+    }
+    document
+      .querySelectorAll(".nopic-mask-transform-controls")
+      .forEach(function (el) {
+        if (el.dataset.maskId === maskId) {
+          if (el._cleanup) el._cleanup();
+          el.remove();
+        }
+      });
+
+    // 原有的删除逻辑
     const config = getMaskConfigByScope(scope);
-    config.masks = config.masks.filter((m) => m.id !== maskId);
+    config.masks = config.masks.filter(function (m) {
+      return m.id !== maskId;
+    });
     if (scope === "global") {
-      // 全局级别使用 GM_setValue 跨域共享
       GM_setValue("nopic_mask_global", config);
     } else {
       const key = nopicGetConfigStorageKey("nopic_mask", scope);
       localStorage.setItem(key, JSON.stringify(config));
     }
-    // 如果删除的是当前生效的配置，更新maskConfig
     if (scope === currentMaskScope) {
       maskConfig.masks = config.masks;
     }
     updateMaskList();
-    // 重新加载遮罩层
     loadSavedMasks();
   }
 
@@ -10662,26 +11182,115 @@ window.addEventListener("load", function () {
       }
     });
 
-  // 透明度滑块事件
+  // 高亮/取消高亮遮罩列表中的对应项
+  function highlightMaskListItem(maskId) {
+    document.querySelectorAll(".nopic-mask-item.active").forEach(function (el) {
+      el.classList.remove("active");
+    });
+    if (maskId) {
+      var target = document.querySelector('.nopic-mask-item[data-id="' + maskId + '"]');
+      if (target) target.classList.add("active");
+    }
+  }
+
+  // 查找当前编辑中的遮罩（跨 scope）
+  function findEditingMask() {
+    if (!editingMaskId) return null;
+    var layer = document.getElementById(editingMaskId);
+    if (!layer) return null;
+    var scopes = editingMaskScope
+      ? [editingMaskScope, "url", "domain", "global"]
+      : ["url", "domain", "global"];
+    var seen = {};
+    for (var i = 0; i < scopes.length; i++) {
+      var s = scopes[i];
+      if (seen[s]) continue;
+      seen[s] = true;
+      var config = getMaskConfigByScope(s);
+      if (config.masks) {
+        var md = config.masks.find(function (m) { return m.id === editingMaskId; });
+        if (md) return { md: md, scope: s, config: config, layer: layer };
+      }
+    }
+    return null;
+  }
+
+  // 将遮罩数据写回对应 scope 的存储
+  function saveMaskToScope(config, scope) {
+    if (scope === "global") {
+      GM_setValue("nopic_mask_global", config);
+    } else {
+      var key = nopicGetConfigStorageKey("nopic_mask", scope);
+      localStorage.setItem(key, JSON.stringify(config));
+    }
+    if (scope === currentMaskScope) {
+      maskConfig.masks = config.masks;
+    }
+  }
+
+  // 透明度滑块事件 —— 仅更新当前选中的遮罩
   document
     .getElementById("nopic-mask-opacity")
     .addEventListener("input", (e) => {
       const val = e.target.value;
-      document.getElementById("nopic-mask-opacity-val").textContent = val + "%";
+      const valEl = document.getElementById("nopic-mask-opacity-val");
+      if (valEl) valEl.textContent = val + "%";
       maskDrawCurrentOpacity = parseInt(val);
+      var info = findEditingMask();
+      if (!info) return;
+      info.md.opacity = parseInt(val);
+      applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
+      saveMaskToScope(info.config, info.scope);
     });
-  // 圆角滑块事件
+  // 圆角滑块事件 —— 仅更新当前选中的遮罩
   document
     .getElementById("nopic-mask-radius")
     .addEventListener("input", (e) => {
       const val = e.target.value;
-      document.getElementById("nopic-mask-radius-val").textContent = val + "px";
+      const valEl = document.getElementById("nopic-mask-radius-val");
+      if (valEl) valEl.textContent = val + "px";
+      var info = findEditingMask();
+      if (!info) return;
+      info.md.radius = parseInt(val);
+      info.layer.style.borderRadius = val + "px";
+      saveMaskToScope(info.config, info.scope);
+    });
+  // 模糊度滑块事件 —— 仅更新当前选中的遮罩
+  document
+    .getElementById("nopic-mask-blur")
+    .addEventListener("input", (e) => {
+      const val = e.target.value;
+      const valEl = document.getElementById("nopic-mask-blur-val");
+      if (valEl) valEl.textContent = val + "px";
+      var warn = document.getElementById("nopic-mask-blur-warn");
+      if (warn) warn.style.display = parseInt(val) > 0 ? "block" : "none";
+      var info = findEditingMask();
+      if (!info) return;
+      info.md.blur = parseInt(val);
+      applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
+      saveMaskToScope(info.config, info.scope);
     });
 
   // 阻止新增的滑块冒泡
   document
     .getElementById("nopic-mask-radius")
     .addEventListener("mousedown", (e) => e.stopPropagation());
+  document
+    .getElementById("nopic-mask-blur")
+    .addEventListener("mousedown", (e) => e.stopPropagation());
+  // 颜色选择器实时取色 —— 智能取色关闭时仅更新当前选中的遮罩
+  document
+    .getElementById("nopic-mask-color")
+    .addEventListener("input", (e) => {
+      var smartSwitch = document.getElementById("nopic-mask-smart-color");
+      if (smartSwitch && smartSwitch.classList.contains("on")) return;
+      var newColor = e.target.value;
+      var info = findEditingMask();
+      if (!info) return;
+      info.md.color = newColor;
+      applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
+      saveMaskToScope(info.config, info.scope);
+    });
   // 阻止颜色选择器和滑块的冒泡
   document
     .getElementById("nopic-mask-color")
@@ -10694,7 +11303,7 @@ window.addEventListener("load", function () {
       e.stopPropagation();
     });
 
-  // 位置模式切换
+  // 位置模式切换 —— 实时应用到当前选中的遮罩
   document.querySelectorAll(".nopic-mask-position-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -10703,7 +11312,50 @@ window.addEventListener("load", function () {
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       maskDrawCurrentPosition = btn.dataset.position;
+
+      var info = findEditingMask();
+      if (!info) return;
+      var newMode = btn.dataset.position;
+      var oldMode = info.md.positionMode;
+      if (newMode === oldMode) return;
+
+      // 切换 position 时转换 top 坐标
+      if (oldMode === "absolute" && newMode === "fixed") {
+        info.md.y = info.md.y - window.scrollY;
+      } else if (oldMode === "fixed" && newMode === "absolute") {
+        info.md.y = info.md.y + window.scrollY;
+      }
+
+      info.md.positionMode = newMode;
+      info.layer.classList.remove("fixed", "absolute");
+      info.layer.classList.add(newMode);
+      info.layer.style.top = info.md.y + "px";
+      saveMaskToScope(info.config, info.scope);
     });
+  });
+
+  // 点击空白区域取消遮罩编辑状态
+  document.addEventListener("click", function (e) {
+    if (!maskSubmenuOpen) return;
+    if (maskDragging) return;
+    if (e.target.closest(".nopic-mask-layer")) return;
+    if (e.target.closest("#nopic-mask-submenu")) return;
+    if (e.target.closest(".nopic-mask-transform-controls")) return;
+    // 点击的不是遮罩也不是面板 → 清除所有编辑状态
+    document.querySelectorAll(".nopic-mask-layer.editing").forEach(function (el) {
+      el.classList.remove("editing");
+      if (el._transformControls && el._transformControls.parentNode) {
+        el._transformControls.remove();
+        el._transformControls = null;
+      }
+    });
+    document.querySelectorAll(".nopic-mask-transform-controls").forEach(function (el) {
+      if (el._cleanup) el._cleanup();
+      el.remove();
+    });
+    editingMaskId = null;
+    editingMaskScope = null;
+    highlightMaskListItem(null);
   });
 
   // 开始绘制按钮
@@ -10872,6 +11524,7 @@ window.addEventListener("load", function () {
   // 二级弹窗状态变量（提前声明以便在菜单mouseleave事件中使用）
   let tabDisguiseSubmenuOpen = false;
   let maskSubmenuOpen = false;
+  let maskDragging = false;
   let privacyLockSubmenuOpen = false;
   let textReplaceSubmenuOpen = false;
   let autoClickerSubmenuOpen = false;
@@ -11091,17 +11744,44 @@ window.addEventListener("load", function () {
     showPopupAtTrigger(maskSubmenu, maskTrigger);
   };
 
-  const hideMaskSubmenu = () => {
+  function hideMaskSubmenu() {
+    // ★★★ 关闭面板时清理所有变换控件 ★★★
+    document
+      .querySelectorAll(".nopic-mask-transform-controls")
+      .forEach(function (el) {
+        if (el._scrollHandler) {
+          window.removeEventListener("scroll", el._scrollHandler);
+          window.removeEventListener("resize", el._scrollHandler);
+        }
+        if (el._cleanup) el._cleanup();
+        el.remove();
+      });
+    document
+      .querySelectorAll(".nopic-mask-layer.editing")
+      .forEach(function (el) {
+        el.classList.remove("editing");
+        if (el._transformControls) {
+          el._transformControls = null;
+        }
+        if (el._highlightTimer) {
+          clearTimeout(el._highlightTimer);
+          el._highlightTimer = null;
+        }
+      });
+
     maskSubmenuOpen = false;
+    editingMaskId = null;
+    editingMaskScope = null;
+    highlightMaskListItem(null);
     maskSubmenu.style.transform = "scale(0.92) translateY(-10px)";
     maskSubmenu.style.opacity = "0";
     maskSubmenu.classList.remove("active");
-    setTimeout(() => {
+    setTimeout(function () {
       maskSubmenu.style.display = "none";
       maskSubmenu.style.transform = "";
       maskSubmenu.style.opacity = "";
     }, 250);
-  };
+  }
 
   if (maskTrigger) {
     maskTrigger.addEventListener("click", (e) => {

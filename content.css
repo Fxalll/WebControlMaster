@@ -308,6 +308,10 @@
 [data-nopic-theme="light"] .nopic-mask-item:hover {
   background: rgba(0, 0, 0, 0.04) !important;
 }
+[data-nopic-theme="light"] .nopic-mask-item.active {
+  background: rgba(96, 165, 250, 0.12) !important;
+  border-left-color: #3b82f6 !important;
+}
 
 /* ===== 自动点击器状态面板 ===== */
 [data-nopic-theme="light"] #nopic-autoclicker-status-panel {
@@ -1890,6 +1894,11 @@ html[data-nopic-theme] #nopic-widget {
 .nopic-mask-item:hover {
   background: rgba(255, 255, 255, 0.06);
 }
+.nopic-mask-item.active {
+  background: rgba(96, 165, 250, 0.15) !important;
+  border-left: 2px solid #60a5fa;
+  padding-left: 4px;
+}
 .nopic-mask-item-color {
   width: 14px;
   height: 14px;
@@ -1967,6 +1976,17 @@ html[data-nopic-theme] #nopic-widget {
   }
   50% {
     box-shadow: 0 0 15px 5px rgba(96, 165, 250, 0.8);
+  }
+}
+.nopic-mask-tap-flash {
+  animation: nopic-mask-tap 0.5s ease-out forwards !important;
+}
+@keyframes nopic-mask-tap {
+  0% {
+    box-shadow: inset 0 0 16px 2px rgba(96, 165, 250, 0.9);
+  }
+  100% {
+    box-shadow: inset 0 0 0px 0px rgba(96, 165, 250, 0);
   }
 }
 .nopic-mask-layer.fixed {
@@ -7713,4 +7733,25 @@ html[data-nopic-theme] #nopic-widget {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
   background: rgba(255, 255, 255, 0.15) !important;
+}
+/* ===== 变换控件样式 ===== */
+#nopic-transform-container {
+  pointer-events: none;
+  transition: none !important;
+}
+
+#nopic-transform-container .nopic-transform-handle {
+  pointer-events: auto;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+#nopic-transform-container .nopic-transform-handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.6);
+}
+
+#nopic-transform-container .nopic-transform-handle:active {
+  transform: scale(0.85);
 }
