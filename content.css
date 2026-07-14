@@ -7969,3 +7969,36 @@ html[data-nopic-theme] #nopic-widget {
   border-color: rgba(96, 165, 250, 0.5) !important;
   transform: scale(1.02);
 }
+
+/* ===== 欢迎弹窗 - 浅色模式 ===== */
+[data-nopic-theme="light"] #nopic-welcome-modal {
+  background: transparent !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #1a1a2e !important;
+}
+[data-nopic-theme="light"] #nopic-welcome-modal > div:nth-child(1) {
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-welcome-sub {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+[data-nopic-theme="light"] .nopic-welcome-title {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+[data-nopic-theme="light"] .nopic-welcome-desc {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-welcome-divider {
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] #nopic-welcome-start {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border: 1px solid rgba(37, 99, 235, 0.25) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] #nopic-welcome-start:hover {
+  background: rgba(37, 99, 235, 0.2) !important;
+}

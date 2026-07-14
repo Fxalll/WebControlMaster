@@ -9364,7 +9364,7 @@ window.addEventListener("load", function () {
   opacity: 0;
   transform: scale(0.95) translateY(20px);
   transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: rgba(20, 20, 25, 0.96);
+  background: transparent;
   backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
@@ -9382,35 +9382,35 @@ window.addEventListener("load", function () {
 
   welcomeModal.innerHTML = `
   <div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #60a5fa;">欢迎使用</div>
-  <div style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px;">网页控制大师 · 快速上手指南</div>
+  <div class="nopic-welcome-sub" style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px;">网页控制大师 · 快速上手指南</div>
   
   <div style="display: flex; flex-direction: column; gap: 12px;">
     <div style="display: flex; align-items: flex-start; gap: 10px;">
       <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">1</span>
       <div>
-        <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">隐藏图片</div>
-        <div style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击页面左侧的 <span style="color: #ea4c3d; background: rgba(225, 83, 67,0.1); padding: 0 6px; border-radius: 3px;">●</span> 指示灯，变绿后自动隐藏图片</div>
+        <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">隐藏图片</div>
+        <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击页面左侧的 <span style="color: #ea4c3d; background: rgba(225, 83, 67,0.1); padding: 0 6px; border-radius: 3px;">●</span> 指示灯，变绿后自动隐藏图片</div>
       </div>
     </div>
     
     <div style="display: flex; align-items: flex-start; gap: 10px;">
       <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
       <div>
-        <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与翻转图片</div>
-        <div style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片可放大查看；在空白处拖动可翻转图片，查看图片信息</div>
+        <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与翻转图片</div>
+        <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片可放大查看；在空白处拖动可翻转图片，查看图片信息</div>
       </div>
     </div>
     
     <div style="display: flex; align-items: flex-start; gap: 10px;">
       <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
       <div>
-        <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更多功能</div>
-        <div style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标放在指示灯上可展开菜单，包含图片阅兵、隐私锁、自动点击器等工具</div>
+        <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更多功能</div>
+        <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标放在指示灯上可展开菜单，包含图片阅兵、隐私锁、自动点击器等工具</div>
       </div>
     </div>
   </div>
   
-  <div style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+  <div class="nopic-welcome-divider" style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
    
     <button id="nopic-welcome-start" style="flex: 1; padding: 8px 0; background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; color: #60a5fa; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">开始使用</button>
   </div>
