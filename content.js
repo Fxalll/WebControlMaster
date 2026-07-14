@@ -3015,6 +3015,74 @@ window.addEventListener("load", function () {
         });
       });
 
+      // ---- 阅兵模式批量高清替换 ----
+      setTimeout(function () {
+        if (!isParadeMode) return;
+        var delay = 0;
+        paradeClones.forEach(function (data, el) {
+          if (el.tagName !== "IMG") return;
+          var hiResUrl = getHighResUrl(el);
+          if (!hiResUrl) return;
+
+          var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
+          var wrapper = data.wrapper;
+          var cloneEl = data.clone;
+
+          setTimeout(function () {
+            if (!isParadeMode) return;
+
+            var newImg = document.createElement("img");
+            newImg.className = "nopic-parade-clone";
+            newImg.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;position:absolute;top:0;left:0;visibility:hidden;opacity:0;pointer-events:none;";
+            newImg.src = hiResUrl;
+
+            newImg.onload = function () {
+              if (!isParadeMode) return;
+              var newArea = (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
+              if (newArea <= origArea) {
+                if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
+                return;
+              }
+
+              // 扫描线
+              var scanLine = document.createElement("div");
+              scanLine.style.cssText = "position:absolute;left:0;right:0;height:2px;top:0%;background:linear-gradient(90deg,transparent 0%,rgba(120,200,255,0.15) 10%,rgba(120,200,255,0.85) 35%,rgba(200,230,255,1) 50%,rgba(120,200,255,0.85) 65%,rgba(120,200,255,0.15) 90%,transparent 100%);box-shadow:0 0 10px 3px rgba(100,180,255,0.4);pointer-events:none;z-index:10;";
+              wrapper.appendChild(scanLine);
+
+              newImg.style.visibility = "visible";
+              newImg.style.opacity = "1";
+              newImg.style.clipPath = "inset(0 0 100% 0)";
+              wrapper.insertBefore(newImg, scanLine);
+
+              var dur = 800;
+              var st = 0;
+              function animScan(now) {
+                if (!st) st = now;
+                var t = Math.min((now - st) / dur, 1);
+                var ease = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+                var pct = ease * 100;
+                newImg.style.clipPath = "inset(0 0 " + (100 - pct) + "% 0)";
+                scanLine.style.top = pct + "%";
+                scanLine.style.opacity = t < 0.05 ? t/0.05 : t > 0.95 ? (1-t)/0.05 : 1;
+                if (t < 1) requestAnimationFrame(animScan);
+                else {
+                  newImg.style.clipPath = "none";
+                  setTimeout(function () { try { scanLine.remove(); } catch(e) {} }, 100);
+                  cloneEl.classList.remove("nopic-parade-clone");
+                  cloneEl.style.cssText += ";transition:opacity 0.5s ease-out,filter 0.5s ease-out,transform 0.5s ease-out;opacity:0;filter:blur(8px);transform:scale(1.05);";
+                  setTimeout(function () { try { cloneEl.remove(); } catch(e) {} }, 550);
+                  data.clone = newImg;
+                }
+              }
+              requestAnimationFrame(animScan);
+            };
+            newImg.onerror = function () { if (newImg.parentNode) newImg.parentNode.removeChild(newImg); };
+          }, delay);
+
+          delay += 200;
+        });
+      }, 700);
+
       // ---- 阅兵模式交互事件 ----
       paradeOverlay.addEventListener("click", (e) => {
         if (paradeDragState.wasDragged) {
@@ -3399,16 +3467,6 @@ window.addEventListener("load", function () {
       } catch (e) {}
     }
 
-    // 检测是否含透明通道（只在格式有效时追加）
-    const hasAlpha =
-      el.tagName === "IMG" &&
-      format !== "Unknown" &&
-      (format === "PNG" ||
-        format === "WEBP" ||
-        format === "SVG" ||
-        format === "GIF");
-    format = format + (hasAlpha ? " | 含透明通道" : "");
-
     return {
       name: name,
       domain: domain,
@@ -3417,6 +3475,663 @@ window.addEventListener("load", function () {
       displayWidth: displayWidth,
       displayHeight: displayHeight,
       format: format,
+    };
+  }
+
+  // ===== 纯JS提取高清原图URL =====
+  function getHighResUrl(el) {
+    if (el.tagName !== "IMG") return null;
+    var src = el.src || el.getAttribute("src") || "";
+    if (!src) return null;
+
+    // 获取原图的域名和路径，用于验证候选URL是否相关
+    var origHost = "",
+      origPath = "";
+    try {
+      var origUrl = new URL(src, location.href);
+      origHost = origUrl.hostname;
+      origPath = origUrl.pathname.toLowerCase();
+    } catch (e) {
+      return null;
+    }
+
+    // 同域名 + 同路径前缀 才认为是相关图片
+    function isRelated(url) {
+      try {
+        var u = new URL(url, location.href);
+        // 同域名，或者子域名匹配（如 i0.wp.com）
+        var h = u.hostname;
+        var hostOk =
+          h === origHost ||
+          h.endsWith("." + origHost.split(".").slice(-2).join(".")) ||
+          origHost.endsWith("." + h.split(".").slice(-2).join("."));
+        if (!hostOk) return false;
+        // 路径至少有30%重叠
+        var p = u.pathname.toLowerCase();
+        var origSegs = origPath.split("/").filter(Boolean);
+        var pSegs = p.split("/").filter(Boolean);
+        var overlap = 0;
+        for (var i = 0; i < Math.min(origSegs.length, pSegs.length); i++) {
+          if (origSegs[i] === pSegs[i]) overlap++;
+          else break;
+        }
+        return overlap >= Math.max(1, Math.floor(origSegs.length * 0.4));
+      } catch (e) {
+        return false;
+      }
+    }
+
+    var candidates = [];
+
+    // 1. 检查 data-* 高清属性（优先级最高）
+    var dataAttrs = [
+      "data-original",
+      "data-src",
+      "data-hi-res",
+      "data-full-src",
+      "data-zoom-src",
+      "data-retina",
+      "data-orig",
+      "data-source",
+      "data-image",
+      "data-big",
+      "data-large",
+      "data-full",
+      "data-original-src",
+      "data-hires",
+      "data-hd",
+      "data-fullsize",
+      "data-lazy-src",
+      "data-img-src",
+      "data-real-src",
+      "data-raw-src",
+      "data-true-src",
+      "data-actualsrc",
+      "data-hiresrc",
+      "data-highres",
+      "data-high-res",
+      "data-zoom-image",
+      "data-zoom-src",
+    ];
+    for (var i = 0; i < dataAttrs.length; i++) {
+      var val = el.getAttribute(dataAttrs[i]);
+      if (
+        val &&
+        val.length > 5 &&
+        (val.startsWith("http") || val.startsWith("//"))
+      ) {
+        if (isRelated(val)) {
+          candidates.push({ url: val, priority: 10 });
+        }
+      }
+    }
+
+    // 2. 检查父级 <a> 链接
+    var parentA = el.closest("a");
+    if (parentA && parentA.href) {
+      var aHref = parentA.href;
+      var aPath = aHref.split("?")[0].toLowerCase();
+      if (/\.(jpg|jpeg|png|gif|webp|bmp|avif|tiff|svg)(\?.*)?$/i.test(aPath)) {
+        if (isRelated(aHref)) {
+          candidates.push({ url: aHref, priority: 8 });
+        }
+      }
+    }
+
+    // 3. 检查 <picture> 中的 <source>
+    var picture = el.closest("picture");
+    if (picture) {
+      var sources = picture.querySelectorAll("source");
+      for (var j = 0; j < sources.length; j++) {
+        var srcset = sources[j].getAttribute("srcset");
+        if (srcset) {
+          var best = parseSrcsetBest(srcset);
+          if (best && isRelated(best))
+            candidates.push({ url: best, priority: 7 });
+        }
+      }
+    }
+
+    // 4. 检查 srcset（取最大尺寸）
+    var srcset = el.getAttribute("srcset");
+    if (srcset) {
+      var bestSrcset = parseSrcsetBest(srcset);
+      if (bestSrcset && isRelated(bestSrcset))
+        candidates.push({ url: bestSrcset, priority: 6 });
+    }
+
+    // 5. URL模式变换：去掉尺寸参数、缩略图后缀等
+    var transformations = getTransformedUrls(src);
+    for (var k = 0; k < transformations.length; k++) {
+      candidates.push({ url: transformations[k], priority: 3 });
+    }
+
+    // 去重，返回优先级最高且不同于原图的第一个
+    candidates.sort(function (a, b) {
+      return b.priority - a.priority;
+    });
+    var seen = {};
+    for (var m = 0; m < candidates.length; m++) {
+      var cUrl = candidates[m].url;
+      if (!cUrl) continue;
+      try {
+        var normalized = new URL(cUrl, location.href).href;
+        var origNorm = new URL(src, location.href).href;
+        if (normalized === origNorm) continue;
+        if (seen[normalized]) continue;
+        seen[normalized] = true;
+        return normalized;
+      } catch (e) {
+        if (seen[cUrl]) continue;
+        seen[cUrl] = true;
+        if (cUrl !== src) return cUrl;
+      }
+    }
+    return null;
+  }
+
+  function parseSrcsetBest(srcset) {
+    var parts = srcset.split(",");
+    var best = null,
+      bestW = 0;
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].trim().split(/\s+/);
+      if (p.length >= 1 && p[0]) {
+        var w = 0;
+        if (p.length > 1) {
+          var descriptor = p[1].toLowerCase();
+          if (descriptor.endsWith("w")) w = parseInt(descriptor) || 0;
+          else if (descriptor.endsWith("x"))
+            w = parseFloat(descriptor) * 1000 || 0;
+        }
+        if (w > bestW || !best) {
+          bestW = w;
+          best = p[0];
+        }
+      }
+    }
+    return best;
+  }
+
+  function getTransformedUrls(src) {
+    var results = [];
+    try {
+      var url = new URL(src, location.href);
+      var host = url.hostname;
+      var path = url.pathname;
+      var search = url.searchParams;
+
+      // 去掉常见尺寸查询参数
+      var sizeParams = [
+        "s",
+        "size",
+        "w",
+        "h",
+        "width",
+        "height",
+        "dim",
+        "resize",
+        "crop",
+        "quality",
+        "q",
+        "fit",
+        "auto",
+        "format",
+        "lossy",
+      ];
+      var modified = false;
+      for (var i = 0; i < sizeParams.length; i++) {
+        if (search.has(sizeParams[i])) {
+          search.delete(sizeParams[i]);
+          modified = true;
+        }
+      }
+      if (modified) results.push(url.href);
+
+      // 去掉路径中的缩略图后缀: _thumb, _small, _preview, _thumb, -150x150, etc.
+      var cleaned = path
+        .replace(/[-_]thumb\b/gi, "")
+        .replace(/[-_]small\b/gi, "")
+        .replace(/[-_]preview\b/gi, "")
+        .replace(/[-_]thumbnail\b/gi, "")
+        .replace(/[-_]medium\b/gi, "")
+        .replace(/[-_]large\b/gi, "")
+        .replace(/[-_]\d+x\d+\./g, ".")
+        .replace(/[-_]\d+x\d+(-\d+x\d+)?\./g, ".")
+        .replace(/\/resize\/\d+x\d+\//g, "/")
+        .replace(/\/crop\/\d+x\d+\//g, "/")
+        .replace(/\/fill\/\d+x\d+\//g, "/")
+        .replace(/\/\d+x\d+\/(?=[^/]+$)/g, "/")
+        .replace(/\/s\d+\//g, "/")
+        .replace(/\/w_\d+\//g, "/")
+        .replace(/\/h_\d+\//g, "/")
+        .replace(/\/q_\d+\//g, "/")
+        .replace(/\/c_limit[^/]*\//g, "/")
+        .replace(/\/f_auto[^/]*\//g, "/")
+        .replace(/\/fl_progressive[^/]*\//g, "/")
+        .replace(/\/fl_lossy[^/]*\//g, "/")
+        .replace(/\/dpr_\d+\//g, "/");
+
+      if (cleaned !== path) {
+        url.pathname = cleaned;
+        results.push(url.href);
+      }
+
+      // Gravatar: s= 参数控制尺寸，去掉可得原图
+      if (host.includes("gravatar.com") || host.includes("cn.gravatar.com")) {
+        url.searchParams.delete("s");
+        url.searchParams.delete("d");
+        url.searchParams.delete("f");
+        url.searchParams.delete("r");
+        url.searchParams.delete("default");
+        results.push(url.href);
+      }
+
+      // WordPress wp.com CDN: 去掉 ?resize= 参数
+      if (
+        host.includes("i0.wp.com") ||
+        host.includes("i1.wp.com") ||
+        host.includes("i2.wp.com")
+      ) {
+        url.searchParams.delete("resize");
+        url.searchParams.delete("ssl");
+        results.push(url.href);
+      }
+
+      // 微博图: 去掉 /thumb150/ /orj360/ /orj480/ /mw690/ 等
+      if (host.includes("sinaimg.cn")) {
+        var cleaned2 = path
+          .replace(/\/thumb\d+\//g, "/orj480/")
+          .replace(/\/square\d+\//g, "/orj480/")
+          .replace(/\/orj\d+\//g, "/large/")
+          .replace(/\/mw\d+\//g, "/large/")
+          .replace(/\/thumbnail\d+\//g, "/large/")
+          .replace(/\/bmiddle\//g, "/large/")
+          .replace(/\/small\//g, "/large/")
+          .replace(/\/thumb\d+\//g, "/large/");
+        if (cleaned2 !== path) {
+          url.pathname = cleaned2;
+          results.push(url.href);
+        }
+      }
+
+      // Instagram CDN: 去掉 ?ig_* 参数尝试获取原图
+      if (host.includes("instagram")) {
+        url.search = "";
+        results.push(url.href);
+      }
+
+      // Twitter/X: ?format=jpg&name=orig 获取原图
+      if (host.includes("pbs.twimg.com")) {
+        url.searchParams.set("format", "jpg");
+        url.searchParams.set("name", "orig");
+        results.push(url.href);
+      }
+
+      // Reddit: i.redd.it 去掉尺寸参数
+      if (host.includes("i.redd.it")) {
+        url.search = "";
+        results.push(url.href);
+      }
+
+      // Imgur: 去掉 s, m, l, b 等尺寸后缀
+      if (host.includes("imgur.com")) {
+        var imgurCleaned = path.replace(
+          /(s|m|l|b|h|t)(\.(jpg|jpeg|png|gif|webp))?$/i,
+          "$3" ? "." + "$3" : "",
+        );
+        if (imgurCleaned !== path) {
+          url.pathname = imgurCleaned;
+        }
+        url.search = "";
+        results.push(url.href);
+        // Imgur: /gallery/ → /image/ → 直接图片
+        var imgurDirect = path
+          .replace(/\/gallery\//, "/")
+          .replace(/\/a\//, "/");
+        if (imgurDirect !== path) {
+          url.pathname = imgurDirect;
+          results.push(url.href);
+        }
+      }
+
+      // Flickr: 去掉 _z, _m, _n, _w, _t, _q, _s 后缀，保留原图
+      if (
+        host.includes("staticflickr.com") ||
+        host.includes("live.staticflickr.com")
+      ) {
+        var flickrCleaned = path.replace(
+          /_[zmnwntsbq](\.(jpg|jpeg|png|gif))?$/i,
+          "$1" ? ".$1" : "",
+        );
+        if (flickrCleaned !== path) {
+          url.pathname = flickrCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // 500px: 去掉 /100/ /200/ /300/ /400/ /600/ 等
+      if (host.includes("500px.org") || host.includes("pacdn.500px.org")) {
+        var pxCleaned = path.replace(
+          /\/(100|200|300|400|600|1080|2048)\//g,
+          "/",
+        );
+        if (pxCleaned !== path) {
+          url.pathname = pxCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // Zhihu: 去掉 _r, _is 等参数
+      if (host.includes("zhimg.com") || host.includes("pic")) {
+        url.searchParams.delete("r");
+        url.searchParams.delete("is");
+        url.searchParams.delete("rotation");
+        results.push(url.href);
+        // 知乎: /100x100/ → /original/
+        var zhihuCleaned = path.replace(/\/\d+x\d+\//g, "/original/");
+        if (zhihuCleaned !== path) {
+          url.pathname = zhihuCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // Bilibili: 去掉 @后尺寸
+      if (host.includes("hdslb.com") || host.includes("bilibili.com")) {
+        var biliCleaned = path.replace(/@\d+w_\d+h[^.]*/, "");
+        if (biliCleaned !== path) {
+          url.pathname = biliCleaned;
+          results.push(url.href);
+        }
+        url.search = "";
+        results.push(url.href);
+      }
+
+      // 简书/Juejin/CSDN: 去掉参数
+      if (
+        host.includes("juejin.cn") ||
+        host.includes("cdn.nlark.com") ||
+        host.includes("img-blog.csdn.net")
+      ) {
+        url.search = "";
+        results.push(url.href);
+      }
+
+      // Unsplash: 去掉 ?ixlib, ?w, ?h, ?fit, ?crop 等参数
+      if (host.includes("unsplash.com")) {
+        url.searchParams.delete("ixlib");
+        url.searchParams.delete("w");
+        url.searchParams.delete("h");
+        url.searchParams.delete("fit");
+        url.searchParams.delete("crop");
+        url.searchParams.delete("q");
+        url.searchParams.delete("auto");
+        results.push(url.href);
+        // /thumb/ → /original/
+        var unsplashCleaned = path.replace(/\/thumb\//, "/original/");
+        if (unsplashCleaned !== path) {
+          url.pathname = unsplashCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // Pinterest: /236x/ /474x/ /564x/ → /originals/
+      if (host.includes("pinimg.com")) {
+        var pinterestCleaned = path.replace(
+          /\/(236x|474x|564x|736x|170x)\//g,
+          "/originals/",
+        );
+        if (pinterestCleaned !== path) {
+          url.pathname = pinterestCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // Pixiv: 去掉 /c/ /img-master/ 中的尺寸参数
+      if (host.includes("pixiv.net") || host.includes("pximg.net")) {
+        var pixivCleaned = path
+          .replace(/\/c\/\d+x\d+_\d+x\d+_img-master\//, "/img-master/")
+          .replace(/\/img-master\//, "/img-original/");
+        if (pixivCleaned !== path) {
+          url.pathname = pixivCleaned;
+          results.push(url.href);
+        }
+        url.search = "";
+        results.push(url.href);
+      }
+
+      // 百度贴吧/百家号: 去掉 @w_1h_1 等尺寸标记
+      if (
+        host.includes("hiphotos") ||
+        host.includes("bdimg.com") ||
+        host.includes("bimg.com") ||
+        host.includes("bkimg.cdn.bcebos.com")
+      ) {
+        var bdCleaned = path
+          .replace(/@\d+w_\d+h[^.]*/, "")
+          .replace(/\/bd_\d+x\d+\/[^/]+\/[^/]+/, "");
+        if (bdCleaned !== path) {
+          url.pathname = bdCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // 搜狗图片: 去掉 /preview/ /thumb/
+      if (host.includes("sogoucdn.com") || host.includes("pic.sogou.com")) {
+        var sogouCleaned = path
+          .replace(/\/preview\//g, "/original/")
+          .replace(/\/thumb\//g, "/original/");
+        if (sogouCleaned !== path) {
+          url.pathname = sogouCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // 淘宝/天猫: 去掉 /imgextra/ 中的尺寸
+      if (host.includes("alicdn.com") || host.includes("taobaocdn.com")) {
+        url.search = "";
+        results.push(url.href);
+      }
+
+      // Google Photos/Firebase: 去掉 =wXXX-hXXX 参数
+      if (host.includes("googleusercontent.com") || host.includes("firebase")) {
+        url.search = "";
+        var gpCleaned = path.replace(/=w\d+-h\d+.*$/, "").replace(/=s\d+/, "");
+        if (gpCleaned !== path) {
+          url.pathname = gpCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // Medium: 去掉 /max/XXX/ 或 /fit/XXXX,XXXX/
+      if (
+        host.includes("miro.medium.com") ||
+        host.includes("miro.medium.com")
+      ) {
+        var medCleaned = path
+          .replace(/\/max\/\d+\//g, "/")
+          .replace(/\/fit\/\d+,\d+\//g, "/");
+        if (medCleaned !== path) {
+          url.pathname = medCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // 知乎/头条: ?x-oss-process=image/resize 参数
+      if (url.search && url.search.includes("x-oss-process")) {
+        url.searchParams.delete("x-oss-process");
+        results.push(url.href);
+      }
+
+      // Cloudinary: /c_scale,w_XXX/ → 去掉变换层
+      if (
+        host.includes("cloudinary.com") ||
+        host.includes("res.cloudinary.com")
+      ) {
+        var cldCleaned = path
+          .replace(/\/c_scale[^/]*\//g, "/")
+          .replace(/\/w_\d+[^/]*\//g, "/")
+          .replace(/\/h_\d+[^/]*\//g, "/")
+          .replace(/\/q_[^/]*\//g, "/")
+          .replace(/\/f_auto[^/]*\//g, "/");
+        if (cldCleaned !== path) {
+          url.pathname = cldCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // Imgix: /w=XXX/ /h=XXX/ → 去掉变换参数
+      if (
+        url.search &&
+        (url.search.includes("w=") ||
+          url.search.includes("h=") ||
+          url.search.includes("fit="))
+      ) {
+        url.searchParams.delete("w");
+        url.searchParams.delete("h");
+        url.searchParams.delete("fit");
+        url.searchParams.delete("q");
+        url.searchParams.delete("auto");
+        url.searchParams.delete("format");
+        results.push(url.href);
+      }
+    } catch (e) {}
+    return results;
+  }
+
+  // ===== 高清图替换动画（扫描线入场） =====
+  function tryReplaceHiRes(el, flipContainer, front, clone) {
+    if (el.tagName !== "IMG") return;
+    var hiResUrl = getHighResUrl(el);
+    if (!hiResUrl) return;
+
+    var newImg = document.createElement("img");
+    newImg.className = "nopic-clone";
+    newImg.style.cssText = `
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain !important;
+      display: block !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none;
+      position: absolute;
+      top: 0; left: 0;
+    `;
+    newImg.src = hiResUrl;
+
+    newImg.onload = function () {
+      if (!el._isZoomed) return;
+
+      // 安全检查：新图必须比原图大才算高清替换
+      var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
+      var newArea = (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
+      if (newArea <= origArea) {
+        if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
+        return;
+      }
+
+      // 扫描线
+      var scanLine = document.createElement("div");
+      scanLine.style.cssText = `
+        position: absolute;
+        left: 0; right: 0;
+        height: 3px;
+        top: 0%;
+        background: linear-gradient(90deg,
+          transparent 0%,
+          rgba(120,200,255,0.15) 10%,
+          rgba(120,200,255,0.85) 35%,
+          rgba(200,230,255,1) 50%,
+          rgba(120,200,255,0.85) 65%,
+          rgba(120,200,255,0.15) 90%,
+          transparent 100%
+        );
+        box-shadow:
+          0 0 15px 4px rgba(100,180,255,0.5),
+          0 0 40px 8px rgba(80,150,255,0.2);
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+      `;
+      front.appendChild(scanLine);
+
+      // 新图：用 clip-path 从顶部逐步展开
+      newImg.style.cssText = `
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        display: block !important;
+        pointer-events: none;
+        position: absolute;
+        top: 0; left: 0;
+        visibility: visible;
+        opacity: 1;
+        clip-path: inset(0 0 100% 0);
+      `;
+      front.insertBefore(newImg, scanLine);
+
+      var duration = 1000;
+      var startTime = 0;
+
+      function animateScan(now) {
+        if (!startTime) startTime = now;
+        var elapsed = now - startTime;
+        var t = Math.min(elapsed / duration, 1);
+        var ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        var pct = ease * 100;
+        newImg.style.clipPath = `inset(0 0 ${100 - pct}% 0)`;
+        scanLine.style.top = pct + "%";
+        scanLine.style.opacity =
+          t < 0.05 ? t / 0.05 : t > 0.95 ? (1 - t) / 0.05 : 1;
+
+        if (t < 1) {
+          requestAnimationFrame(animateScan);
+        } else {
+          newImg.style.clipPath = "none";
+          setTimeout(function () {
+            if (scanLine.parentNode)
+              try {
+                scanLine.parentNode.removeChild(scanLine);
+              } catch (e) {}
+          }, 100);
+        }
+      }
+
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(animateScan);
+
+          // 扫描结束后旧图蒸发（blur + fade + scale↑）
+          setTimeout(function () {
+            clone.classList.remove("nopic-clone");
+            clone.style.cssText += "; transition: opacity 0.6s ease-out, filter 0.6s ease-out, transform 0.6s ease-out !important; opacity: 0 !important; filter: blur(10px) !important; transform: scale(1.05) !important;";
+          }, duration + 100);
+
+          setTimeout(function () {
+            if (clone.parentNode)
+              try {
+                clone.parentNode.removeChild(clone);
+              } catch (e) {}
+            flipContainer._hiResApplied = true;
+            flipContainer._hiResClone = newImg;
+          }, duration + 800);
+
+          var back = flipContainer._back;
+          if (back) {
+            back._hiResInfo = getImageInfo(newImg);
+            if (back._buildBackContent) {
+              var bw = flipContainer.clientWidth || 600;
+              var bh = flipContainer.clientHeight || 600;
+              back.innerHTML = back._buildBackContent(bw, bh);
+            }
+          }
+        });
+      });
+    };
+    newImg.onerror = function () {
+      if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
     };
   }
 
@@ -3793,14 +4508,48 @@ window.addEventListener("load", function () {
     const isLight =
       document.documentElement.getAttribute("data-nopic-theme") === "light";
 
-    // 提取图片主题色
+    // 提取图片主题色（同步优先，异步补全）
     var themeRGB = getImageThemeColor(el);
-    var darkBg = adjustColor(themeRGB, 0.55);
-    var darkTitle = adjustColor(themeRGB, 0, 0.55);
-    var darkSub = adjustColor(themeRGB, 0, 0.25);
-    var lightBg = adjustColor(themeRGB, 0, 0.75);
-    var lightTitle = adjustColor(themeRGB, 0.45);
-    var lightSub = adjustColor(themeRGB, 0.4);
+    back._themeRGB = themeRGB;
+    back._extraInfo = {};
+    // 异步获取更精确的主题色 + 文件信息
+    var imgSrc = el.src || el.getAttribute("src") || "";
+    fetchThemeColorAndInfo(imgSrc, function (newColor, extraInfo) {
+      if (newColor) {
+        back._themeRGB = newColor;
+      }
+      if (extraInfo) {
+        back._extraInfo = extraInfo;
+        // 用 MIME 类型补充格式
+        if (imgInfo.format === "Unknown" && extraInfo.mimeType) {
+          var mimeMap = {
+            "image/jpeg": "JPEG",
+            "image/png": "PNG",
+            "image/gif": "GIF",
+            "image/webp": "WEBP",
+            "image/svg+xml": "SVG",
+            "image/bmp": "BMP",
+            "image/avif": "AVIF",
+          };
+          var detected = mimeMap[extraInfo.mimeType.split(";")[0].trim()];
+          if (detected) imgInfo.format = detected;
+        }
+      }
+      // 用最新主题色更新背面
+      back.innerHTML = buildBackContent(targetWidth, targetHeight);
+      var t = back._themeRGB;
+      var dB = adjustColor(t, 0.55),
+        dT = adjustColor(t, 0, 0.55),
+        dS = adjustColor(t, 0, 0.25);
+      var lB = adjustColor(t, 0, 0.75),
+        lT = adjustColor(t, 0.45),
+        lS = adjustColor(t, 0.4);
+      back.style.background = isLight ? rgbToStr(lB) : rgbToStr(dB);
+      back.style.color = isLight ? rgbToStr(lT) : "#ffffff";
+    });
+    var dB = adjustColor(themeRGB, 0.55),
+      lB = adjustColor(themeRGB, 0, 0.75),
+      lT = adjustColor(themeRGB, 0.45);
 
     back.style.cssText = `
       position: absolute;
@@ -3810,8 +4559,8 @@ window.addEventListener("load", function () {
       -webkit-backface-visibility: hidden;
       transform: rotateY(180deg);
       border-radius: 4px;
-      background: ${isLight ? rgbToStr(lightBg) : rgbToStr(darkBg)};
-      color: ${isLight ? rgbToStr(lightTitle) : "#ffffff"};
+      background: ${isLight ? rgbToStr(lB) : rgbToStr(dB)};
+      color: ${isLight ? rgbToStr(lT) : "#ffffff"};
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -3832,7 +4581,14 @@ window.addEventListener("load", function () {
 
     // ★★★ 核心：根据目标尺寸动态计算字体大小的函数 ★★★
     function buildBackContent(width, height) {
-      const minDim = Math.min(width, height);
+      var t = back._themeRGB || { r: 128, g: 128, b: 128 };
+      var dT = adjustColor(t, 0, 0.55),
+        dS = adjustColor(t, 0, 0.25);
+      var lT = adjustColor(t, 0.45),
+        lS = adjustColor(t, 0.4);
+      var ex = back._extraInfo || {};
+      var hiRes = back._hiResInfo || null;
+      var minDim = Math.min(width, height);
       let fontSize = minDim / 18;
       let smallFontSize = minDim / 26;
       let tinyFontSize = minDim / 32;
@@ -3841,13 +4597,34 @@ window.addEventListener("load", function () {
       smallFontSize = Math.max(7, smallFontSize);
       tinyFontSize = Math.max(6, tinyFontSize);
 
+      var sizeStr = "";
+      if (ex.fileSize) {
+        if (ex.fileSize > 1048576)
+          sizeStr = (ex.fileSize / 1048576).toFixed(1) + " MB";
+        else if (ex.fileSize > 1024)
+          sizeStr = (ex.fileSize / 1024).toFixed(1) + " KB";
+        else sizeStr = ex.fileSize + " B";
+      }
+
+      var fmt = hiRes ? hiRes.format : imgInfo.format;
+
+      var dimLine = hiRes
+        ? `${hiRes.naturalWidth} × ${hiRes.naturalHeight} px`
+        : `${imgInfo.naturalWidth} × ${imgInfo.naturalHeight} px`;
+      var origLine = hiRes
+        ? `<div>旧图尺寸：${imgInfo.naturalWidth} × ${imgInfo.naturalHeight} px</div>`
+        : "";
+      var dimLabel = hiRes ? "高清尺寸" : "图片尺寸";
+
       return `
-      <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 4px; color: ${isLight ? rgbToStr(lightTitle) : rgbToStr(darkTitle)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
-      <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lightSub, 0.8) : rgbToStr(darkSub, 0.55)}; line-height: 1.6; white-space: nowrap; padding: 0 8px;">
-          <div>原图尺寸：${imgInfo.naturalWidth} × ${imgInfo.naturalHeight} px</div>
-          <div>页面显示尺寸：${imgInfo.displayWidth} × ${imgInfo.displayHeight} px</div>
+      <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 2px; color: ${isLight ? rgbToStr(lT) : rgbToStr(dT)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
+      ${hiRes ? `<div style="font-size: ${tinyFontSize}px; color: ${isLight ? rgbToStr(lS, 0.6) : rgbToStr(dS, 0.45)}; margin-bottom: 1px; padding: 0 8px;">已替换为高清原图</div>` : ""}
+      <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lS, 0.8) : rgbToStr(dS, 0.55)}; line-height: 1.7; white-space: nowrap; padding: 0 8px; ${hiRes ? 'margin-top: 6px;' : ''}">
+          <div>${dimLabel}：${dimLine}</div>
+          ${origLine}
+          <div>文件大小：${sizeStr || "未知"}</div>
+          <div>文件格式：${fmt}</div>
           ${imgInfo.domain ? `<div>图片域名：${imgInfo.domain}</div>` : ""}
-          <div>文件格式：${imgInfo.format}</div>
       </div>
   `;
     }
@@ -3887,6 +4664,12 @@ window.addEventListener("load", function () {
 
     // ★★★ 绑定空白区域翻转拖拽事件 ★★★
     bindFlipDragOnEmpty(flipContainer);
+
+    // ★★★ 延迟尝试高清图替换（等放大动画完成） ★★★
+    setTimeout(function () {
+      if (!el._isZoomed) return;
+      tryReplaceHiRes(el, flipContainer, front, clone);
+    }, 500);
   }
   function zoomOut(el) {
     if (!el._isZoomed) return;
@@ -4536,7 +5319,18 @@ window.addEventListener("load", function () {
       if (targetEl && effectiveZoomMode === "middle") {
         e.preventDefault();
         e.stopPropagation();
-        // 红灯状态允许直接放大；绿灯状态按原逻辑判断
+        // ★★★ 钉图模式允许多图放大，非钉图模式只允许一张 ★★★
+        if (targetEl._isZoomed) {
+          zoomOut(targetEl);
+          return;
+        }
+        if (!zoomPinModeConfig) {
+          zoomedClones.forEach(function (info, el) {
+            if (el !== targetEl && el._isZoomed) {
+              zoomOut(el);
+            }
+          });
+        }
         const isHidden = targetEl.dataset.isHidden === "true";
         const shouldZoom =
           isRedLight ||
@@ -5465,11 +6259,18 @@ window.addEventListener("load", function () {
   });
 
   // 图片加载失败自动隐藏（替代内联 onerror，避免 CSP 报错）
-  document.addEventListener("error", function (e) {
-    if (e.target.tagName === "IMG" && e.target.classList.contains("nopic-dc-img")) {
-      e.target.style.display = "none";
-    }
-  }, true);
+  document.addEventListener(
+    "error",
+    function (e) {
+      if (
+        e.target.tagName === "IMG" &&
+        e.target.classList.contains("nopic-dc-img")
+      ) {
+        e.target.style.display = "none";
+      }
+    },
+    true,
+  );
 
   document.addEventListener("click", (e) => {
     if (
@@ -7341,7 +8142,12 @@ window.addEventListener("load", function () {
           if (info) {
             if (isOn) {
               // 智能取色开启：采样背景色
-              var rect = { left: info.md.x, top: info.md.y, right: info.md.x + info.md.width, bottom: info.md.y + info.md.height };
+              var rect = {
+                left: info.md.x,
+                top: info.md.y,
+                right: info.md.x + info.md.width,
+                bottom: info.md.y + info.md.height,
+              };
               var sampled = getAverageColorFromRegion(rect);
               if (sampled && sampled !== "#888888") {
                 info.md.color = sampled;
@@ -7350,7 +8156,12 @@ window.addEventListener("load", function () {
               // 智能取色关闭：切换到手动选择的颜色
               info.md.color = document.getElementById("nopic-mask-color").value;
             }
-            applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
+            applyMaskVisualStyle(
+              info.layer,
+              info.md.color,
+              info.md.opacity,
+              info.md.blur,
+            );
             saveMaskToScope(info.config, info.scope);
           }
         };
@@ -8061,7 +8872,7 @@ window.addEventListener("load", function () {
         <span>③ 点击「加载解压缩的拓展」</span>
         <span>④ 选择刚才下载并解压的文件夹</span>
       </div>
-      <div class="about-guide-note">适用于 Chrome / Edge / 360 等所有 Chromium 内核浏览器</div>
+      <div class="about-guide-note">适用于 Chrome / Edge / 360 等所有 Chromium 内核浏览器，GitHub链接可能多次刷新才能进入</div>
     </div>
   </div>
 
@@ -10189,47 +11000,121 @@ window.addEventListener("load", function () {
   }
 
   // ===== 图片主题色提取 =====
+  // 直方图量化提取主色（纯函数，输入 ImageData.data）
+  function _extractThemeFromData(data) {
+    var bins = new Array(512);
+    var binR = new Array(512);
+    var binG = new Array(512);
+    var binB = new Array(512);
+    for (var j = 0; j < 512; j++) {
+      bins[j] = 0;
+      binR[j] = 0;
+      binG[j] = 0;
+      binB[j] = 0;
+    }
+    for (var i = 0; i < data.length; i += 4) {
+      var pr = data[i],
+        pg = data[i + 1],
+        pb = data[i + 2],
+        pa = data[i + 3];
+      if (pa < 128) continue;
+      var lum = 0.299 * pr + 0.587 * pg + 0.114 * pb;
+      if (lum < 10 || lum > 245) continue;
+      var key = ((pr >> 5) << 6) | ((pg >> 5) << 3) | (pb >> 5);
+      bins[key]++;
+      binR[key] += pr;
+      binG[key] += pg;
+      binB[key] += pb;
+    }
+    var maxKey = 0,
+      maxCount = 0;
+    for (var k = 0; k < 512; k++) {
+      if (bins[k] > maxCount) {
+        maxCount = bins[k];
+        maxKey = k;
+      }
+    }
+    if (maxCount === 0) return null;
+    return {
+      r: Math.round(binR[maxKey] / maxCount),
+      g: Math.round(binG[maxKey] / maxCount),
+      b: Math.round(binB[maxKey] / maxCount),
+    };
+  }
+
+  // 同步提取（仅同源图片有效）
   function getImageThemeColor(img) {
     try {
       var canvas = document.createElement("canvas");
-      var size = 48;
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = 48;
+      canvas.height = 48;
       var ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, size, size);
-      var data = ctx.getImageData(0, 0, size, size).data;
-      // 直方图量化：每通道8档，共512个色桶
-      var bins = new Array(512);
-      var binR = new Array(512);
-      var binG = new Array(512);
-      var binB = new Array(512);
-      for (var j = 0; j < 512; j++) { bins[j] = 0; binR[j] = 0; binG[j] = 0; binB[j] = 0; }
-      for (var i = 0; i < data.length; i += 4) {
-        var pr = data[i], pg = data[i + 1], pb = data[i + 2], pa = data[i + 3];
-        if (pa < 128) continue;
-        var lum = 0.299 * pr + 0.587 * pg + 0.114 * pb;
-        if (lum < 10 || lum > 245) continue;
-        var ri = pr >> 5, gi = pg >> 5, bi = pb >> 5;
-        var key = (ri << 6) | (gi << 3) | bi;
-        bins[key]++;
-        binR[key] += pr;
-        binG[key] += pg;
-        binB[key] += pb;
-      }
-      // 找最大色桶
-      var maxKey = 0, maxCount = 0;
-      for (var k = 0; k < 512; k++) {
-        if (bins[k] > maxCount) { maxCount = bins[k]; maxKey = k; }
-      }
-      if (maxCount === 0) return { r: 128, g: 128, b: 128 };
-      return {
-        r: Math.round(binR[maxKey] / maxCount),
-        g: Math.round(binG[maxKey] / maxCount),
-        b: Math.round(binB[maxKey] / maxCount),
-      };
+      ctx.drawImage(img, 0, 0, 48, 48);
+      return (
+        _extractThemeFromData(ctx.getImageData(0, 0, 48, 48).data) || {
+          r: 128,
+          g: 128,
+          b: 128,
+        }
+      );
     } catch (e) {
       return { r: 128, g: 128, b: 128 };
     }
+  }
+
+  // 异步提取（fetch blob 绕过 CORS）+ 文件信息
+  function fetchThemeColorAndInfo(src, callback) {
+    if (!src) {
+      callback(null, null);
+      return;
+    }
+    fetch(src, { mode: "cors", credentials: "omit" })
+      .then(function (resp) {
+        var fileSize = resp.headers.get("Content-Length");
+        var mimeType = resp.headers.get("Content-Type");
+        return resp.blob().then(function (blob) {
+          return {
+            blob: blob,
+            fileSize: fileSize ? parseInt(fileSize) : null,
+            mimeType: mimeType,
+          };
+        });
+      })
+      .then(function (info) {
+        var url = URL.createObjectURL(info.blob);
+        var img2 = new Image();
+        img2.onload = function () {
+          try {
+            var canvas = document.createElement("canvas");
+            canvas.width = 48;
+            canvas.height = 48;
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(img2, 0, 0, 48, 48);
+            var color = _extractThemeFromData(
+              ctx.getImageData(0, 0, 48, 48).data,
+            );
+            URL.revokeObjectURL(url);
+            callback(color || { r: 128, g: 128, b: 128 }, {
+              fileSize: info.fileSize,
+              mimeType: info.mimeType,
+            });
+          } catch (e) {
+            URL.revokeObjectURL(url);
+            callback(null, {
+              fileSize: info.fileSize,
+              mimeType: info.mimeType,
+            });
+          }
+        };
+        img2.onerror = function () {
+          URL.revokeObjectURL(url);
+          callback(null, { fileSize: info.fileSize, mimeType: info.mimeType });
+        };
+        img2.src = url;
+      })
+      .catch(function () {
+        callback(null, null);
+      });
   }
 
   function adjustColor(rgb, darkAmount, lightAmount) {
@@ -10251,7 +11136,8 @@ window.addEventListener("load", function () {
   }
 
   function rgbToStr(rgb, alpha) {
-    if (alpha !== undefined) return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
+    if (alpha !== undefined)
+      return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
     return "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")";
   }
 
@@ -10280,7 +11166,12 @@ window.addEventListener("load", function () {
     layer.style.left = maskData.x + "px";
     layer.style.width = maskData.width + "px";
     layer.style.height = maskData.height + "px";
-    applyMaskVisualStyle(layer, maskData.color, maskData.opacity, maskData.blur);
+    applyMaskVisualStyle(
+      layer,
+      maskData.color,
+      maskData.opacity,
+      maskData.blur,
+    );
     layer.style.borderRadius =
       (maskData.radius != null ? maskData.radius : 8) + "px";
     void layer.offsetWidth;
@@ -10539,7 +11430,12 @@ window.addEventListener("load", function () {
           layerEl.style.top = newData.y + "px";
           layerEl.style.width = newData.width + "px";
           layerEl.style.height = newData.height + "px";
-          applyMaskVisualStyle(layerEl, newData.color, newData.opacity, newData.blur);
+          applyMaskVisualStyle(
+            layerEl,
+            newData.color,
+            newData.opacity,
+            newData.blur,
+          );
           updateControlsPosition(controls, layerEl);
         }
         updateMaskList();
@@ -10684,7 +11580,9 @@ window.addEventListener("load", function () {
       if (isDragging) {
         isDragging = false;
         document.body.style.userSelect = "";
-        setTimeout(function () { maskDragging = false; }, 100);
+        setTimeout(function () {
+          maskDragging = false;
+        }, 100);
         const maskData = getMaskData();
         if (maskData) {
           updateMaskData(maskData);
@@ -11279,7 +12177,9 @@ window.addEventListener("load", function () {
       el.classList.remove("active");
     });
     if (maskId) {
-      var target = document.querySelector('.nopic-mask-item[data-id="' + maskId + '"]');
+      var target = document.querySelector(
+        '.nopic-mask-item[data-id="' + maskId + '"]',
+      );
       if (target) target.classList.add("active");
     }
   }
@@ -11299,7 +12199,9 @@ window.addEventListener("load", function () {
       seen[s] = true;
       var config = getMaskConfigByScope(s);
       if (config.masks) {
-        var md = config.masks.find(function (m) { return m.id === editingMaskId; });
+        var md = config.masks.find(function (m) {
+          return m.id === editingMaskId;
+        });
         if (md) return { md: md, scope: s, config: config, layer: layer };
       }
     }
@@ -11330,7 +12232,12 @@ window.addEventListener("load", function () {
       var info = findEditingMask();
       if (!info) return;
       info.md.opacity = parseInt(val);
-      applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
+      applyMaskVisualStyle(
+        info.layer,
+        info.md.color,
+        info.md.opacity,
+        info.md.blur,
+      );
       saveMaskToScope(info.config, info.scope);
     });
   // 圆角滑块事件 —— 仅更新当前选中的遮罩
@@ -11347,20 +12254,23 @@ window.addEventListener("load", function () {
       saveMaskToScope(info.config, info.scope);
     });
   // 模糊度滑块事件 —— 仅更新当前选中的遮罩
-  document
-    .getElementById("nopic-mask-blur")
-    .addEventListener("input", (e) => {
-      const val = e.target.value;
-      const valEl = document.getElementById("nopic-mask-blur-val");
-      if (valEl) valEl.textContent = val + "px";
-      var warn = document.getElementById("nopic-mask-blur-warn");
-      if (warn) warn.style.display = parseInt(val) > 0 ? "block" : "none";
-      var info = findEditingMask();
-      if (!info) return;
-      info.md.blur = parseInt(val);
-      applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
-      saveMaskToScope(info.config, info.scope);
-    });
+  document.getElementById("nopic-mask-blur").addEventListener("input", (e) => {
+    const val = e.target.value;
+    const valEl = document.getElementById("nopic-mask-blur-val");
+    if (valEl) valEl.textContent = val + "px";
+    var warn = document.getElementById("nopic-mask-blur-warn");
+    if (warn) warn.style.display = parseInt(val) > 0 ? "block" : "none";
+    var info = findEditingMask();
+    if (!info) return;
+    info.md.blur = parseInt(val);
+    applyMaskVisualStyle(
+      info.layer,
+      info.md.color,
+      info.md.opacity,
+      info.md.blur,
+    );
+    saveMaskToScope(info.config, info.scope);
+  });
 
   // 阻止新增的滑块冒泡
   document
@@ -11370,18 +12280,21 @@ window.addEventListener("load", function () {
     .getElementById("nopic-mask-blur")
     .addEventListener("mousedown", (e) => e.stopPropagation());
   // 颜色选择器实时取色 —— 智能取色关闭时仅更新当前选中的遮罩
-  document
-    .getElementById("nopic-mask-color")
-    .addEventListener("input", (e) => {
-      var smartSwitch = document.getElementById("nopic-mask-smart-color");
-      if (smartSwitch && smartSwitch.classList.contains("on")) return;
-      var newColor = e.target.value;
-      var info = findEditingMask();
-      if (!info) return;
-      info.md.color = newColor;
-      applyMaskVisualStyle(info.layer, info.md.color, info.md.opacity, info.md.blur);
-      saveMaskToScope(info.config, info.scope);
-    });
+  document.getElementById("nopic-mask-color").addEventListener("input", (e) => {
+    var smartSwitch = document.getElementById("nopic-mask-smart-color");
+    if (smartSwitch && smartSwitch.classList.contains("on")) return;
+    var newColor = e.target.value;
+    var info = findEditingMask();
+    if (!info) return;
+    info.md.color = newColor;
+    applyMaskVisualStyle(
+      info.layer,
+      info.md.color,
+      info.md.opacity,
+      info.md.blur,
+    );
+    saveMaskToScope(info.config, info.scope);
+  });
   // 阻止颜色选择器和滑块的冒泡
   document
     .getElementById("nopic-mask-color")
@@ -11433,17 +12346,21 @@ window.addEventListener("load", function () {
     if (e.target.closest("#nopic-mask-submenu")) return;
     if (e.target.closest(".nopic-mask-transform-controls")) return;
     // 点击的不是遮罩也不是面板 → 清除所有编辑状态
-    document.querySelectorAll(".nopic-mask-layer.editing").forEach(function (el) {
-      el.classList.remove("editing");
-      if (el._transformControls && el._transformControls.parentNode) {
-        el._transformControls.remove();
-        el._transformControls = null;
-      }
-    });
-    document.querySelectorAll(".nopic-mask-transform-controls").forEach(function (el) {
-      if (el._cleanup) el._cleanup();
-      el.remove();
-    });
+    document
+      .querySelectorAll(".nopic-mask-layer.editing")
+      .forEach(function (el) {
+        el.classList.remove("editing");
+        if (el._transformControls && el._transformControls.parentNode) {
+          el._transformControls.remove();
+          el._transformControls = null;
+        }
+      });
+    document
+      .querySelectorAll(".nopic-mask-transform-controls")
+      .forEach(function (el) {
+        if (el._cleanup) el._cleanup();
+        el.remove();
+      });
     editingMaskId = null;
     editingMaskScope = null;
     highlightMaskListItem(null);
@@ -11670,7 +12587,9 @@ window.addEventListener("load", function () {
           return parsed;
         }
       }
-    } catch (e) { /* corrupted config */ }
+    } catch (e) {
+      /* corrupted config */
+    }
     return { ...defaultAutoClickerConfig, steps: [] };
   }
 
@@ -14369,7 +15288,9 @@ window.addEventListener("load", function () {
       document.documentElement.getAttribute("data-nopic-theme") === "light";
 
     var tableRows = rows
-      .filter(function (row) { return row; })
+      .filter(function (row) {
+        return row;
+      })
       .map(function (row) {
         return (
           "<tr>" +
