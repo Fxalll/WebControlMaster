@@ -4466,25 +4466,16 @@ window.addEventListener("load", function () {
   `;
 
     if (isBgImage) {
-      // ★★★ 是背景图元素：保留背景相关样式，并强制适配容器 ★★★
-      // 获取原始背景图
+      // ★★★ 背景图元素：用 position:absolute 避免 fixed 导致溢出父容器 ★★★
       const originalBgImage = window.getComputedStyle(el).backgroundImage;
-      const originalBgSize =
-        window.getComputedStyle(el).backgroundSize || "contain";
-      const originalBgPosition =
-        window.getComputedStyle(el).backgroundPosition || "center";
-      const originalBgRepeat =
-        window.getComputedStyle(el).backgroundRepeat || "no-repeat";
 
-      // 追加背景样式，同时保持 object-fit 类行为，但背景图用 contain 保证完整显示
       cloneStyles += `
+      position: absolute !important;
       background-image: ${originalBgImage} !important;
       background-size: contain !important;
       background-position: center !important;
       background-repeat: no-repeat !important;
-      /* 确保内容为空，避免干扰背景显示 */
       content: '' !important;
-      /* 如果是内联元素，转为块级 */
       display: block !important;
     `;
       // 清空内部文本，防止干扰（对于纯背景图元素）
@@ -4512,6 +4503,8 @@ window.addEventListener("load", function () {
     var themeRGB = getImageThemeColor(el);
     back._themeRGB = themeRGB;
     back._extraInfo = {};
+    // 获取图片信息（必须在 fetchThemeColorAndInfo 之前，因为回调会用到）
+    const imgInfo = getImageInfo(el);
     // 异步获取更精确的主题色 + 文件信息
     var imgSrc = el.src || el.getAttribute("src") || "";
     fetchThemeColorAndInfo(imgSrc, function (newColor, extraInfo) {
@@ -4575,9 +4568,6 @@ window.addEventListener("load", function () {
       min-width: 0 !important;
       min-height: 0 !important;
   `;
-
-    // 获取图片信息
-    const imgInfo = getImageInfo(el);
 
     // ★★★ 核心：根据目标尺寸动态计算字体大小的函数 ★★★
     function buildBackContent(width, height) {
