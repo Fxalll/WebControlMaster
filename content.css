@@ -3329,6 +3329,153 @@ html[data-nopic-theme] #nopic-widget {
   background: rgba(239, 68, 68, 0.55);
   color: #fff;
 }
+/* 批量下载按钮 */
+.nopic-parade-dl-btn {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  background: rgba(0, 114, 255, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  transition:
+    background 0.2s,
+    color 0.2s;
+  pointer-events: auto;
+  user-select: none;
+  white-space: nowrap;
+}
+.nopic-parade-dl-btn:hover {
+  background: rgba(96, 165, 250, 0.45);
+  color: #fff;
+}
+/* 选择模式覆盖层 */
+.nopic-dl-select-overlay {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  cursor: pointer;
+  pointer-events: auto !important;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 6px;
+}
+.nopic-dl-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.3);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.nopic-dl-select-overlay.selected .nopic-dl-checkbox {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.85);
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+}
+.nopic-dl-select-overlay.selected .nopic-dl-checkbox::after {
+  content: "\2713";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+}
+.nopic-dl-select-overlay.dl-done .nopic-dl-checkbox {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.85);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+/* 底部操作栏 */
+.nopic-dl-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(10, 10, 12, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 2147483640;
+  opacity: 0;
+  transform: translateY(100%);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  pointer-events: none;
+}
+.nopic-dl-bar.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.nopic-dl-bar-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.nopic-dl-bar-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.nopic-dl-bar-primary {
+  background: rgba(96, 165, 250, 0.4);
+  color: #fff;
+  font-weight: 500;
+}
+.nopic-dl-bar-primary:hover {
+  background: rgba(96, 165, 250, 0.65);
+}
+.nopic-dl-tip {
+  position: absolute !important;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(220, 50, 50, 0.85);
+  color: #fff;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  pointer-events: none;
+  animation: nopic-dl-tip-fade 4s ease forwards;
+  white-space: nowrap;
+}
+@keyframes nopic-dl-tip-fade {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 /* 确认弹窗 */
 #nopic-confirm-modal {
   position: fixed;
@@ -6999,7 +7146,7 @@ html[data-nopic-theme] #nopic-widget {
 /* 4. 顶栏关闭按钮 - 深色 */
 [data-nopic-theme="light"] .nopic-parade-close-btn {
   background: rgba(0, 0, 0, 0.06) !important;
-  color: rgba(0, 0, 0, 0.5) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 [data-nopic-theme="light"] .nopic-parade-close-btn:hover {
   background: rgba(239, 68, 68, 0.15) !important;
@@ -7014,6 +7161,43 @@ html[data-nopic-theme] #nopic-widget {
 /* 6. 阅兵模式 - 克隆图阴影（浅色模式用更柔和的阴影） */
 [data-nopic-theme="light"] .nopic-parade-clone {
   filter: drop-shadow(0 8px 24px rgba(60, 80, 120, 0.2)) !important;
+}
+/* 7. 批量下载 - 浅色模式适配 */
+[data-nopic-theme="light"] .nopic-parade-dl-btn {
+  background: rgba(13, 83, 237, 0.38) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+[data-nopic-theme="light"] .nopic-parade-dl-btn:hover {
+  background: rgba(37, 99, 235, 0.25) !important;
+}
+[data-nopic-theme="light"] .nopic-dl-checkbox {
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.5);
+}
+[data-nopic-theme="light"]
+  .nopic-dl-select-overlay.selected
+  .nopic-dl-checkbox {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.85);
+}
+[data-nopic-theme="light"] .nopic-dl-select-overlay.dl-done .nopic-dl-checkbox {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.85);
+}
+[data-nopic-theme="light"] .nopic-dl-bar {
+  background: rgba(145, 145, 145, 0.92) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-dl-bar-btn {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.75);
+}
+[data-nopic-theme="light"] .nopic-dl-bar-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+[data-nopic-theme="light"] .nopic-dl-bar-primary {
+  background: rgba(37, 99, 235, 0.85) !important;
+  color: #fff !important;
 }
 /* ===== 取消按钮统一样式 ===== */
 
@@ -7758,30 +7942,30 @@ html[data-nopic-theme] #nopic-widget {
 
 /* ===== 事件处理 - hover 效果 (替代 inline onmouseover/onmouseout) ===== */
 .nopic-scope-clear-btn:hover {
-  background: rgba(248,113,113,0.12) !important;
+  background: rgba(248, 113, 113, 0.12) !important;
 }
 
 .nopic-textreplace-add-btn:hover {
-  background: rgba(96,165,250,0.18) !important;
-  border-color: rgba(96,165,250,0.35) !important;
+  background: rgba(96, 165, 250, 0.18) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
 }
 
 #nopic-show-welcome-btn:hover {
-  color: rgba(255,255,255,0.5) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 
 #nopic-shortcut-input-area:hover {
-  border-color: rgba(96,165,250,0.3) !important;
-  background: rgba(96,165,250,0.06) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+  background: rgba(96, 165, 250, 0.06) !important;
 }
 
 #nopic-autoclicker-shortcut-cancel:hover {
-  color: rgba(255,255,255,0.6) !important;
-  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
 #nopic-autoclicker-shortcut-confirm:hover {
-  background: rgba(96,165,250,0.25) !important;
-  border-color: rgba(96,165,250,0.5) !important;
+  background: rgba(96, 165, 250, 0.25) !important;
+  border-color: rgba(96, 165, 250, 0.5) !important;
   transform: scale(1.02);
 }

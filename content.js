@@ -2920,7 +2920,21 @@ window.addEventListener("load", function () {
         exitParadeMode();
       });
       paradeHeader.appendChild(titleSpan);
-      paradeHeader.appendChild(closeBtn);
+
+      // ---- 右侧按钮组（下载 + 关闭） ----
+      const headerRight = document.createElement("div");
+      headerRight.style.cssText = "display:flex;align-items:center;gap:8px;";
+
+      const dlBtn = document.createElement("div");
+      dlBtn.className = "nopic-parade-dl-btn";
+      dlBtn.textContent = "批量下载";
+      dlBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        enterDownloadMode();
+      });
+      headerRight.appendChild(dlBtn);
+      headerRight.appendChild(closeBtn);
+      paradeHeader.appendChild(headerRight);
 
       // ---- 创建克隆图（初始位置=原图屏幕位置） ----
       layoutData.forEach(({ el, rect }) => {
@@ -2961,6 +2975,26 @@ window.addEventListener("load", function () {
         clone.style.filter = "drop-shadow(0 8px 24px rgba(0,0,0,0.5))";
         clone.style.boxShadow = "none";
         clone.style.setProperty("z-index", "1", "important");
+
+        // 背景图元素补充样式
+        if (
+          el.tagName !== "IMG" &&
+          (el.classList.contains("nopic-has-bg") ||
+            window.getComputedStyle(el).backgroundImage !== "none")
+        ) {
+          var origBg = window.getComputedStyle(el).backgroundImage;
+          if (origBg && origBg !== "none") {
+            clone.style.setProperty("background-image", origBg, "important");
+          }
+          clone.style.setProperty("background-size", "contain", "important");
+          clone.style.setProperty("background-position", "center", "important");
+          clone.style.setProperty(
+            "background-repeat",
+            "no-repeat",
+            "important",
+          );
+          clone.textContent = "";
+        }
 
         // 尺寸标签 - 显示图片在页面的渲染尺寸
         const sizeLabel = document.createElement("div");
@@ -3020,10 +3054,10 @@ window.addEventListener("load", function () {
         if (!isParadeMode) return;
         var delay = 0;
         paradeClones.forEach(function (data, el) {
-          if (el.tagName !== "IMG") return;
           var hiResUrl = getHighResUrl(el);
           if (!hiResUrl) return;
 
+          var isBg = el.tagName !== "IMG";
           var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
           var wrapper = data.wrapper;
           var cloneEl = data.clone;
@@ -3033,20 +3067,22 @@ window.addEventListener("load", function () {
 
             var newImg = document.createElement("img");
             newImg.className = "nopic-parade-clone";
-            newImg.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;position:absolute;top:0;left:0;visibility:hidden;opacity:0;pointer-events:none;";
+            newImg.style.cssText =
+              "width:100%;height:100%;object-fit:contain;display:block;position:absolute;top:0;left:0;visibility:hidden;opacity:0;pointer-events:none;";
             newImg.src = hiResUrl;
 
             newImg.onload = function () {
               if (!isParadeMode) return;
-              var newArea = (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
-              if (newArea <= origArea) {
+              var newArea =
+                (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
+              if (!isBg && newArea <= origArea) {
                 if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
                 return;
               }
 
-              // 扫描线
               var scanLine = document.createElement("div");
-              scanLine.style.cssText = "position:absolute;left:0;right:0;height:2px;top:0%;background:linear-gradient(90deg,transparent 0%,rgba(120,200,255,0.15) 10%,rgba(120,200,255,0.85) 35%,rgba(200,230,255,1) 50%,rgba(120,200,255,0.85) 65%,rgba(120,200,255,0.15) 90%,transparent 100%);box-shadow:0 0 10px 3px rgba(100,180,255,0.4);pointer-events:none;z-index:10;";
+              scanLine.style.cssText =
+                "position:absolute;left:0;right:0;height:2px;top:0%;background:linear-gradient(90deg,transparent 0%,rgba(120,200,255,0.15) 10%,rgba(120,200,255,0.85) 35%,rgba(200,230,255,1) 50%,rgba(120,200,255,0.85) 65%,rgba(120,200,255,0.15) 90%,transparent 100%);box-shadow:0 0 10px 3px rgba(100,180,255,0.4);pointer-events:none;z-index:10;";
               wrapper.appendChild(scanLine);
 
               newImg.style.visibility = "visible";
@@ -3059,24 +3095,43 @@ window.addEventListener("load", function () {
               function animScan(now) {
                 if (!st) st = now;
                 var t = Math.min((now - st) / dur, 1);
-                var ease = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+                var ease =
+                  t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
                 var pct = ease * 100;
                 newImg.style.clipPath = "inset(0 0 " + (100 - pct) + "% 0)";
                 scanLine.style.top = pct + "%";
-                scanLine.style.opacity = t < 0.05 ? t/0.05 : t > 0.95 ? (1-t)/0.05 : 1;
+                scanLine.style.opacity =
+                  t < 0.05 ? t / 0.05 : t > 0.95 ? (1 - t) / 0.05 : 1;
                 if (t < 1) requestAnimationFrame(animScan);
                 else {
                   newImg.style.clipPath = "none";
-                  setTimeout(function () { try { scanLine.remove(); } catch(e) {} }, 100);
-                  cloneEl.classList.remove("nopic-parade-clone");
-                  cloneEl.style.cssText += ";transition:opacity 0.5s ease-out,filter 0.5s ease-out,transform 0.5s ease-out;opacity:0;filter:blur(8px);transform:scale(1.05);";
-                  setTimeout(function () { try { cloneEl.remove(); } catch(e) {} }, 550);
-                  data.clone = newImg;
+                  setTimeout(function () {
+                    try {
+                      scanLine.remove();
+                    } catch (e) {}
+                  }, 100);
+                  // 阅兵模式：旧图直接替换，无模糊动画
+                  if (isBg) {
+                    cloneEl.style.setProperty(
+                      "background-image",
+                      'url("' + hiResUrl + '")',
+                      "important",
+                    );
+                    if (newImg.parentNode)
+                      newImg.parentNode.removeChild(newImg);
+                  } else {
+                    try {
+                      cloneEl.remove();
+                    } catch (e) {}
+                    data.clone = newImg;
+                  }
                 }
               }
               requestAnimationFrame(animScan);
             };
-            newImg.onerror = function () { if (newImg.parentNode) newImg.parentNode.removeChild(newImg); };
+            newImg.onerror = function () {
+              if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
+            };
           }, delay);
 
           delay += 200;
@@ -3212,9 +3267,394 @@ window.addEventListener("load", function () {
     paradeDragState.currentEl = null;
   }
 
+  // ===== 批量下载功能 =====
+  let isDownloadMode = false;
+  let downloadSelectedSet = new Set();
+  let downloadBar = null;
+
+  function enterDownloadMode() {
+    if (isDownloadMode) return;
+    isDownloadMode = true;
+    downloadSelectedSet.clear();
+
+    // 为每个克隆图添加选择框
+    paradeClones.forEach(function (data, el) {
+      var wrapper = data.wrapper;
+      var overlay = document.createElement("div");
+      overlay.className = "nopic-dl-select-overlay";
+      overlay.dataset.elKey = Array.from(paradeClones.keys()).indexOf(el);
+
+      var checkbox = document.createElement("div");
+      checkbox.className = "nopic-dl-checkbox";
+      overlay.appendChild(checkbox);
+      wrapper.appendChild(overlay);
+
+      overlay.addEventListener("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (downloadSelectedSet.has(el)) {
+          downloadSelectedSet.delete(el);
+          overlay.classList.remove("selected");
+        } else {
+          downloadSelectedSet.add(el);
+          overlay.classList.add("selected");
+        }
+        updateDownloadBar();
+      });
+      overlay.addEventListener("mousedown", function (e) {
+        e.stopPropagation();
+      });
+      el._dlOverlay = overlay;
+    });
+
+    // 创建底部操作栏
+    downloadBar = document.createElement("div");
+    downloadBar.className = "nopic-dl-bar";
+
+    var selectAllBtn = document.createElement("div");
+    selectAllBtn.className = "nopic-dl-bar-btn";
+    selectAllBtn.textContent = "全选";
+    selectAllBtn.addEventListener("click", function () {
+      var allSelected = downloadSelectedSet.size === paradeClones.size;
+      if (allSelected) {
+        downloadSelectedSet.clear();
+      } else {
+        paradeClones.forEach(function (data, el) {
+          downloadSelectedSet.add(el);
+        });
+      }
+      document
+        .querySelectorAll(".nopic-dl-select-overlay")
+        .forEach(function (ov) {
+          if (allSelected) ov.classList.remove("selected");
+          else ov.classList.add("selected");
+        });
+      updateDownloadBar();
+    });
+
+    var downloadBtn = document.createElement("div");
+    downloadBtn.className = "nopic-dl-bar-btn nopic-dl-bar-primary";
+    downloadBtn.textContent = "下载选中 (0)";
+
+    var cancelBtn = document.createElement("div");
+    cancelBtn.className = "nopic-dl-bar-btn";
+    cancelBtn.textContent = "取消";
+    cancelBtn.addEventListener("click", function () {
+      exitDownloadMode();
+    });
+
+    downloadBar.appendChild(selectAllBtn);
+    downloadBar.appendChild(downloadBtn);
+    downloadBar.appendChild(cancelBtn);
+    document.documentElement.appendChild(downloadBar);
+
+    requestAnimationFrame(function () {
+      downloadBar.classList.add("active");
+    });
+
+    downloadBtn.addEventListener("click", function () {
+      if (downloadSelectedSet.size === 0) return;
+      startBatchDownload(downloadBtn);
+    });
+  }
+
+  function exitDownloadMode() {
+    isDownloadMode = false;
+    downloadSelectedSet.clear();
+    document
+      .querySelectorAll(".nopic-dl-select-overlay")
+      .forEach(function (ov) {
+        ov.remove();
+      });
+    if (downloadBar) {
+      downloadBar.classList.remove("active");
+      var bar = downloadBar;
+      setTimeout(function () {
+        bar.remove();
+      }, 300);
+      downloadBar = null;
+    }
+  }
+
+  function updateDownloadBar() {
+    if (!downloadBar) return;
+    var primaryBtn = downloadBar.querySelector(".nopic-dl-bar-primary");
+    if (primaryBtn)
+      primaryBtn.textContent = "下载选中 (" + downloadSelectedSet.size + ")";
+  }
+
+  function startBatchDownload(btn) {
+    var items = [];
+    downloadSelectedSet.forEach(function (el) {
+      var hiRes = getHighResUrl(el);
+      var src = hiRes || el.src || "";
+      if (!src && el.tagName !== "IMG") {
+        var bg = window.getComputedStyle(el).backgroundImage;
+        var m = bg.match(/url\(["']?([^"')]+)["']?\)/i);
+        if (m) src = m[1];
+      }
+      if (src) items.push({ el: el, src: src });
+    });
+    if (items.length === 0) return;
+
+    btn.textContent = "下载中 0/" + items.length + "...";
+    btn.style.pointerEvents = "none";
+
+    var fetched = [];
+    var done = 0;
+    var total = items.length;
+    var DOWNLOAD_TIMEOUT = 15000;
+
+    items.forEach(function (item, idx) {
+      setTimeout(function () {
+        if (!isDownloadMode) return;
+        var controller = new AbortController();
+        var timer = setTimeout(function () {
+          controller.abort();
+        }, DOWNLOAD_TIMEOUT);
+
+        fetch(item.src, { mode: "cors", signal: controller.signal })
+          .then(function (r) {
+            clearTimeout(timer);
+            if (!r.ok) throw new Error(r.status);
+            return r.arrayBuffer();
+          })
+          .then(function (buf) {
+            var name = getFileNameFromUrl(item.src, idx);
+            fetched.push({ name: name, data: new Uint8Array(buf) });
+            done++;
+            btn.textContent = "下载中 " + done + "/" + total + "...";
+            var ov = item.el._dlOverlay;
+            if (ov) ov.classList.add("dl-done");
+            if (done === total) buildAndDownloadZip(fetched, btn);
+          })
+          .catch(function () {
+            clearTimeout(timer);
+            done++;
+            btn.textContent = "下载中 " + done + "/" + total + "...";
+            showDownloadStatus(item.el, "timeout");
+            if (done === total) {
+              if (fetched.length === 0) {
+                btn.textContent = "全部失败";
+                btn.style.pointerEvents = "";
+                setTimeout(function () {
+                  btn.textContent =
+                    "下载选中 (" + downloadSelectedSet.size + ")";
+                }, 2000);
+              } else {
+                buildAndDownloadZip(fetched, btn);
+              }
+            }
+          });
+      }, idx * 100);
+    });
+  }
+
+  function showDownloadStatus(el, status) {
+    var data = paradeClones.get(el);
+    if (!data) return;
+    var wrapper = data.wrapper;
+    var tip = document.createElement("div");
+    tip.className = "nopic-dl-tip";
+    tip.textContent = status === "timeout" ? "超时跳过" : "下载失败";
+    wrapper.appendChild(tip);
+    setTimeout(function () {
+      tip.remove();
+    }, 4000);
+  }
+
+  function getFileNameFromUrl(url, idx) {
+    try {
+      var u = new URL(url, location.href);
+      var parts = u.pathname.split("/");
+      var last = parts[parts.length - 1] || "image_" + idx;
+      if (last.length > 80) last = last.substring(0, 80);
+      if (!/\.\w{2,5}$/.test(last)) last += ".jpg";
+      return last;
+    } catch (e) {
+      return "image_" + idx + ".jpg";
+    }
+  }
+
+  // ===== 纯 JS ZIP 打包（store 方式，无压缩） =====
+  var _zipCrcTable = null;
+  function zipCrc32Table() {
+    if (_zipCrcTable) return _zipCrcTable;
+    _zipCrcTable = new Uint32Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i;
+      for (var j = 0; j < 8; j++) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      _zipCrcTable[i] = c;
+    }
+    return _zipCrcTable;
+  }
+
+  function zipCrc32(data) {
+    var table = zipCrc32Table();
+    var crc = 0xffffffff;
+    for (var i = 0; i < data.length; i++) {
+      crc = table[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function zipDosTime() {
+    return 0;
+  }
+  function zipDosDate() {
+    return (
+      ((new Date().getFullYear() - 1980) << 9) |
+      ((new Date().getMonth() + 1) << 5) |
+      new Date().getDate()
+    );
+  }
+
+  function buildZipBlob(files) {
+    var encoder = new TextEncoder();
+    var parts = [];
+    var centralParts = [];
+    var offset = 0;
+    var encoder2 = new TextEncoder();
+
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      var nameBytes = encoder2.encode(file.name);
+      var dataBytes = new Uint8Array(file.data);
+      var crc = zipCrc32(dataBytes);
+      var dosTime = zipDosTime();
+      var dosDate = zipDosDate();
+
+      // Local file header (30 bytes + name)
+      var lh = new ArrayBuffer(30 + nameBytes.length);
+      var lv = new DataView(lh);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, dosTime, true);
+      lv.setUint16(12, dosDate, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, dataBytes.length, true);
+      lv.setUint32(22, dataBytes.length, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      new Uint8Array(lh).set(nameBytes, 30);
+      parts.push(new Uint8Array(lh));
+      parts.push(dataBytes);
+
+      // Central directory entry (46 bytes + name)
+      var cd = new ArrayBuffer(46 + nameBytes.length);
+      var cv = new DataView(cd);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true);
+      cv.setUint16(14, dosDate, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, dataBytes.length, true);
+      cv.setUint32(24, dataBytes.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      new Uint8Array(cd).set(nameBytes, 46);
+      centralParts.push(new Uint8Array(cd));
+
+      offset += 30 + nameBytes.length + dataBytes.length;
+    }
+
+    var cdOffset = offset;
+    var cdSize = 0;
+    for (var k = 0; k < centralParts.length; k++)
+      cdSize += centralParts[k].length;
+
+    // End of central directory (22 bytes)
+    var ecd = new ArrayBuffer(22);
+    var ev = new DataView(ecd);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true);
+    ev.setUint32(16, cdOffset, true);
+    ev.setUint16(20, 0, true);
+
+    for (var m = 0; m < centralParts.length; m++) parts.push(centralParts[m]);
+    parts.push(new Uint8Array(ecd));
+
+    return new Blob(parts, { type: "application/zip" });
+  }
+
+  function buildAndDownloadZip(fetched, btn) {
+    btn.textContent = "正在打包...";
+    btn.style.pointerEvents = "none";
+    setTimeout(function () {
+      var seen = {};
+      var files = fetched.map(function (f) {
+        var name = f.name;
+        if (seen[name]) {
+          seen[name]++;
+          var dot = name.lastIndexOf(".");
+          if (dot > 0)
+            name =
+              name.substring(0, dot) + "_" + seen[name] + name.substring(dot);
+          else name = name + "_" + seen[name];
+        } else {
+          seen[name] = 1;
+        }
+        return { name: name, data: f.data };
+      });
+      var blob = buildZipBlob(files);
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "images_" + new Date().toISOString().slice(0, 10) + ".zip";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      }, 5000);
+
+      // 监听失焦：浏览器弹出"另存为"时页面会失焦，以此判断下载已触发
+      var dialogDetected = false;
+      function onBlur() {
+        if (dialogDetected) return;
+        dialogDetected = true;
+        document.removeEventListener("visibilitychange", onVisChange);
+        btn.textContent = "下载完成 ✓";
+        btn.style.pointerEvents = "";
+        setTimeout(function () { exitDownloadMode(); }, 2000);
+      }
+      function onVisChange() {
+        if (document.visibilityState === "hidden") onBlur();
+      }
+      document.addEventListener("visibilitychange", onVisChange);
+      window.addEventListener("blur", onBlur, { once: true });
+
+      // 兜底：如果 5 秒内没检测到失焦，也视为完成
+      setTimeout(function () {
+        if (dialogDetected) return;
+        dialogDetected = true;
+        document.removeEventListener("visibilitychange", onVisChange);
+        btn.textContent = "下载完成 ✓";
+        btn.style.pointerEvents = "";
+        setTimeout(function () { exitDownloadMode(); }, 2000);
+      }, 5000);
+    }, 50);
+  }
+
   // ===== 退出阅兵模式 =====
   function exitParadeMode() {
     if (!isParadeMode) return;
+    exitDownloadMode();
     isParadeMode = false;
     const paradeBtn = document.querySelector('[data-action="paradeMode"]');
     if (paradeBtn) {
@@ -3480,8 +3920,23 @@ window.addEventListener("load", function () {
 
   // ===== 纯JS提取高清原图URL =====
   function getHighResUrl(el) {
-    if (el.tagName !== "IMG") return null;
-    var src = el.src || el.getAttribute("src") || "";
+    var src = "";
+    if (el.tagName === "IMG") {
+      src = el.src || el.getAttribute("src") || "";
+    } else {
+      var bgStyle = el.style.backgroundImage || "";
+      var bgMatch = bgStyle.match(/url\(["']?([^"')]+)["']?\)/i);
+      if (bgMatch) src = bgMatch[1];
+      if (!src) {
+        try {
+          var computed = getComputedStyle(el);
+          var cm = computed.backgroundImage.match(
+            /url\(["']?([^"')]+)["']?\)/i,
+          );
+          if (cm) src = cm[1];
+        } catch (e) {}
+      }
+    }
     if (!src) return null;
 
     // 获取原图的域名和路径，用于验证候选URL是否相关
@@ -3563,6 +4018,17 @@ window.addEventListener("load", function () {
         if (isRelated(val)) {
           candidates.push({ url: val, priority: 10 });
         }
+      }
+    }
+
+    // 1b. 知乎 data-original-token
+    if (el.hasAttribute && el.hasAttribute("data-original-token")) {
+      var zhihuToken = el.getAttribute("data-original-token");
+      if (zhihuToken) {
+        candidates.push({
+          url: "https://pica.zhimg.com/" + zhihuToken + ".jpg",
+          priority: 10,
+        });
       }
     }
 
@@ -3900,19 +4366,118 @@ window.addEventListener("load", function () {
         results.push(url.href);
       }
 
-      // 百度贴吧/百家号: 去掉 @w_1h_1 等尺寸标记
+      // 百度 timg: 从 src= 参数提取原图
+      if (
+        host.includes("timg") &&
+        (host.includes("bdimg.com") || host.includes("baidu.com"))
+      ) {
+        var timgSrc = src.replace(/.*\/[^/]*[?&]src=([^&]*).*/, "$1");
+        if (timgSrc !== src) {
+          try {
+            results.push(decodeURIComponent(timgSrc));
+          } catch (e) {}
+        }
+      }
+
+      // 百度 baidu-img.cn CDN: /timg?...src= 提取原图
+      if (host.includes("baidu-img.cn") && /^cdn\d*\./.test(host)) {
+        var cdnSrc = src.replace(
+          /^[a-z]+:\/\/[^/]*\/timg\?(?:.*?&)?src=(http[^&]*).*?$/,
+          "$1",
+        );
+        if (cdnSrc !== src) {
+          try {
+            results.push(decodeURIComponent(cdnSrc));
+          } catch (e) {}
+        }
+      }
+
+      // 百度 gss CDN
+      if (
+        (host.includes("bdstatic.com") || host.includes("baidu.com")) &&
+        /gss\d*\./.test(host)
+      ) {
+        // /timg? 提取 src=
+        if (src.indexOf("/timg?") >= 0) {
+          var gssSrc = src.replace(/.*?\/timg.*?[?&]src=([^&]*).*/, "$1");
+          try {
+            results.push(decodeURIComponent(gssSrc));
+          } catch (e) {}
+        }
+        // /sign= 或 /pic/item/ → imgsrc.baidu.com
+        if (src.indexOf("/sign=") >= 0 || src.indexOf("/pic/item/") >= 0) {
+          results.push(
+            src.replace(/:\/\/[^/]*\/[^/]*\//, "://imgsrc.baidu.com/"),
+          );
+        }
+      }
+
+      // 百度 imgsrc/tiebapic/hiphotos/imgsa
+      var isBaiduImg =
+        host === "imgsrc.baidu.com" ||
+        host === "tiebapic.baidu.com" ||
+        host === "imgsa.baidu.com" ||
+        (host.includes("baidu.com") && /hiphotos\./.test(host));
+      if (isBaiduImg) {
+        // 提取 src= 参数
+        var imgsrcParam = src.replace(/.*\/[^/]*[?&]src=([^&]*).*/, "$1");
+        if (imgsrcParam !== src) {
+          try {
+            results.push(decodeURIComponent(imgsrcParam));
+          } catch (e) {}
+        }
+        // abpic → pic, 去掉 /sign= 签名路径
+        var baiduNorm = src
+          .replace("/abpic/item/", "/pic/item/")
+          .replace(/\/[^/]*(?:=|%3D)[^/]*\/sign=[^/]*\//, "/pic/item/");
+        if (baiduNorm !== src) results.push(baiduNorm);
+        // 非 imgsrc 域名 → 统一跳 imgsrc
+        if (host !== "imgsrc.baidu.com") {
+          results.push(src.replace(/:\/\/[^/]+\/+/, "://imgsrc.baidu.com/"));
+        }
+      }
+
+      // 百度 himg: /sys/xx/item/ → /sys/original/item/
+      if (host.includes("himg.baidu.com")) {
+        var himgCleaned = path.replace(
+          /\/sys\/[^/]*\/item\//,
+          "/sys/original/item/",
+        );
+        if (himgCleaned !== path) {
+          url.pathname = himgCleaned;
+          results.push(url.href);
+        }
+      }
+
+      // 百度 img/mms/t: /it/u= 只保留 fm= (高清原图)
+      if (host.includes("baidu.com") && /^(?:img|mms|t)\d*\./.test(host)) {
+        if (/\/it\/+u=/.test(src)) {
+          var fm = src.match(/[?&](fm=[0-9]+)(?:[&#].*)?$/);
+          if (fm) results.unshift(src.replace(/[?&#].*/, "&" + fm[1]));
+        }
+      }
+
+      // 百度 pics: feed URL 去掉 @ 后缀
+      if (host.includes("baidu.com") && /^pics\d*\./.test(host)) {
+        var picsCleaned = src.replace(
+          /(\/feed\/+[0-9a-f]{5,}(?:\.[a-z]+)?)@.*/,
+          "$1",
+        );
+        if (picsCleaned !== src) results.push(picsCleaned);
+      }
+
+      // 百度通用: 去掉 @w_1h_1 等尺寸标记
       if (
         host.includes("hiphotos") ||
         host.includes("bdimg.com") ||
         host.includes("bimg.com") ||
         host.includes("bkimg.cdn.bcebos.com")
       ) {
-        var bdCleaned = path
-          .replace(/@\d+w_\d+h[^.]*/, "")
-          .replace(/\/bd_\d+x\d+\/[^/]+\/[^/]+/, "");
+        var bdCleaned = path.replace(/@\d+w_\d+h[^.]*/, "");
         if (bdCleaned !== path) {
-          url.pathname = bdCleaned;
-          results.push(url.href);
+          var bdUrl = new URL(src, location.href);
+          bdUrl.pathname = bdCleaned;
+          results.push(bdUrl.href);
         }
       }
 
@@ -3954,6 +4519,39 @@ window.addEventListener("load", function () {
         if (medCleaned !== path) {
           url.pathname = medCleaned;
           results.push(url.href);
+        }
+      }
+
+      // 知乎 zhimg: 去掉尺寸前缀 + 转原始质量
+      if (host.includes("zhimg.com") && /pic[0-9a-z]*\.zhimg\.com/.test(host)) {
+        // 去掉尺寸前缀如 /75/ /100/ /200/
+        var zhImgNorm = path.replace(/(:\/\/[^/]+\/+)[0-9]+\/+/, "$1");
+        // 加 _r 后缀获取原图
+        zhImgNorm = zhImgNorm.replace(
+          /\/((?:v[0-9]*-)?[0-9a-f]+)(?:_[^/._]*)?(\.[^/.]*)$/,
+          "/$1_r$2",
+        );
+        if (zhImgNorm !== path) {
+          var zhUrl = new URL(src, location.href);
+          zhUrl.pathname = zhImgNorm;
+          results.push(zhUrl.href);
+        }
+        // webp → jpg
+        var zhJpg = path.replace(/\.webp(?:[?#].*)?$/, ".jpg");
+        if (zhJpg !== path) {
+          var zhUrl2 = new URL(src, location.href);
+          zhUrl2.pathname = zhJpg;
+          results.push(zhUrl2.href);
+        }
+        // 去掉 _r 后缀（如果加了没有更高清，试试不带）
+        var zhNoR = path.replace(
+          /(\/(?:v[0-9]*-)?[0-9a-f]+)(?:_r)\.[a-z]+(?:[?#].*)?$/,
+          "$1",
+        );
+        if (zhNoR !== path) {
+          var zhUrl3 = new URL(src, location.href);
+          zhUrl3.pathname = zhNoR;
+          results.push(zhUrl3.href);
         }
       }
 
@@ -4001,9 +4599,10 @@ window.addEventListener("load", function () {
 
   // ===== 高清图替换动画（扫描线入场） =====
   function tryReplaceHiRes(el, flipContainer, front, clone) {
-    if (el.tagName !== "IMG") return;
     var hiResUrl = getHighResUrl(el);
     if (!hiResUrl) return;
+
+    var isBg = el.tagName !== "IMG";
 
     var newImg = document.createElement("img");
     newImg.className = "nopic-clone";
@@ -4026,7 +4625,7 @@ window.addEventListener("load", function () {
       // 安全检查：新图必须比原图大才算高清替换
       var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
       var newArea = (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
-      if (newArea <= origArea) {
+      if (!isBg && newArea <= origArea) {
         if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
         return;
       }
@@ -4105,17 +4704,38 @@ window.addEventListener("load", function () {
 
           // 扫描结束后旧图蒸发（blur + fade + scale↑）
           setTimeout(function () {
+            // 所有类型（img 和 bg）统一执行旧图蒸发动画
             clone.classList.remove("nopic-clone");
-            clone.style.cssText += "; transition: opacity 0.6s ease-out, filter 0.6s ease-out, transform 0.6s ease-out !important; opacity: 0 !important; filter: blur(10px) !important; transform: scale(1.05) !important;";
+            if (isBg) {
+              clone.style.cssText +=
+                "; transition: opacity 0.6s ease-out, filter 0.6s ease-out, transform 0.6s ease-out !important; opacity: 0 !important; filter: blur(10px) !important; transform: scale(1.05) !important;";
+            } else {
+              clone.style.cssText +=
+                "; transition: opacity 0.6s ease-out, filter 0.6s ease-out, transform 0.6s ease-out !important; opacity: 0 !important; filter: blur(10px) !important; transform: scale(1.05) !important;";
+            }
           }, duration + 100);
 
           setTimeout(function () {
-            if (clone.parentNode)
-              try {
-                clone.parentNode.removeChild(clone);
-              } catch (e) {}
-            flipContainer._hiResApplied = true;
-            flipContainer._hiResClone = newImg;
+            if (isBg) {
+              clone.style.setProperty(
+                "background-image",
+                'url("' + hiResUrl + '")',
+                "important",
+              );
+              clone.classList.add("nopic-clone");
+              clone.style.cssText +=
+                "; opacity: 1 !important; filter: none !important; transform: none !important; transition: none !important;";
+              flipContainer._hiResApplied = true;
+              flipContainer._hiResClone = null;
+              if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
+            } else {
+              if (clone.parentNode)
+                try {
+                  clone.parentNode.removeChild(clone);
+                } catch (e) {}
+              flipContainer._hiResApplied = true;
+              flipContainer._hiResClone = newImg;
+            }
           }, duration + 800);
 
           var back = flipContainer._back;
@@ -4609,7 +5229,7 @@ window.addEventListener("load", function () {
       return `
       <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 2px; color: ${isLight ? rgbToStr(lT) : rgbToStr(dT)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
       ${hiRes ? `<div style="font-size: ${tinyFontSize}px; color: ${isLight ? rgbToStr(lS, 0.6) : rgbToStr(dS, 0.45)}; margin-bottom: 1px; padding: 0 8px;">已替换为高清原图</div>` : ""}
-      <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lS, 0.8) : rgbToStr(dS, 0.55)}; line-height: 1.7; white-space: nowrap; padding: 0 8px; ${hiRes ? 'margin-top: 6px;' : ''}">
+      <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lS, 0.8) : rgbToStr(dS, 0.55)}; line-height: 1.7; white-space: nowrap; padding: 0 8px; ${hiRes ? "margin-top: 6px;" : ""}">
           <div>${dimLabel}：${dimLine}</div>
           ${origLine}
           <div>文件大小：${sizeStr || "未知"}</div>
