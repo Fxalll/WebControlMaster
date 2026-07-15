@@ -17558,7 +17558,10 @@ window.addEventListener("load", function () {
             step.text && step.text.length > 20
               ? step.text.substring(0, 20) + "..."
               : step.text || "";
-          detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">输入: "${textShort}"</div>`;
+          detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+  <span style="flex-shrink:0;">输入:</span>
+  <input type="text" class="nopic-input-text-input" value="${step.text || ""}" placeholder="点击修改输入文字" style="flex:1;min-width:60px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:11px;padding:2px 6px;outline:none;transition:border-color 0.2s;" data-step-id="${step.id}" data-step-index="${index}">
+</div>`;
         } else if (step.type === "shortcut") {
           const shortcutText = step.shortcut || "";
           detailHtml = `<div style="font-size:11px;color:rgba(255,255,255,0.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">快捷键: ${shortcutText}</div>`;
@@ -17613,6 +17616,41 @@ window.addEventListener("load", function () {
         let val = parseInt(this.value);
         if (isNaN(val) || val < 0) val = 1;
         autoClickerConfig.steps[idx].clickCount = val;
+      });
+    });
+
+    // ===== 输入文字框即时保存（新增） =====
+    list.querySelectorAll(".nopic-input-text-input").forEach((input) => {
+      // 阻止弹窗关闭
+      input.addEventListener("mousedown", function (e) {
+        e.stopPropagation();
+      });
+      input.addEventListener("click", function (e) {
+        e.stopPropagation();
+      });
+      // 输入时实时保存
+      input.addEventListener("input", function (e) {
+        e.stopPropagation();
+        const idx = parseInt(this.dataset.stepIndex);
+        if (!isNaN(idx) && autoClickerConfig.steps[idx]) {
+          autoClickerConfig.steps[idx].text = this.value;
+        }
+      });
+      // 失去焦点时保存（兜底）
+      input.addEventListener("blur", function (e) {
+        const idx = parseInt(this.dataset.stepIndex);
+        if (!isNaN(idx) && autoClickerConfig.steps[idx]) {
+          autoClickerConfig.steps[idx].text = this.value;
+        }
+      });
+      // 回车键保存并保持焦点
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          this.blur();
+        }
+        e.stopPropagation();
       });
     });
 
