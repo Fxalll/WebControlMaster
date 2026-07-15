@@ -8056,3 +8056,7 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-welcome-start:hover {
   background: rgba(37, 99, 235, 0.2) !important;
 }
+/* 浅色模式覆盖 */
+[data-nopic-theme="light"] .nopic-autoclicker-step-item {
+  background: rgb(119 118 118 / 17%) !important;
+}
