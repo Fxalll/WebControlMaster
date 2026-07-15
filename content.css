@@ -5709,7 +5709,7 @@ html[data-nopic-theme] #nopic-widget {
   color: #0891b2 !important;
 }
 [data-nopic-theme="light"] #nopic-autoclicker-add-shortcut:hover {
-  background: rgba(8, 145, 178, 0.2) !important;
+  background: rgba(129, 140, 248, 0.2) !important;
 }
 
 [data-nopic-theme="light"] #nopic-autoclicker-add-delay {
@@ -6294,7 +6294,7 @@ html[data-nopic-theme] #nopic-widget {
   color: #0891b2 !important;
 }
 [data-nopic-theme="light"] #nopic-autoclicker-add-shortcut:hover {
-  background: rgba(6, 182, 212, 0.2) !important;
+  background: rgba(129, 140, 248, 0.2) !important;
 }
 
 [data-nopic-theme="light"] #nopic-autoclicker-add-delay {
@@ -7568,9 +7568,12 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-autoclicker-clear-global-btn:hover {
   background: rgba(239, 68, 68, 0.08) !important;
 }
-/* 浅色模式 - 流程背景加深 */
+/* 浅色模式 - 流程步骤无背景填充 */
 [data-nopic-theme="light"] .nopic-autoclicker-step-item {
-  background: rgba(0, 0, 0, 0.08) !important;
+  background: transparent !important;
+}
+[data-nopic-theme="light"] #nopic-ac-oneclick-record {
+  color: #fb923c !important;
 }
 /* 隐私锁 - 外观卡片 */
 .nopic-lock-appearance-card {

@@ -2150,7 +2150,7 @@ window.addEventListener("load", function () {
   function getAutoClickerSafetyConfig() {
     const key = "nopic_autoclicker_safety_" + location.host;
     const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : { delay: 3 }; // 默认3秒
+    return saved ? JSON.parse(saved) : { delay: 1 }; // 默认1秒
   }
   function setAutoClickerSafetyConfig(cfg) {
     const key = "nopic_autoclicker_safety_" + location.host;
@@ -7578,8 +7578,30 @@ window.addEventListener("load", function () {
         <div class="nopic-ac-scope-tab" data-ac-scope="domain" style="padding:4px 14px;border-radius:4px;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.2s;background:transparent;border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);">当前网站</div>
     </div>
         
-        <!-- 添加步骤按钮组 -->
-<div style="display: flex; flex-wrap: wrap; gap: 5px;">
+        <!-- 一键生成 -->
+        <div id="nopic-ac-oneclick-record" style="padding:8px 0;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(251,146,60,0.25);border:1px solid rgba(251,146,60,0.4);color:#fb923c;border-radius:6px;cursor:pointer;transition:all 0.2s;margin-bottom:4px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" fill="none"/>
+            <circle cx="12" cy="12" r="4" fill="none"/>
+            <line x1="12" y1="1" x2="12" y2="3" stroke-opacity="0.5"/>
+            <line x1="12" y1="21" x2="12" y2="23" stroke-opacity="0.5"/>
+            <line x1="1" y1="12" x2="3" y2="12" stroke-opacity="0.5"/>
+            <line x1="21" y1="12" x2="23" y2="12" stroke-opacity="0.5"/>
+          </svg>
+          一键生成自动化操作序列
+        </div>
+
+        <!-- 展开自定义操作 -->
+        <div id="nopic-ac-expand-custom" style="padding:4px 0;font-size:10px;display:flex;align-items:center;justify-content:center;gap:4px;color:rgba(255,255,255,0.35);cursor:pointer;transition:all 0.2s;border-radius:4px;margin-bottom:2px;">
+          <svg id="nopic-ac-expand-arrow" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;">
+            <polyline points="3 4.5 6 7.5 9 4.5"/>
+          </svg>
+          <span>自定义操作</span>
+        </div>
+
+        <!-- 自定义操作按钮组（默认折叠） -->
+        <div id="nopic-ac-custom-steps" style="display:none;">
+          <div style="display: flex; flex-wrap: wrap; gap: 5px;">
   
   <!-- 1. 点击元素 - 鼠标指针带点击轨迹 -->
   <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-click" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(74, 222, 128, 0.10); border: 1px solid rgba(74, 222, 128, 0.12); color: #4ade80; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
@@ -7625,8 +7647,8 @@ window.addEventListener("load", function () {
   </div>
   
   <!-- 4. 快捷键 - 组合键/Ctrl+ -->
-  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-shortcut" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(34, 211, 238, 0.10); border: 1px solid rgba(34, 211, 238, 0.12); color: #22d3ee; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <div class="nopic-textreplace-add-btn" id="nopic-autoclicker-add-shortcut" style="flex: 1; min-width: 74px; padding: 5px 6px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 5px; background: rgba(129, 140, 248, 0.10); border: 1px solid rgba(129, 140, 248, 0.12); color: #818cf8; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <line x1="6" y1="8" x2="6" y2="8" stroke-width="3"/>
       <line x1="18" y1="8" x2="18" y2="8" stroke-width="3"/>
       <line x1="6" y1="16" x2="6" y2="16" stroke-width="3"/>
@@ -7672,6 +7694,7 @@ window.addEventListener("load", function () {
   </div>
   
 </div>
+</div>
 
         <!-- 控制开关和输入 -->
         <div style="display: flex;flex-direction: column;gap: 8px;margin-top: 4px;padding-top: 8px;border-top: 1px solid rgba(255,255,255,0.06);" class="nopic-ac-controls-section">
@@ -7683,7 +7706,7 @@ window.addEventListener("load", function () {
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 11px; color: rgba(255,255,255,0.7);">安全延迟(秒)</span>
-            <input type="number" id="nopic-autoclicker-safety-delay" min="0" max="30" value="3" style="width: 60px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #fff; font-size: 12px; padding: 4px 6px; text-align: right;">
+            <input type="number" id="nopic-autoclicker-safety-delay" min="0" max="30" value="1" style="width: 60px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: #fff; font-size: 12px; padding: 4px 6px; text-align: right;">
           </div>
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -7934,7 +7957,7 @@ window.addEventListener("load", function () {
     const safetyInput = document.getElementById(
       "nopic-autoclicker-safety-delay",
     );
-    if (safetyInput) safetyInput.value = 3;
+    if (safetyInput) safetyInput.value = autoClickerSafetyConfig.delay || 1;
     const notifToggle = document.getElementById(
       "nopic-autoclicker-notif-toggle",
     );
@@ -13140,7 +13163,10 @@ window.addEventListener("load", function () {
         target.classList.contains("nopic-privacy-select-btn") ||
         target.classList.contains("nopic-textreplace-rule-item") ||
         target.classList.contains("nopic-forcecopy-option") ||
-        target.classList.contains("nopic-modal-close")
+        target.classList.contains("nopic-modal-close") ||
+        target.classList.contains("nopic-drag-handle") ||
+        target.closest(".nopic-drag-handle") ||
+        target.closest(".nopic-autoclicker-step-item")
       ) {
         return;
       }
@@ -15492,8 +15518,12 @@ window.addEventListener("load", function () {
             if (imported._nopic_site && imported._nopic_site !== siteHost) {
               showConfirmModal(
                 "导入失败",
-                "该文件属于 " + imported._nopic_site + "，与当前网站 " + siteHost + " 不匹配。",
-                null
+                "该文件属于 " +
+                  imported._nopic_site +
+                  "，与当前网站 " +
+                  siteHost +
+                  " 不匹配。",
+                null,
               );
               return;
             }
@@ -17459,7 +17489,7 @@ window.addEventListener("load", function () {
           input:
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><line x1="4" y1="11" x2="20" y2="11"/></svg>',
           shortcut:
-            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"/><path d="M8 3v7"/><path d="M16 3v7"/><path d="M3 14h18"/><path d="M8 21v-7"/><path d="M16 21v-7"/></svg>',
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"/><path d="M8 3v7"/><path d="M16 3v7"/><path d="M3 14h18"/><path d="M8 21v-7"/><path d="M16 21v-7"/></svg>',
           script:
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
         };
@@ -17476,7 +17506,7 @@ window.addEventListener("load", function () {
           input:
             '<span style="display:flex;align-items:center;gap:4px;color:#a78bfa;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.5" width="8" height="7" rx="1"/><line x1="2" y1="5.5" x2="10" y2="5.5"/></svg> 输入文字</span>',
           shortcut:
-            '<span style="display:flex;align-items:center;gap:4px;color:#22d3ee;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5h9"/><path d="M4 1.5v3.5"/><path d="M8 1.5v3.5"/><path d="M1.5 7h9"/><path d="M4 10.5V7"/><path d="M8 10.5V7"/></svg> 执行快捷键</span>',
+            '<span style="display:flex;align-items:center;gap:4px;color:#818cf8;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5h9"/><path d="M4 1.5v3.5"/><path d="M8 1.5v3.5"/><path d="M1.5 7h9"/><path d="M4 10.5V7"/><path d="M8 10.5V7"/></svg> 执行快捷键</span>',
           script:
             '<span style="display:flex;align-items:center;gap:4px;color:#f472b6;"><svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 9 11 6 8 3"/><polyline points="4 3 1 6 4 9"/></svg> 运行脚本</span>',
         };
@@ -17540,7 +17570,7 @@ window.addEventListener("load", function () {
           click: "#4ade80",
           position: "#60a5fa",
           input: "#a78bfa",
-          shortcut: "#22d3ee",
+          shortcut: "#818cf8",
           script: "#f472b6",
         };
         const borderColor = borderColors[step.type] || "#888";
@@ -17621,21 +17651,12 @@ window.addEventListener("load", function () {
       // 拖拽结束
       item.addEventListener("dragend", function (e) {
         e.stopPropagation();
-        this.style.opacity = "1";
-        this.style.transform = "scale(1)";
-        this.style.background = "";
-        this.style.cursor = "grab";
-        // 清除所有高亮
-        list.querySelectorAll(".nopic-autoclicker-step-item").forEach((el) => {
-          el.style.borderColor = "";
-          el.style.background = "";
-          el.style.transform = "";
-          el.style.opacity = "1";
-        });
         dragItem = null;
         dragOverItem = null;
-        // 恢复弹窗拖动
+        dragIndex = -1;
+        dragOverIndex = -1;
         autoClickerSubmenu.style.cursor = "move";
+        updateAutoClickerFlowList();
       });
 
       // 拖拽经过
@@ -18293,7 +18314,7 @@ window.addEventListener("load", function () {
     </div>
 
     <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:10px;text-align:center;letter-spacing:0.2px;">
-      支持组合键 · 如 Ctrl+C · Ctrl+V · Ctrl+Z
+      支持组合键 · 如 Ctrl+A · Ctrl+Z · Ctrl+B · Ctrl+Enter
     </div>
   </div>
 
@@ -18371,7 +18392,7 @@ window.addEventListener("load", function () {
     // 点击区域开始监听快捷键
     shortcutArea.addEventListener("click", function () {
       shortcutArea.focus();
-      shortcutArea.style.borderColor = "#22d3ee";
+      shortcutArea.style.borderColor = "#818cf8";
       shortcutArea.textContent = "请按下快捷键...";
     });
 
@@ -18419,36 +18440,71 @@ window.addEventListener("load", function () {
 
       // ---- 完全支持的快捷键（直接操作DOM） ----
       const fullySupported = {
-        backspace: { icon: "⌫", desc: "退格键", detail: "删除光标前字符" },
-        delete: { icon: "⌦", desc: "删除键", detail: "删除光标后字符" },
-        enter: { icon: "↵", desc: "回车键", detail: "提交表单 / 插入换行" },
-        " ": { icon: "␣", desc: "空格键", detail: "插入空格" },
-        tab: { icon: "⇥", desc: "Tab键", detail: "插入缩进（两个空格）" },
-        escape: { icon: "⎋", desc: "Esc键", detail: "取消焦点" },
+        backspace: { icon: "BS", desc: "退格键", detail: "删除光标前字符" },
+        delete: { icon: "Del", desc: "删除键", detail: "删除光标后字符" },
+        enter: { icon: "Enter", desc: "回车键", detail: "提交表单 / 插入换行" },
+        " ": { icon: "Space", desc: "空格键", detail: "插入空格" },
+        tab: { icon: "Tab", desc: "Tab键", detail: "插入缩进（两个空格）" },
+        escape: { icon: "Esc", desc: "Esc键", detail: "取消焦点" },
       };
 
       // ---- 支持的特殊组合键（execCommand） ----
       const supportedCombos = {
-        "ctrl+a": { icon: "📋", desc: "全选", detail: "选中全部内容" },
-        "ctrl+c": { icon: "📄", desc: "复制", detail: "复制选中内容" },
-        "ctrl+v": { icon: "📥", desc: "粘贴", detail: "粘贴剪贴板内容" },
-        "ctrl+x": { icon: "✂️", desc: "剪切", detail: "剪切选中内容" },
-        "ctrl+z": { icon: "↩️", desc: "撤销", detail: "撤销上一步操作" },
-        "ctrl+y": { icon: "↪️", desc: "重做", detail: "重做已撤销操作" },
-        "ctrl+b": { icon: "𝐁", desc: "加粗", detail: "文字加粗" },
-        "ctrl+i": { icon: "𝑰", desc: "斜体", detail: "文字斜体" },
-        "ctrl+u": { icon: "U̲", desc: "下划线", detail: "添加下划线" },
-        "ctrl+enter": { icon: "📤", desc: "提交表单", detail: "提交当前表单" },
-        "meta+a": { icon: "📋", desc: "全选", detail: "选中全部内容" },
-        "meta+c": { icon: "📄", desc: "复制", detail: "复制选中内容" },
-        "meta+v": { icon: "📥", desc: "粘贴", detail: "粘贴剪贴板内容" },
-        "meta+x": { icon: "✂️", desc: "剪切", detail: "剪切选中内容" },
-        "meta+z": { icon: "↩️", desc: "撤销", detail: "撤销上一步操作" },
-        "meta+y": { icon: "↪️", desc: "重做", detail: "重做已撤销操作" },
-        "meta+b": { icon: "𝐁", desc: "加粗", detail: "文字加粗" },
-        "meta+i": { icon: "𝑰", desc: "斜体", detail: "文字斜体" },
-        "meta+u": { icon: "U̲", desc: "下划线", detail: "添加下划线" },
-        "meta+enter": { icon: "📤", desc: "提交表单", detail: "提交当前表单" },
+        "ctrl+a": { icon: "A", desc: "全选", detail: "选中全部内容" },
+        "ctrl+z": { icon: "Z", desc: "撤销", detail: "撤销上一步操作" },
+        "ctrl+y": { icon: "Y", desc: "重做", detail: "重做已撤销操作" },
+        "ctrl+b": { icon: "B", desc: "加粗", detail: "文字加粗" },
+        "ctrl+i": { icon: "I", desc: "斜体", detail: "文字斜体" },
+        "ctrl+u": { icon: "U", desc: "下划线", detail: "添加下划线" },
+        "ctrl+enter": {
+          icon: "Enter",
+          desc: "提交表单",
+          detail: "提交当前表单",
+        },
+        "meta+a": { icon: "A", desc: "全选", detail: "选中全部内容" },
+        "meta+z": { icon: "Z", desc: "撤销", detail: "撤销上一步操作" },
+        "meta+y": { icon: "Y", desc: "重做", detail: "重做已撤销操作" },
+        "meta+b": { icon: "B", desc: "加粗", detail: "文字加粗" },
+        "meta+i": { icon: "I", desc: "斜体", detail: "文字斜体" },
+        "meta+u": { icon: "U", desc: "下划线", detail: "添加下划线" },
+        "meta+enter": {
+          icon: "Enter",
+          desc: "提交表单",
+          detail: "提交当前表单",
+        },
+      };
+
+      const partialCombos = {
+        "ctrl+c": {
+          icon: "C",
+          desc: "复制",
+          detail: "通过键盘事件触发，可能不支持",
+        },
+        "ctrl+v": {
+          icon: "V",
+          desc: "粘贴",
+          detail: "通过键盘事件触发，可能不支持",
+        },
+        "ctrl+x": {
+          icon: "X",
+          desc: "剪切",
+          detail: "通过键盘事件触发，可能不支持",
+        },
+        "meta+c": {
+          icon: "C",
+          desc: "复制",
+          detail: "通过键盘事件触发，可能不支持",
+        },
+        "meta+v": {
+          icon: "V",
+          desc: "粘贴",
+          detail: "通过键盘事件触发，可能不支持",
+        },
+        "meta+x": {
+          icon: "X",
+          desc: "剪切",
+          detail: "通过键盘事件触发，可能不支持",
+        },
       };
 
       // ---- 构建组合键key用于查找 ----
@@ -18498,6 +18554,13 @@ window.addEventListener("load", function () {
           supportColor = "#4ade80";
           isSupported = true;
         }
+        // 2.5. 部分支持的组合键（键盘事件触发）
+        else if (partialCombos[comboKey]) {
+          info = partialCombos[comboKey];
+          supportStatus = "（可能不支持）";
+          supportColor = "#fbbf24";
+          isSupported = false;
+        }
         // 3. 普通字符输入（无修饰键或只有Shift）
         else if (
           recordedKeys.key.length === 1 &&
@@ -18508,7 +18571,7 @@ window.addEventListener("load", function () {
           const charDisplay = recordedKeys.shift
             ? recordedKeys.key.toUpperCase()
             : recordedKeys.key;
-          info = { icon: "⌨️", desc: `输入字符`, detail: `"${charDisplay}"` };
+          info = { icon: "A", desc: `输入字符`, detail: `"${charDisplay}"` };
           supportStatus = "（可用）";
           supportColor = "#4ade80";
           isSupported = true;
@@ -18530,7 +18593,7 @@ window.addEventListener("load", function () {
       // 如果没有录制到任何键
       if (!recordedShortcut) {
         shortcutArea.innerHTML = `
-          <div style="font-size:14px;color:rgba(255,255,255,0.4);">👆 点击后按下快捷键</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.4);">点击后按下快捷键</div>
           <div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:4px;">支持组合键: Ctrl / Alt / Shift</div>
         `;
         return;
@@ -18540,7 +18603,7 @@ window.addEventListener("load", function () {
       let html = `
         <div style="display:flex;align-items:center;gap:14px;width:100%;padding:4px 0;">
           <!-- 左侧：快捷键名称 -->
-          <div style="font-size:24px;font-weight:700;color:#22d3ee;letter-spacing:1px;flex-shrink:0;">${recordedShortcut}</div>
+          <div style="font-size:24px;font-weight:700;color:#818cf8;letter-spacing:1px;flex-shrink:0;">${recordedShortcut}</div>
           
           <!-- 右侧：状态 + 信息 -->
           <div style="flex:1;text-align:left;min-width:0;">
@@ -18550,7 +18613,7 @@ window.addEventListener("load", function () {
             </div>
       `;
 
-      if (isSupported && info) {
+      if (info) {
         html += `
             <!-- 操作描述 -->
             <div style="font-size:14px;color:rgba(255,255,255,0.9);margin-top:2px;">
@@ -18606,6 +18669,578 @@ window.addEventListener("load", function () {
       closeDialog();
       updateAutoClickerFlowList();
     });
+  }
+
+  // ===== 一键生成自动化操作序列 =====
+  let _autoRecordActive = false;
+  let _autoRecordBar = null;
+  let _autoRecordSteps = [];
+  let _autoRecordLastTime = 0;
+  let _autoRecordInputTarget = null;
+  let _autoRecordInputValue = "";
+  let _autoRecordInputPrevValue = "";
+  let _autoRecordInputDelta = "";
+  let _autoRecordInputBaseline = false;
+  let _autoRecordInputTimer = null;
+  let _autoRecordBarSide = "right";
+  let _autoRecordStyleEl = null;
+
+  function _autoRecordGetSelector(el) {
+    if (
+      el.id &&
+      document.querySelectorAll("#" + CSS.escape(el.id)).length === 1
+    ) {
+      return "#" + CSS.escape(el.id);
+    }
+    const attrs = [
+      "name",
+      "data-id",
+      "data-value",
+      "data-testid",
+      "aria-label",
+      "title",
+      "placeholder",
+    ];
+    for (const attr of attrs) {
+      const val = el.getAttribute(attr);
+      if (val) {
+        const s =
+          el.tagName.toLowerCase() +
+          "[" +
+          attr +
+          '="' +
+          val.replace(/"/g, '\\"') +
+          '"]';
+        if (document.querySelectorAll(s).length === 1) return s;
+      }
+    }
+    let path = [];
+    let cur = el;
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      let seg = cur.tagName.toLowerCase();
+      if (
+        cur.id &&
+        document.querySelectorAll("#" + CSS.escape(cur.id)).length === 1
+      ) {
+        path.unshift("#" + CSS.escape(cur.id));
+        const full = path.join(" > ");
+        if (document.querySelectorAll(full).length === 1) return full;
+        break;
+      }
+      const parent = cur.parentElement;
+      if (parent) {
+        const same = Array.from(parent.children).filter(function (c) {
+          return c.tagName === cur.tagName;
+        });
+        if (same.length > 1)
+          seg += ":nth-of-type(" + (same.indexOf(cur) + 1) + ")";
+      }
+      path.unshift(seg);
+      cur = parent;
+    }
+    return path.length ? path.join(" > ") : el.tagName.toLowerCase();
+  }
+
+  function _autoRecordGetXPath(el) {
+    if (el.id) return '//*[@id="' + el.id + '"]';
+    var parts = [];
+    var cur = el;
+    while (cur && cur.nodeType === Node.ELEMENT_NODE) {
+      var idx = 1;
+      var sib = cur.previousSibling;
+      while (sib) {
+        if (sib.nodeType === Node.ELEMENT_NODE && sib.tagName === cur.tagName)
+          idx++;
+        sib = sib.previousSibling;
+      }
+      parts.unshift(
+        cur.tagName.toLowerCase() + (idx > 1 ? "[" + idx + "]" : ""),
+      );
+      if (cur.id) {
+        parts[0] = cur.tagName.toLowerCase() + '[@id="' + cur.id + '"]';
+        break;
+      }
+      cur = cur.parentNode;
+    }
+    return parts.length ? "/" + parts.join("/") : "";
+  }
+
+  function _autoRecordIsScriptUI(target) {
+    return !!(
+      target.closest &&
+      (target.closest("#nopic-autoclicker-submenu") ||
+        target.closest("#nopic-widget") ||
+        target.closest("#nopic-menu") ||
+        target.closest("#nopic-zoom-container") ||
+        target.closest("#nopic-parade-overlay") ||
+        target.closest(".nopic-auto-record-bar"))
+    );
+  }
+
+  function _autoRecordFlushInput() {
+    if (_autoRecordInputTarget && _autoRecordInputDelta) {
+      var now = Date.now();
+      var gap = _autoRecordLastTime > 0 ? now - _autoRecordLastTime : 0;
+
+      if (gap > 0) {
+        _autoRecordSteps.push({
+          id: now,
+          type: "delay",
+          value: Math.min(Math.round(gap / 10) * 10, 10000),
+        });
+      }
+
+      _autoRecordSteps.push({
+        id: now,
+        type: "input",
+        selector: _autoRecordGetSelector(_autoRecordInputTarget),
+        xpath: _autoRecordGetXPath(_autoRecordInputTarget),
+        text: _autoRecordInputDelta,
+      });
+      _autoRecordLastTime = now;
+      _autoRecordUpdateCount();
+    }
+    _autoRecordInputTarget = null;
+    _autoRecordInputValue = "";
+    _autoRecordInputPrevValue = "";
+    _autoRecordInputDelta = "";
+    _autoRecordInputBaseline = false;
+    clearTimeout(_autoRecordInputTimer);
+  }
+
+  function _autoRecordUpdateCount() {
+    if (!_autoRecordBar) return;
+    var countEl = _autoRecordBar.querySelector(".nopic-auto-record-count");
+    if (countEl) countEl.textContent = _autoRecordSteps.length;
+  }
+
+  function _autoRecordStop() {
+    _autoRecordFlushInput();
+    document.removeEventListener("mousedown", _autoRecordMousedown, true);
+    document.removeEventListener("keydown", _autoRecordKeydown, true);
+    document.removeEventListener("keyup", _autoRecordKeyup, true);
+    document.removeEventListener("input", _autoRecordInput, true);
+    document.removeEventListener("blur", _autoRecordBlur, true);
+    document.removeEventListener("focus", _autoRecordFocus, true);
+    document.removeEventListener(
+      "compositionstart",
+      _autoRecordCompositionStart,
+      true,
+    );
+    document.removeEventListener(
+      "compositionend",
+      _autoRecordCompositionEnd,
+      true,
+    );
+    document.removeEventListener("mousemove", _autoRecordBarDodge, true);
+    _autoRecordActive = false;
+    if (_autoRecordBarDodgeTimer) {
+      clearTimeout(_autoRecordBarDodgeTimer);
+      _autoRecordBarDodgeTimer = null;
+    }
+    if (_autoRecordBar) {
+      _autoRecordBar.remove();
+      _autoRecordBar = null;
+    }
+    if (_autoRecordStyleEl) {
+      _autoRecordStyleEl.remove();
+      _autoRecordStyleEl = null;
+    }
+
+    if (_autoRecordSteps.length === 0) {
+      showAutoClickerSubmenu();
+      return;
+    }
+
+    for (var j = 0; j < _autoRecordSteps.length; j++) {
+      autoClickerConfig.steps.push(_autoRecordSteps[j]);
+    }
+
+    _autoRecordSteps = [];
+
+    setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
+    refreshAllWaitLinks();
+    updateAutoClickerFlowList();
+    updateAutoClickerScopeUI();
+
+    showAutoClickerSubmenu();
+  }
+
+  function _autoRecordMousedown(e) {
+    if (!_autoRecordActive) return;
+    if (_autoRecordIsScriptUI(e.target)) return;
+
+    var el = e.target;
+    var isTextInput =
+      el.tagName === "INPUT" ||
+      el.tagName === "TEXTAREA" ||
+      el.isContentEditable;
+    if (isTextInput) {
+      _autoRecordFlushInput();
+      _autoRecordInputPrevValue =
+        el.value !== undefined ? el.value : el.textContent || "";
+      _autoRecordInputBaseline = true;
+    } else {
+      _autoRecordFlushInput();
+    }
+
+    var now = Date.now();
+    var gap = _autoRecordLastTime > 0 ? now - _autoRecordLastTime : 0;
+    _autoRecordLastTime = now;
+
+    if (gap > 0) {
+      _autoRecordSteps.push({
+        id: Date.now(),
+        type: "delay",
+        value: Math.min(Math.round(gap / 10) * 10, 10000),
+      });
+    }
+
+    var el = e.target;
+
+    _autoRecordSteps.push({
+      id: Date.now(),
+      type: "position",
+      x: e.clientX + window.scrollX,
+      y: e.clientY + window.scrollY,
+    });
+
+    _autoRecordUpdateCount();
+  }
+
+  var _autoRecordCompositionActive = false;
+
+  function _autoRecordCompositionStart(e) {
+    _autoRecordCompositionActive = true;
+  }
+
+  function _autoRecordCompositionEnd(e) {
+    _autoRecordCompositionActive = false;
+    var el = e.target;
+    if (
+      el &&
+      (el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.isContentEditable)
+    ) {
+      var val = el.value !== undefined ? el.value : el.textContent || "";
+      if (val) {
+        clearTimeout(_autoRecordInputTimer);
+        if (_autoRecordInputTarget !== el) {
+          _autoRecordFlushInput();
+          _autoRecordInputTarget = el;
+          if (_autoRecordInputBaseline) {
+            _autoRecordInputBaseline = false;
+          } else {
+            _autoRecordInputPrevValue = "";
+          }
+          _autoRecordInputDelta = val.substring(
+            _autoRecordInputPrevValue.length,
+          );
+        } else {
+          if (val.length > _autoRecordInputPrevValue.length) {
+            _autoRecordInputDelta += val.substring(
+              _autoRecordInputPrevValue.length,
+            );
+          }
+        }
+        _autoRecordInputPrevValue = val;
+        _autoRecordInputValue = val;
+        _autoRecordInputTimer = setTimeout(function () {
+          if (_autoRecordInputTarget === el) _autoRecordFlushInput();
+        }, 500);
+      }
+    }
+  }
+
+  function _autoRecordInput(e) {
+    if (!_autoRecordActive) return;
+    if (_autoRecordIsScriptUI(e.target)) return;
+
+    var el = e.target;
+    var isInput =
+      el.tagName === "INPUT" ||
+      el.tagName === "TEXTAREA" ||
+      el.isContentEditable;
+    if (!isInput) return;
+    if (_autoRecordCompositionActive) return;
+
+    var val = el.value !== undefined ? el.value : el.textContent || "";
+
+    if (_autoRecordInputTarget === el) {
+      clearTimeout(_autoRecordInputTimer);
+      if (val.length > _autoRecordInputPrevValue.length) {
+        _autoRecordInputDelta += val.substring(
+          _autoRecordInputPrevValue.length,
+        );
+      } else if (val.length < _autoRecordInputPrevValue.length) {
+        _autoRecordInputDelta = "";
+      }
+      _autoRecordInputPrevValue = val;
+      _autoRecordInputValue = val;
+      _autoRecordInputTimer = setTimeout(function () {
+        if (_autoRecordInputTarget === el) {
+          _autoRecordFlushInput();
+        }
+      }, 500);
+      return;
+    }
+
+    _autoRecordFlushInput();
+    _autoRecordInputTarget = el;
+    if (_autoRecordInputBaseline) {
+      _autoRecordInputBaseline = false;
+    } else {
+      _autoRecordInputPrevValue = val;
+    }
+    _autoRecordInputDelta = val.substring(_autoRecordInputPrevValue.length);
+    _autoRecordInputPrevValue = val;
+    _autoRecordInputValue = val;
+    clearTimeout(_autoRecordInputTimer);
+    _autoRecordInputTimer = setTimeout(function () {
+      if (_autoRecordInputTarget === el) {
+        _autoRecordFlushInput();
+      }
+    }, 500);
+  }
+
+  function _autoRecordBlur(e) {
+    if (!_autoRecordActive) return;
+    if (_autoRecordInputTarget && _autoRecordInputTarget === e.target) {
+      clearTimeout(_autoRecordInputTimer);
+      _autoRecordFlushInput();
+    }
+  }
+
+  function _autoRecordFocus(e) {
+    if (!_autoRecordActive) return;
+    if (_autoRecordIsScriptUI(e.target)) return;
+  }
+
+  function _autoRecordKeydown(e) {
+    if (!_autoRecordActive) return;
+    if (_autoRecordIsScriptUI(e.target)) return;
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      _autoRecordStop();
+      return;
+    }
+
+    var hasModifier = e.ctrlKey || e.altKey || e.metaKey;
+    if (hasModifier) {
+      var isTextInput =
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        e.target.isContentEditable;
+      var isModifierKey =
+        e.key === "Control" ||
+        e.key === "Alt" ||
+        e.key === "Shift" ||
+        e.key === "Meta";
+      if (isModifierKey) return;
+      if (!isTextInput) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      _autoRecordFlushInput();
+
+      var now = Date.now();
+      var gap = _autoRecordLastTime > 0 ? now - _autoRecordLastTime : 0;
+      _autoRecordLastTime = now;
+
+      if (gap > 0) {
+        _autoRecordSteps.push({
+          id: Date.now(),
+          type: "delay",
+          value: Math.min(Math.round(gap / 10) * 10, 10000),
+        });
+      }
+
+      var keyParts = [];
+      if (e.ctrlKey) keyParts.push("Control");
+      if (e.altKey) keyParts.push("Alt");
+      if (e.shiftKey) keyParts.push("Shift");
+      if (e.metaKey) keyParts.push("Meta");
+      keyParts.push(e.key);
+
+      _autoRecordSteps.push({
+        id: Date.now(),
+        type: "shortcut",
+        shortcut: keyParts.join("+"),
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        shiftKey: e.shiftKey,
+        metaKey: e.metaKey,
+        key: e.key,
+      });
+      _autoRecordUpdateCount();
+      return;
+    }
+
+    var specialKeys = [
+      "Enter",
+      "Tab",
+      "Backspace",
+      "Delete",
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight",
+      "Home",
+      "End",
+      "PageUp",
+      "PageDown",
+    ];
+    if (specialKeys.indexOf(e.key) !== -1) {
+      var isTextInput =
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        e.target.isContentEditable;
+      _autoRecordFlushInput();
+
+      var now = Date.now();
+      var gap = _autoRecordLastTime > 0 ? now - _autoRecordLastTime : 0;
+      _autoRecordLastTime = now;
+
+      if (gap > 0) {
+        _autoRecordSteps.push({
+          id: Date.now(),
+          type: "delay",
+          value: Math.min(Math.round(gap / 10) * 10, 10000),
+        });
+      }
+
+      _autoRecordSteps.push({
+        id: Date.now(),
+        type: "shortcut",
+        shortcut: e.key,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        key: e.key,
+      });
+      _autoRecordUpdateCount();
+
+      if (!isTextInput) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  }
+
+  function _autoRecordKeyup(e) {
+    if (!_autoRecordActive) return;
+    if (
+      e.key === "Escape" ||
+      e.key === "Control" ||
+      e.key === "Alt" ||
+      e.key === "Shift" ||
+      e.key === "Meta"
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  let _autoRecordBarDodgeTimer = null;
+
+  function _autoRecordBarDodge(e) {
+    if (!_autoRecordBar) return;
+    var rect = _autoRecordBar.getBoundingClientRect();
+    var barCenterY = rect.top + rect.height / 2;
+    var barCenterX = rect.left + rect.width / 2;
+    var dist =
+      Math.abs(e.clientY - barCenterY) + Math.abs(e.clientX - barCenterX);
+    if (dist < 120) {
+      if (!_autoRecordBarDodgeTimer) {
+        _autoRecordBarDodgeTimer = setTimeout(function () {
+          _autoRecordBarDodgeTimer = null;
+          if (!_autoRecordBar) return;
+          var atRight =
+            _autoRecordBar.getBoundingClientRect().left > window.innerWidth / 2;
+          _autoRecordBar.style.transition =
+            "top 0.4s cubic-bezier(0.4,0,0.2,1), left 0.4s cubic-bezier(0.4,0,0.2,1), right 0.4s cubic-bezier(0.4,0,0.2,1)";
+          if (e.clientY < barCenterY) {
+            _autoRecordBar.style.top = window.innerHeight - 56 + "px";
+          } else {
+            _autoRecordBar.style.top = "16px";
+          }
+          if (atRight) {
+            _autoRecordBar.style.left = "16px";
+            _autoRecordBar.style.right = "auto";
+          } else {
+            _autoRecordBar.style.left = "auto";
+            _autoRecordBar.style.right = "16px";
+          }
+        }, 1000);
+      }
+    } else {
+      if (_autoRecordBarDodgeTimer) {
+        clearTimeout(_autoRecordBarDodgeTimer);
+        _autoRecordBarDodgeTimer = null;
+      }
+    }
+  }
+
+  function startAutoRecord() {
+    if (_autoRecordActive) return;
+
+    _autoRecordActive = true;
+    _autoRecordSteps = [];
+    _autoRecordLastTime = Date.now();
+    _autoRecordInputTarget = null;
+    _autoRecordInputValue = "";
+    _autoRecordInputPrevValue = "";
+    _autoRecordInputDelta = "";
+    _autoRecordInputBaseline = false;
+    clearTimeout(_autoRecordInputTimer);
+
+    hideAutoClickerSubmenu();
+
+    var styleEl = document.createElement("style");
+    styleEl.textContent =
+      "@keyframes nopic-blink{0%,100%{opacity:1}50%{opacity:0.3}}";
+    document.head.appendChild(styleEl);
+    _autoRecordStyleEl = styleEl;
+
+    var bar = document.createElement("div");
+    bar.className = "nopic-auto-record-bar";
+    bar.style.cssText =
+      "position:fixed;top:16px;right:16px;height:40px;min-width:160px;background:rgba(30,30,35,0.95);backdrop-filter:blur(16px);border:1px solid rgba(239,68,68,0.4);border-radius:20px;z-index:2147483647;display:flex;align-items:center;justify-content:center;gap:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;font-size:12px;box-shadow:0 4px 20px rgba(239,68,68,0.2);pointer-events:auto;user-select:none;transition:top 0.4s cubic-bezier(0.4,0,0.2,1), left 0.4s cubic-bezier(0.4,0,0.2,1), right 0.4s cubic-bezier(0.4,0,0.2,1);padding:0 6px 0 14px;";
+    bar.innerHTML =
+      '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;animation:nopic-blink 1s infinite;"></span>录制中</span><span style="opacity:0.5;font-size:11px;">已录 <span class="nopic-auto-record-count">0</span></span><div class="nopic-auto-record-stop" style="padding:5px 12px;border-radius:14px;background:rgba(239,68,68,0.8);color:#fff;font-size:11px;cursor:pointer;font-weight:500;transition:background 0.2s;white-space:nowrap;">结束录制</div>';
+    document.body.appendChild(bar);
+    _autoRecordBar = bar;
+
+    bar
+      .querySelector(".nopic-auto-record-stop")
+      .addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        _autoRecordStop();
+      });
+
+    document.addEventListener("mousemove", _autoRecordBarDodge, true);
+    document.addEventListener("mousedown", _autoRecordMousedown, true);
+    document.addEventListener("keydown", _autoRecordKeydown, true);
+    document.addEventListener("keyup", _autoRecordKeyup, true);
+    document.addEventListener("input", _autoRecordInput, true);
+    document.addEventListener("blur", _autoRecordBlur, true);
+    document.addEventListener("focus", _autoRecordFocus, true);
+    document.addEventListener(
+      "compositionstart",
+      _autoRecordCompositionStart,
+      true,
+    );
+    document.addEventListener(
+      "compositionend",
+      _autoRecordCompositionEnd,
+      true,
+    );
   }
 
   // ===== 添加运行脚本步骤 =====
@@ -18809,7 +19444,7 @@ window.addEventListener("load", function () {
           if (!isTerminated) {
             updateAutoClickerStatus(`第 ${currentLoop} 轮完成`, "success");
           }
-          setTimeout(runLoop, 200);
+          setTimeout(runLoop, 50);
           return;
         }
 
@@ -18879,7 +19514,7 @@ window.addEventListener("load", function () {
             }
             setTimeout(() => {
               if (!isTerminated) runNext();
-            }, 200);
+            }, 50);
             return;
           }
 
@@ -18980,7 +19615,7 @@ window.addEventListener("load", function () {
               } catch (e) {}
               setTimeout(() => {
                 if (!isTerminated) runNext();
-              }, 200);
+              }, 50);
               return;
             }
 
@@ -18994,7 +19629,7 @@ window.addEventListener("load", function () {
               }
               setTimeout(() => {
                 if (!isTerminated) runNext();
-              }, 300);
+              }, 50);
               return;
             }
 
@@ -19048,7 +19683,7 @@ window.addEventListener("load", function () {
                 }
                 setTimeout(() => {
                   if (!isTerminated) runNext();
-                }, 200);
+                }, 50);
                 return;
               }
 
@@ -19085,9 +19720,9 @@ window.addEventListener("load", function () {
                 }, 150);
               } catch (e) {}
 
-              // 计算下次点击的间隔（90ms ± 20ms 浮动）
-              const baseInterval = 90;
-              const variation = 20;
+              // 计算下次点击的间隔（50ms ± 15ms 浮动）
+              const baseInterval = 50;
+              const variation = 15;
               const nextInterval =
                 baseInterval + (Math.random() * variation * 2 - variation);
 
@@ -19121,7 +19756,7 @@ window.addEventListener("load", function () {
             }
             setTimeout(() => {
               if (!isTerminated) runNext();
-            }, 500);
+            }, 50);
           }
         } else if (step.type === "position") {
           // 点击位置（支持连点）
@@ -19199,6 +19834,16 @@ window.addEventListener("load", function () {
               }
 
               if (el) {
+                var _isInput =
+                  el.tagName === "INPUT" ||
+                  el.tagName === "TEXTAREA" ||
+                  el.isContentEditable;
+                if (_isInput) {
+                  try {
+                    el.focus();
+                  } catch (_e) {}
+                }
+
                 // ★★★ 连点逻辑（位置点击） ★★★
                 const clickCount = step.clickCount || 1;
                 const totalClicks = clickCount === 0 ? Infinity : clickCount;
@@ -19220,7 +19865,7 @@ window.addEventListener("load", function () {
                     }
                     setTimeout(() => {
                       if (!isTerminated) runNext();
-                    }, 200);
+                    }, 50);
                     return;
                   }
 
@@ -19328,7 +19973,7 @@ window.addEventListener("load", function () {
                     }
                     setTimeout(() => {
                       if (!isTerminated) runNext();
-                    }, 200);
+                    }, 50);
                     return;
                   }
 
@@ -19448,7 +20093,7 @@ window.addEventListener("load", function () {
 
               setTimeout(() => {
                 if (!isTerminated) runNext();
-              }, 300);
+              }, 50);
             } catch (e) {
               if (!isTerminated) {
                 updateAutoClickerStatus(
@@ -19458,7 +20103,7 @@ window.addEventListener("load", function () {
               }
               setTimeout(() => {
                 if (!isTerminated) runNext();
-              }, 300);
+              }, 50);
             }
           } else {
             if (!isTerminated) {
@@ -19469,7 +20114,7 @@ window.addEventListener("load", function () {
             }
             setTimeout(() => {
               if (!isTerminated) runNext();
-            }, 300);
+            }, 50);
           }
         } else if (step.type === "shortcut") {
           // 执行快捷键 - 直接操作DOM方式（不依赖键盘事件模拟）
@@ -19788,35 +20433,22 @@ window.addEventListener("load", function () {
               if (hasOnlyCtrl || hasOnlyMeta) {
                 const commandMap = {
                   a: { cmd: "selectAll", desc: "全选 (Ctrl+A)" },
-                  c: { cmd: "copy", desc: "复制 (Ctrl+C)" },
-                  v: { cmd: "paste", desc: "粘贴 (Ctrl+V)" },
-                  x: { cmd: "cut", desc: "剪切 (Ctrl+X)" },
                   z: { cmd: "undo", desc: "撤销 (Ctrl+Z)" },
                   y: { cmd: "redo", desc: "重做 (Ctrl+Y)" },
                   b: { cmd: "bold", desc: "加粗 (Ctrl+B)" },
                   i: { cmd: "italic", desc: "斜体 (Ctrl+I)" },
                   u: { cmd: "underline", desc: "下划线 (Ctrl+U)" },
                 };
-
                 const mapped = commandMap[key];
                 if (mapped) {
                   try {
                     if (target && target.focus) target.focus();
-                    const result = document.execCommand(
-                      mapped.cmd,
-                      false,
-                      null,
-                    );
-                    if (result || mapped.cmd === "selectAll") {
-                      actionDesc = mapped.desc;
-                      executed = true;
-                      execMethod = "execCommand";
-                    } else {
-                      actionDesc = mapped.desc + " - 执行失败（可能不支持）";
-                      executed = false;
-                    }
+                    document.execCommand(mapped.cmd, false, null);
+                    actionDesc = mapped.desc;
+                    executed = true;
+                    execMethod = "execCommand";
                   } catch (e) {
-                    actionDesc = mapped.desc + ` - 执行异常: ${e.message}`;
+                    actionDesc = mapped.desc + ` - 异常: ${e.message}`;
                     executed = false;
                   }
                 }
@@ -19949,7 +20581,7 @@ window.addEventListener("load", function () {
             // 延迟后继续下一步
             setTimeout(() => {
               if (!isTerminated) runNext();
-            }, 300);
+            }, 50);
           } catch (e) {
             if (!isTerminated) {
               updateAutoClickerStatus(
@@ -19959,7 +20591,7 @@ window.addEventListener("load", function () {
             }
             setTimeout(() => {
               if (!isTerminated) runNext();
-            }, 300);
+            }, 50);
           }
         }
       }
@@ -20058,6 +20690,46 @@ window.addEventListener("load", function () {
     });
   }
 
+  // 一键生成自动化操作序列按钮
+  const oneclickRecordBtn = document.getElementById("nopic-ac-oneclick-record");
+  if (oneclickRecordBtn) {
+    oneclickRecordBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      startAutoRecord();
+    });
+    oneclickRecordBtn.addEventListener("mouseenter", function () {
+      this.style.background = "rgba(251,146,60,0.4)";
+      this.style.borderColor = "rgba(251,146,60,0.6)";
+    });
+    oneclickRecordBtn.addEventListener("mouseleave", function () {
+      this.style.background = "rgba(251,146,60,0.25)";
+      this.style.borderColor = "rgba(251,146,60,0.4)";
+    });
+  }
+
+  // 展开/折叠自定义操作按钮
+  const expandCustomBtn = document.getElementById("nopic-ac-expand-custom");
+  const customStepsDiv = document.getElementById("nopic-ac-custom-steps");
+  const expandArrow = document.getElementById("nopic-ac-expand-arrow");
+  if (expandCustomBtn && customStepsDiv) {
+    expandCustomBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var isOpen = customStepsDiv.style.display !== "none";
+      customStepsDiv.style.display = isOpen ? "none" : "block";
+      if (expandArrow) {
+        expandArrow.style.transform = isOpen ? "" : "rotate(180deg)";
+      }
+    });
+    expandCustomBtn.addEventListener("mouseenter", function () {
+      this.style.color = "rgba(255,255,255,0.6)";
+      this.style.background = "rgba(255,255,255,0.04)";
+    });
+    expandCustomBtn.addEventListener("mouseleave", function () {
+      this.style.color = "rgba(255,255,255,0.35)";
+      this.style.background = "transparent";
+    });
+  }
+
   // 添加运行脚本按钮
   const autoClickerAddScript = document.getElementById(
     "nopic-autoclicker-add-script",
@@ -20091,7 +20763,7 @@ window.addEventListener("load", function () {
             // 取消则恢复为3秒
             autoClickerSafetyConfig.delay = 3;
             setAutoClickerSafetyConfig(autoClickerSafetyConfig);
-            safetyInput.value = 3;
+            safetyInput.value = autoClickerSafetyConfig.delay || 1;
             // 阻止默认的弹窗关闭行为，保持输入框聚焦方便继续修改
             const confirmBox = document.querySelector(
               "#nopic-confirm-modal .nopic-confirm-box",
