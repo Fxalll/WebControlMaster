@@ -1558,7 +1558,7 @@ window.addEventListener("load", function () {
           removePermissionTip();
           if (permission === "granted") {
             try {
-              new Notification("✅ 桌面通知已启用", {
+              new Notification("桌面通知已启用", {
                 body: "页面监控器的桌面通知权限已获得，监控触发时会收到通知。",
               });
             } catch (e) {}
@@ -2190,11 +2190,8 @@ window.addEventListener("load", function () {
     currentAutoClickerScope = effective.scope;
 
     // 2. 如果正在运行，停止
-    if (isAutoClickerRunning && autoClickerAbortController) {
-      autoClickerAbortController.abort();
-      isAutoClickerRunning = false;
-      autoClickerAbortController = null;
-      hideAutoClickerStatusPanel();
+    if (_autoClickerIsRunning) {
+      forceStopAutoClicker();
     }
 
     // 3. 如果弹窗打开，刷新列表
@@ -7073,7 +7070,7 @@ window.addEventListener("load", function () {
   </div>
 </div>
     <div class="nopic-menu-separator" id="nopic-ext-separator"></div>
-    <div class="nopic-menu-item nopic-submenu-trigger" data-submenu="disguise" style="justify-content:space-between;"><span>拓展</span></div>
+    <div class="nopic-menu-item nopic-submenu-trigger" data-submenu="disguise" style="justify-content:space-between;"><span>扩展</span></div>
     <div class="nopic-menu-item nopic-submenu-trigger" data-submenu="settings" style="justify-content:space-between;"><span>设置</span></div>
     <div class="nopic-menu-item" data-action="about">关于</div>
     <div class="nopic-menu-item nopic-hide-item" data-action="hide" style="margin-top:4px;">隐藏面板 (Alt+H)</div>
@@ -7192,7 +7189,7 @@ window.addEventListener("load", function () {
           '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>'),
     );
 
-  // ===== 拓展功能二级菜单 =====
+  // ===== 扩展功能二级菜单 =====
   const disguiseSubmenu = document.createElement("div");
   disguiseSubmenu.id = "nopic-disguise-submenu";
   disguiseSubmenu.className = "nopic-submenu";
@@ -7864,46 +7861,10 @@ window.addEventListener("load", function () {
 
   document
     .getElementById("nopic-ac-status-stop")
-    .addEventListener("click", () => {
-      if (autoClickerAbortController) {
-        autoClickerAbortController.abort();
-        autoClickerAbortController = null;
-      }
-      isAutoClickerRunning = false;
-
-      const panel = document.getElementById("nopic-autoclicker-status-panel");
-      const textEl = document.getElementById("nopic-ac-status-text");
-      const stopBtn = document.getElementById("nopic-ac-status-stop");
-
-      if (textEl) {
-        // 清除倒计时
-        if (textEl._countdownTimer) {
-          clearInterval(textEl._countdownTimer);
-          delete textEl._countdownTimer;
-        }
-        textEl.textContent = "已终止，下次触发将重新执行";
-        textEl.style.color = "#fbbf24";
-        panel.classList.add("active");
-      }
-
-      // 隐藏终止执行按钮
-      // if (stopBtn) {
-      //   stopBtn.style.display = "none";
-      // }
-
-      // 延迟隐藏整个面板
-      if (panel) {
-        if (panel._hideTimer) {
-          clearTimeout(panel._hideTimer);
-        }
-        panel._hideTimer = setTimeout(() => {
-          hideAutoClickerStatusPanel();
-          // 恢复终止按钮显示，以便下次使用
-          if (stopBtn) {
-            stopBtn.style.display = "";
-          }
-        }, 2000);
-      }
+    .addEventListener("click", function (e) {
+      e.stopPropagation();
+      // 直接调用统一的终止函数
+      forceStopAutoClicker();
     });
 
   // 执行提示开关事件（使用事件委托，避免DOM未渲染时报错）
@@ -7946,11 +7907,8 @@ window.addEventListener("load", function () {
           updateAutoClickerFlowList();
         }
         // 如果正在运行，停止
-        if (isAutoClickerRunning && autoClickerAbortController) {
-          autoClickerAbortController.abort();
-          isAutoClickerRunning = false;
-          autoClickerAbortController = null;
-          hideAutoClickerStatusPanel();
+        if (_autoClickerIsRunning) {
+          forceStopAutoClicker();
         }
       });
     }
@@ -9024,7 +8982,7 @@ window.addEventListener("load", function () {
       pageEditSwitch.style.cursor = "pointer";
     }
 
-    // ===== 拓展分割线显示逻辑 =====
+    // ===== 扩展分割线显示逻辑 =====
     const extSeparator = document.getElementById("nopic-ext-separator");
     const extButtonsRow = document.querySelector(".nopic-ext-buttons-row");
     const col1 = document.querySelector(".nopic-col-1");
@@ -9502,11 +9460,11 @@ window.addEventListener("load", function () {
 
     <!-- ===== 方式二通用说明 ===== -->
     <div class="about-guide">
-      <div class="about-guide-title">方式二 · 自行加载拓展（适用所有浏览器）</div>
+      <div class="about-guide-title">方式二 · 自行加载扩展（适用所有浏览器）</div>
       <div class="about-guide-steps">
-        <span>① 进入浏览器「管理拓展」页面</span>
+        <span>① 进入浏览器「管理扩展」页面</span>
         <span>② 打开右上角「开发者模式」开关</span>
-        <span>③ 点击「加载解压缩的拓展」</span>
+        <span>③ 点击「加载解压缩的扩展」</span>
         <span>④ 选择刚才下载并解压的文件夹</span>
       </div>
       <div class="about-guide-note">适用于 Chrome / Edge / 360 等所有 Chromium 内核浏览器，GitHub链接可能多次刷新才能进入</div>
@@ -15244,7 +15202,7 @@ window.addEventListener("load", function () {
     });
     var colName = col ? col.name : "未知列";
 
-    // ✅ 创建自定义确认弹窗，带两个选项
+    // 创建自定义确认弹窗，带两个选项
     showDeleteCellModal(
       colName,
       rowIdx + 1,
@@ -16581,15 +16539,15 @@ window.addEventListener("load", function () {
     showSettingsSubmenu();
     hideDisplaySubmenu();
     hideDisguiseSubmenu();
-    // 拓展菜单是点击方式，不自动关闭
+    // 扩展菜单是点击方式，不自动关闭
   });
   settingsSubmenu.addEventListener("mouseenter", showSettingsSubmenu);
 
-  // 拓展菜单事件
+  // 扩展菜单事件
   disguiseTrigger.addEventListener("mouseenter", () => {
     showDisguiseSubmenu();
     hideSettingsSubmenu();
-    // 拓展菜单是点击方式，不自动关闭
+    // 扩展菜单是点击方式，不自动关闭
   });
   disguiseSubmenu.addEventListener("mouseenter", showDisguiseSubmenu);
 
@@ -16605,7 +16563,7 @@ window.addEventListener("load", function () {
       }
       // 如果正在使用输入法输入，不关闭菜单
       if (isComposing) return;
-      // 检查拓展菜单的输入框是否聚焦
+      // 检查扩展菜单的输入框是否聚焦
       const maskColorInput = document.getElementById("nopic-mask-color-input");
       const textReplaceInputs = textReplaceSubmenu.querySelectorAll("input");
       let isInputFocused = false;
@@ -16645,7 +16603,7 @@ window.addEventListener("load", function () {
       ) {
         hideSettingsSubmenu();
         hideDisguiseSubmenu();
-        // 拓展菜单是点击方式，不自动关闭
+        // 扩展菜单是点击方式，不自动关闭
       }
     }, 100);
   });
@@ -16742,7 +16700,7 @@ window.addEventListener("load", function () {
       }
       isHovering = false;
       menu.classList.remove("active");
-      // 关闭一级子菜单（设置、显示内容、拓展），二级弹窗有自己的关闭按钮，不自动关闭
+      // 关闭一级子菜单（设置、显示内容、扩展），二级弹窗有自己的关闭按钮，不自动关闭
       settingsSubmenu.style.display = "none";
       displaySubmenu.style.display = "none";
       disguiseSubmenu.style.display = "none";
@@ -17831,7 +17789,7 @@ window.addEventListener("load", function () {
     if (textEl) {
       const linkedInfo =
         waitStep.targetSelector || waitStep.targetXpath || "等待下一步元素";
-      textEl.textContent = `✅ 已添加智能等待，等待: "${linkedInfo.substring(0, 30)}..."`;
+      textEl.textContent = `已添加智能等待，等待: "${linkedInfo.substring(0, 30)}..."`;
       textEl.style.color = "#4ade80";
       panel.classList.add("active");
       setTimeout(() => {
@@ -18852,6 +18810,7 @@ window.addEventListener("load", function () {
     if (countEl) countEl.textContent = _autoRecordSteps.length;
   }
 
+  // 在 _autoRecordStop 函数中修改保存逻辑
   function _autoRecordStop() {
     _autoRecordFlushInput();
     document.removeEventListener("mousedown", _autoRecordMousedown, true);
@@ -18891,10 +18850,10 @@ window.addEventListener("load", function () {
       return;
     }
 
-    // 弹出选择框
-    showAutoRecordSaveDialog(function (selectedScope) {
+    // ★★★ 弹出带点击方式选择的保存对话框 ★★★
+    showAutoRecordSaveDialog(function (selectedScope, convertedSteps) {
       var config = getAutoClickerConfigByScope(selectedScope);
-      _autoRecordSteps.forEach(function (step) {
+      convertedSteps.forEach(function (step) {
         config.steps.push(step);
       });
       setAutoClickerConfigByScope(selectedScope, config);
@@ -18912,35 +18871,22 @@ window.addEventListener("load", function () {
       updateAutoClickerFlowList();
       updateAutoClickerScopeUI();
       showAutoClickerSubmenu();
-
-      // ★★★ 删除或注释掉下面这段自动执行的代码 ★★★
-      /*
-        if (autoClickerConfig.autoStartOnLoad && autoClickerConfig.steps.length > 0) {
-            setTimeout(executeAutoClicker, 300);
-        }
-        */
     });
   }
 
   function showAutoRecordSaveDialog(callback) {
-    // 移除已存在的弹窗
     var existing = document.getElementById("nopic-autorecord-save-overlay");
-    if (existing) {
-      existing.remove();
-    }
+    if (existing) existing.remove();
 
-    // 创建遮罩
     var overlay = document.createElement("div");
     overlay.id = "nopic-autorecord-save-overlay";
     overlay.className = "nopic-autorecord-overlay";
 
-    // 创建弹窗
     var box = document.createElement("div");
     box.className = "nopic-autorecord-box";
 
     var stepCount = _autoRecordSteps.length;
 
-    // 用 innerHTML 构建
     box.innerHTML = [
       '<div class="nopic-ar-header">',
       '<span class="nopic-ar-header-title">保存录制的操作</span>',
@@ -18951,11 +18897,13 @@ window.addEventListener("load", function () {
         "</strong> 个操作步骤，请选择保存范围：",
       "</div>",
 
+      '<div class="nopic-ar-click-mode-title">保存范围</div>',
+
       // 选项1：仅当前页
       '<div class="nopic-ar-option" data-scope="url">',
       '<div class="nopic-ar-radio"><div class="nopic-ar-radio-dot"></div></div>',
       '<div style="flex:1;min-width:0;">',
-      '<div class="nopic-ar-option-title">仅当前页</div>',
+      '<div class="nopic-ar-option-title">仅当前页 <span style="font-size:10px;color:#60a5fa;font-weight:400;">默认</span></div>',
       '<div class="nopic-ar-option-sub">仅对当前 <strong>' +
         location.pathname +
         "</strong> 页面生效</div>",
@@ -18967,7 +18915,7 @@ window.addEventListener("load", function () {
       '<div class="nopic-ar-option" data-scope="domain">',
       '<div class="nopic-ar-radio"><div class="nopic-ar-radio-dot"></div></div>',
       '<div style="flex:1;min-width:0;">',
-      '<div class="nopic-ar-option-title">当前网站</div>',
+      '<div class="nopic-ar-option-title">当前网站 <span style="font-size:10px;color:#0bbb4c;font-weight:400;">跨页面</span></div>',
       '<div class="nopic-ar-option-sub">对整个 <strong>' +
         location.host +
         "</strong> 下的所有页面生效</div>",
@@ -18975,10 +18923,35 @@ window.addEventListener("load", function () {
       "</div>",
       "</div>",
 
+      // ★★★ 分隔线和点击方式选择 ★★★
+      '<div class="nopic-ar-divider"></div>',
+
+      '<div class="nopic-ar-click-mode-title">点击方式</div>',
+
+      // ★★★ 选项A：全部使用点击位置（默认） ★★★
+      '<div class="nopic-ar-option nopic-ar-click-option active" data-click-mode="position">',
+      '<div class="nopic-ar-radio active"><div class="nopic-ar-radio-dot active"></div></div>',
+      '<div style="flex:1;min-width:0;">',
+      '<div class="nopic-ar-option-title">全部使用点击位置 <span style="font-size:10px;color:#60a5fa;font-weight:400;">默认</span></div>',
+      '<div class="nopic-ar-option-sub">完全按照录制时的坐标点击，适用范围最广</div>',
+      '<div class="nopic-ar-option-tag">任何位置都能点击，适合日常需重复操作的场景</div>',
+      "</div>",
+      "</div>",
+
+      // ★★★ 选项B：优先点击元素（智能降级） ★★★
+      '<div class="nopic-ar-option nopic-ar-click-option" data-click-mode="element">',
+      '<div class="nopic-ar-radio"><div class="nopic-ar-radio-dot"></div></div>',
+      '<div style="flex:1;min-width:0;">',
+      '<div class="nopic-ar-option-title">优先点击元素 <span style="font-size:10px;color:#0bbb4c;font-weight:400;">更精准</span></div>',
+      '<div class="nopic-ar-option-sub">优先识别点击位置下的元素，执行效果更稳定</div>',
+      '<div class="nopic-ar-option-tag">更稳定，页面变化也能适应，适合元素动态变化的场景</div>',
+      "</div>",
+      "</div>",
+
       // 按钮
       '<div class="nopic-ar-actions">',
       '<button class="nopic-ar-btn-cancel">取消</button>',
-      '<button class="nopic-ar-btn-confirm">确定保存</button>',
+      '<button class="nopic-ar-btn-confirm enabled">确定保存</button>',
       "</div>",
     ].join("");
 
@@ -18986,46 +18959,64 @@ window.addEventListener("load", function () {
     document.body.appendChild(overlay);
 
     // ---- 逻辑 ----
-    var selectedScope = null;
-    var optionEls = box.querySelectorAll(".nopic-ar-option");
+    var selectedScope = "url"; // 默认
+    var selectedClickMode = "position"; // ★★★ 默认使用点击位置 ★★★
+    var optionEls = box.querySelectorAll(".nopic-ar-option[data-scope]");
+    var clickOptionEls = box.querySelectorAll(".nopic-ar-click-option");
     var confirmBtn = box.querySelector(".nopic-ar-btn-confirm");
     var cancelBtn = box.querySelector(".nopic-ar-btn-cancel");
 
-    // 点击选项
+    // 点击范围选项
     optionEls.forEach(function (opt) {
       opt.addEventListener("click", function (e) {
         e.stopPropagation();
-
         optionEls.forEach(function (o) {
           o.classList.remove("active");
           o.querySelector(".nopic-ar-radio").classList.remove("active");
           o.querySelector(".nopic-ar-radio-dot").classList.remove("active");
         });
-
         selectedScope = opt.dataset.scope;
         opt.classList.add("active");
         opt.querySelector(".nopic-ar-radio").classList.add("active");
         opt.querySelector(".nopic-ar-radio-dot").classList.add("active");
+      });
+    });
 
-        confirmBtn.classList.add("enabled");
+    // 点击方式选项
+    clickOptionEls.forEach(function (opt) {
+      opt.addEventListener("click", function (e) {
+        e.stopPropagation();
+        clickOptionEls.forEach(function (o) {
+          o.classList.remove("active");
+          o.querySelector(".nopic-ar-radio").classList.remove("active");
+          o.querySelector(".nopic-ar-radio-dot").classList.remove("active");
+        });
+        selectedClickMode = opt.dataset.clickMode;
+        opt.classList.add("active");
+        opt.querySelector(".nopic-ar-radio").classList.add("active");
+        opt.querySelector(".nopic-ar-radio-dot").classList.add("active");
       });
     });
 
     // 默认选中"仅当前页"
-    var defaultScope = "url";
-
     optionEls.forEach(function (opt) {
-      if (opt.dataset.scope === defaultScope) {
-        opt.click();
-      }
+      if (opt.dataset.scope === "url") opt.click();
     });
+
+    // ★★★ 默认选中"全部使用点击位置"（默认状态已经是 active） ★★★
+
     // 确认
     confirmBtn.addEventListener("click", function (e) {
       e.stopPropagation();
-      if (!selectedScope) return;
       overlay.remove();
+
+      var convertedSteps = convertStepsWithClickMode(
+        _autoRecordSteps,
+        selectedClickMode,
+      );
+
       if (typeof callback === "function") {
-        callback(selectedScope);
+        callback(selectedScope, convertedSteps);
       }
     });
 
@@ -19037,7 +19028,7 @@ window.addEventListener("load", function () {
       showAutoClickerSubmenu();
     });
 
-    // 点击遮罩关闭（等同于取消）
+    // 点击遮罩关闭
     overlay.addEventListener("click", function (e) {
       if (e.target === overlay) {
         overlay.remove();
@@ -19058,19 +19049,294 @@ window.addEventListener("load", function () {
     document.addEventListener("keydown", onKeyDown);
   }
 
+  function convertStepsWithClickMode(steps, clickMode) {
+    if (!steps || steps.length === 0) return steps;
+
+    var converted = [];
+
+    for (var i = 0; i < steps.length; i++) {
+      var step = steps[i];
+      var newStep = {};
+
+      // 复制所有属性
+      for (var key in step) {
+        if (step.hasOwnProperty(key)) {
+          newStep[key] = step[key];
+        }
+      }
+
+      if (step.type === "position") {
+        // ★★★ 检查是否点击的是输入框 ★★★
+        var targetEl = step._targetElement;
+        var isInput = false;
+
+        if (targetEl) {
+          var tag = targetEl.tagName ? targetEl.tagName.toLowerCase() : "";
+          isInput =
+            tag === "input" ||
+            tag === "textarea" ||
+            targetEl.isContentEditable === true;
+        }
+
+        if (clickMode === "element" && !isInput) {
+          // 只有非输入框才尝试转换为元素点击
+          var selector = step._selector;
+          var xpath = step._xpath;
+
+          var elementStillExists = targetEl && targetEl.isConnected;
+
+          if (elementStillExists && selector) {
+            newStep = {
+              id: step.id,
+              type: "click",
+              selector: selector,
+              xpath: xpath || "",
+              clickCount: step.clickCount || 1,
+              _convertedFrom: "position",
+              _originalX: step.x,
+              _originalY: step.y,
+            };
+          } else if (selector) {
+            try {
+              var testEl = document.querySelector(selector);
+              if (testEl) {
+                newStep = {
+                  id: step.id,
+                  type: "click",
+                  selector: selector,
+                  xpath: xpath || "",
+                  clickCount: step.clickCount || 1,
+                  _convertedFrom: "position",
+                  _originalX: step.x,
+                  _originalY: step.y,
+                };
+              } else {
+                newStep = {
+                  id: step.id,
+                  type: "position",
+                  x: step.x,
+                  y: step.y,
+                  clickCount: step.clickCount || 1,
+                };
+              }
+            } catch (e) {
+              newStep = {
+                id: step.id,
+                type: "position",
+                x: step.x,
+                y: step.y,
+                clickCount: step.clickCount || 1,
+              };
+            }
+          } else {
+            newStep = {
+              id: step.id,
+              type: "position",
+              x: step.x,
+              y: step.y,
+              clickCount: step.clickCount || 1,
+            };
+          }
+        } else {
+          // 点击的是输入框 或 用户选择了"全部使用点击位置"
+          newStep = {
+            id: step.id,
+            type: "position",
+            x: step.x,
+            y: step.y,
+            clickCount: step.clickCount || 1,
+          };
+        }
+      }
+
+      // 清理临时字段
+      delete newStep._targetElement;
+      delete newStep._selector;
+      delete newStep._xpath;
+      delete newStep._tagName;
+
+      converted.push(newStep);
+    }
+
+    return converted;
+  }
+
+  // ★★★ 生成可靠的选择器 ★★★
+  function generateClickSelector(el) {
+    if (!el || !el.tagName) return null;
+
+    // 1. 优先使用 id
+    if (el.id && !el.id.startsWith("nopic-")) {
+      try {
+        var idSelector = "#" + CSS.escape(el.id);
+        if (document.querySelectorAll(idSelector).length === 1) {
+          return idSelector;
+        }
+      } catch (e) {}
+    }
+
+    // 2. 使用 data-* 属性
+    var dataAttrs = [
+      "data-id",
+      "data-testid",
+      "data-qa",
+      "data-cy",
+      "data-test",
+      "data-value",
+      "data-name",
+    ];
+    for (var i = 0; i < dataAttrs.length; i++) {
+      var val = el.getAttribute(dataAttrs[i]);
+      if (val) {
+        try {
+          var attrSelector = "[" + dataAttrs[i] + '="' + CSS.escape(val) + '"]';
+          if (document.querySelectorAll(attrSelector).length === 1) {
+            return attrSelector;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. 使用 name 属性
+    var nameVal = el.getAttribute("name");
+    if (nameVal) {
+      try {
+        var nameSelector = '[name="' + CSS.escape(nameVal) + '"]';
+        if (document.querySelectorAll(nameSelector).length === 1) {
+          return nameSelector;
+        }
+      } catch (e) {}
+    }
+
+    // 4. 使用 aria-label
+    var ariaLabel = el.getAttribute("aria-label");
+    if (ariaLabel) {
+      try {
+        var ariaSelector = '[aria-label="' + CSS.escape(ariaLabel) + '"]';
+        if (document.querySelectorAll(ariaSelector).length === 1) {
+          return ariaSelector;
+        }
+      } catch (e) {}
+    }
+
+    // 5. 构建路径（带上下文）
+    var path = [];
+    var current = el;
+    var depth = 0;
+    var maxDepth = 6;
+
+    while (current && current !== document.body && depth < maxDepth) {
+      var seg = current.tagName.toLowerCase();
+
+      // 如果有 id，使用 id 作为锚点并终止
+      if (current.id && !current.id.startsWith("nopic-")) {
+        try {
+          path.unshift("#" + CSS.escape(current.id));
+          break;
+        } catch (e) {}
+      }
+
+      // 计算在同类型兄弟中的位置
+      var parent = current.parentElement;
+      if (parent) {
+        var sameTagSiblings = Array.from(parent.children).filter(function (c) {
+          return c.tagName === current.tagName;
+        });
+        if (sameTagSiblings.length > 1) {
+          var index = sameTagSiblings.indexOf(current) + 1;
+          seg += ":nth-of-type(" + index + ")";
+        }
+      }
+
+      path.unshift(seg);
+      current = parent;
+      depth++;
+    }
+
+    if (path.length === 0) return null;
+
+    var fullPath = path.join(" > ");
+
+    // 验证选择器是否唯一
+    try {
+      var matches = document.querySelectorAll(fullPath);
+      if (matches.length === 1 && matches[0] === el) {
+        return fullPath;
+      }
+    } catch (e) {}
+
+    // 如果路径不唯一，尝试用更宽松的方式（只用最后两层）
+    if (path.length >= 2) {
+      var shortPath = path.slice(-2).join(" > ");
+      try {
+        var matches2 = document.querySelectorAll(shortPath);
+        if (matches2.length === 1 && matches2[0] === el) {
+          return shortPath;
+        }
+      } catch (e) {}
+    }
+
+    return null;
+  }
+
+  // ★★★ 生成 XPath ★★★
+  function generateXPath(el) {
+    if (!el) return "";
+    if (el.id) return '//*[@id="' + el.id + '"]';
+
+    var parts = [];
+    var current = el;
+    while (current && current.nodeType === Node.ELEMENT_NODE) {
+      var idx = 1;
+      var sibling = current.previousSibling;
+      while (sibling) {
+        if (
+          sibling.nodeType === Node.ELEMENT_NODE &&
+          sibling.tagName === current.tagName
+        ) {
+          idx++;
+        }
+        sibling = sibling.previousSibling;
+      }
+      var tagName = current.tagName.toLowerCase();
+      parts.unshift(tagName + (idx > 1 ? "[" + idx + "]" : ""));
+      if (current.id) {
+        parts[0] = tagName + '[@id="' + current.id + '"]';
+        break;
+      }
+      current = current.parentNode;
+    }
+    return parts.length ? "/" + parts.join("/") : "";
+  }
+
   function _autoRecordMousedown(e) {
     if (!_autoRecordActive) return;
     if (_autoRecordIsScriptUI(e.target)) return;
 
+    // ★★★ 关键修改：同时获取元素和坐标 ★★★
     var el = e.target;
+    var x = e.clientX + window.scrollX;
+    var y = e.clientY + window.scrollY;
+
+    // ★★★ 获取点击位置的元素（直接使用 e.target，最准确） ★★★
+    var targetElement = e.target;
+
+    // 如果点击的是文本节点，获取父元素
+    if (targetElement.nodeType === Node.TEXT_NODE) {
+      targetElement = targetElement.parentElement;
+    }
+
     var isTextInput =
-      el.tagName === "INPUT" ||
-      el.tagName === "TEXTAREA" ||
-      el.isContentEditable;
+      targetElement.tagName === "INPUT" ||
+      targetElement.tagName === "TEXTAREA" ||
+      targetElement.isContentEditable;
+
     if (isTextInput) {
       _autoRecordFlushInput();
       _autoRecordInputPrevValue =
-        el.value !== undefined ? el.value : el.textContent || "";
+        targetElement.value !== undefined
+          ? targetElement.value
+          : targetElement.textContent || "";
       _autoRecordInputBaseline = true;
     } else {
       _autoRecordFlushInput();
@@ -19088,15 +19354,30 @@ window.addEventListener("load", function () {
       });
     }
 
-    var el = e.target;
-
-    _autoRecordSteps.push({
+    // ★★★ 保存完整的点击信息：同时记录元素和位置 ★★★
+    var step = {
       id: Date.now(),
-      type: "position",
-      x: e.clientX + window.scrollX,
-      y: e.clientY + window.scrollY,
-    });
+      type: "position", // 默认类型，后面会转换
+      x: x,
+      y: y,
+      // ★★★ 新增：保存元素信息 ★★★
+      _targetElement: targetElement, // 保存元素引用（用于转换时使用）
+      _selector: null, // 稍后生成选择器
+      _xpath: null, // 稍后生成 XPath
+      _tagName: targetElement ? targetElement.tagName : null,
+    };
 
+    // 如果能获取到元素，立即生成选择器备用
+    if (targetElement && targetElement.tagName) {
+      try {
+        step._selector = generateClickSelector(targetElement);
+        step._xpath = generateXPath(targetElement);
+      } catch (e) {
+        // 生成失败也没关系
+      }
+    }
+
+    _autoRecordSteps.push(step);
     _autoRecordUpdateCount();
   }
 
@@ -19547,301 +19828,191 @@ window.addEventListener("load", function () {
   let isAutoClickerRunning = false;
   let autoClickerAbortController = null;
 
+  let _autoClickerExecutionId = 0; // 每次执行递增的 ID
+  let _autoClickerAbortController = null; // 当前执行的终止控制器
+  let _autoClickerIsRunning = false; // 是否正在执行
+
+  // ===== 替换整个 executeAutoClicker 函数 =====
+  // 搜索定位：function executeAutoClicker() 或 executeAutoClicker = function
+
+  // ===== 替换整个 executeAutoClicker 函数 =====
+  // 搜索定位：function executeAutoClicker()
+
   function executeAutoClicker() {
-    if (!autoClickerConfig.enabled || autoClickerConfig.steps.length === 0)
+    // 检查是否有步骤
+    if (
+      !autoClickerConfig.enabled ||
+      !autoClickerConfig.steps ||
+      autoClickerConfig.steps.length === 0
+    ) {
+      console.log("[自动点击器] 没有可执行的步骤");
       return;
-    // 如果正在运行，先终止上一轮，然后重新开始
-    if (isAutoClickerRunning) {
-      if (autoClickerAbortController) {
-        autoClickerAbortController.abort();
-      }
-      isAutoClickerRunning = false;
-      autoClickerAbortController = null;
     }
 
-    // 新增：终止标志，用于阻止后续更新
-    let isTerminated = false;
+    // 强制终止旧流程
+    if (_autoClickerIsRunning) {
+      console.log("[自动点击器] 检测到旧流程正在执行，强制终止");
+      forceStopAutoClicker();
+      // 等待清理完成后再启动新流程
+      setTimeout(function () {
+        _startExecution();
+      }, 150);
+      return;
+    }
 
+    _startExecution();
+  }
+
+  function _startExecution() {
+    // 防止重复执行
+    if (_autoClickerIsRunning) {
+      console.log("[自动点击器] 已有流程在执行，跳过");
+      return;
+    }
+
+    // 生成新的执行 ID
+    _autoClickerExecutionId++;
+    var currentExecutionId = _autoClickerExecutionId;
+
+    // 创建新的 AbortController
+    _autoClickerAbortController = new AbortController();
+    var signal = _autoClickerAbortController.signal;
+
+    // 设置运行状态
+    _autoClickerIsRunning = true;
     isAutoClickerRunning = true;
-    autoClickerAbortController = new AbortController();
-    const signal = autoClickerAbortController.signal;
+    autoClickerAbortController = _autoClickerAbortController;
 
+    // 显示状态面板
     showAutoClickerStatusPanel();
 
-    let currentLoop = 0;
-    const isInfinity = autoClickerConfig.loopCount === 0;
-    const maxLoop = isInfinity ? Infinity : autoClickerConfig.loopCount;
+    console.log("[自动点击器] 开始执行，执行ID:", currentExecutionId);
+
+    var currentLoop = 0;
+    var isInfinity = autoClickerConfig.loopCount === 0;
+    var maxLoop = isInfinity ? Infinity : autoClickerConfig.loopCount;
+    var steps = autoClickerConfig.steps || [];
+
+    function finishExecution(msg) {
+      _autoClickerIsRunning = false;
+      isAutoClickerRunning = false;
+      // 关键修复：确保 abortController 被置空
+      _autoClickerAbortController = null;
+      autoClickerAbortController = null;
+
+      if (msg) {
+        updateAutoClickerStatus(msg, "done");
+      }
+
+      var panel = document.getElementById("nopic-autoclicker-status-panel");
+      if (panel) {
+        if (panel._hideTimer) clearTimeout(panel._hideTimer);
+        panel._hideTimer = setTimeout(hideAutoClickerStatusPanel, 2000);
+      }
+
+      console.log("[自动点击器] 执行结束:", msg || "正常结束");
+    }
 
     function runLoop() {
-      if (signal.aborted) {
-        isTerminated = true;
-        return finishExecution("已手动终止");
-      }
-      if (!isInfinity && currentLoop >= maxLoop) {
-        isTerminated = true;
-        return finishExecution("已完成所有循环");
-      }
-
-      currentLoop++;
-      let index = 0;
-
-      const safetyDelay = autoClickerSafetyConfig.delay * 1000;
-      if (safetyDelay <= 0) {
-        runNext();
+      // 检查是否被终止
+      if (signal.aborted || _autoClickerExecutionId !== currentExecutionId) {
+        finishExecution("⏹ 已终止");
         return;
       }
 
-      return new Promise((resolve) => {
-        // 如果已经终止，不再更新状态
-        if (!isTerminated) {
-          // 如果小于1秒，显示毫秒
-          let delayDisplay = autoClickerSafetyConfig.delay;
-          if (safetyDelay < 1000) {
-            delayDisplay = safetyDelay + "ms";
-          } else {
-            delayDisplay = delayDisplay + "秒";
-          }
-          updateAutoClickerStatus(
-            `第 ${currentLoop} 轮即将开始 (${delayDisplay}后执行，可点击终止)`,
-            "pending",
-            safetyDelay,
-          );
-        }
-        const safetyTimer = setTimeout(() => {
-          if (signal.aborted) {
-            isTerminated = true;
-            return resolve();
-          }
-          runNext();
-          resolve();
-        }, safetyDelay);
+      // 检查循环是否完成
+      if (!isInfinity && currentLoop >= maxLoop) {
+        finishExecution("已完成所有循环");
+        return;
+      }
 
-        signal.addEventListener(
-          "abort",
-          () => {
-            clearTimeout(safetyTimer);
-            isTerminated = true;
-            resolve();
-          },
-          { once: true },
-        );
-      });
+      currentLoop++;
+      var index = 0;
+
+      // 安全延迟
+      var safetyDelay = autoClickerSafetyConfig.delay * 1000;
 
       function runNext() {
-        if (signal.aborted) {
-          isTerminated = true;
-          return finishExecution("已手动终止");
-        }
-        if (index >= autoClickerConfig.steps.length) {
-          if (!isTerminated) {
-            updateAutoClickerStatus(`第 ${currentLoop} 轮完成`, "success");
-          }
-          setTimeout(runLoop, 50);
+        // 检查是否被终止
+        if (signal.aborted || _autoClickerExecutionId !== currentExecutionId) {
+          finishExecution("⏹ 已终止");
           return;
         }
 
-        const step = autoClickerConfig.steps[index];
-        const stepNum = index + 1;
-        const totalSteps = autoClickerConfig.steps.length;
+        // 检查是否所有步骤已完成
+        if (index >= steps.length) {
+          if (
+            !signal.aborted &&
+            _autoClickerExecutionId === currentExecutionId
+          ) {
+            updateAutoClickerStatus("第 " + currentLoop + " 轮完成", "success");
+          }
+          // 延迟后开始下一轮
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+            runLoop();
+          }, 100);
+          return;
+        }
 
-        if (!isTerminated) {
+        var step = steps[index];
+        var stepNum = index + 1;
+        var totalSteps = steps.length;
+
+        // 更新状态
+        if (!signal.aborted && _autoClickerExecutionId === currentExecutionId) {
           updateAutoClickerStatus(
-            `第 ${currentLoop} 轮 - 准备执行步骤 ${stepNum}/${totalSteps}`,
+            "第 " + currentLoop + " 轮 - 步骤 " + stepNum + "/" + totalSteps,
             "pending",
           );
         }
 
+        // ===== 处理延时 =====
         if (step.type === "delay") {
-          // 延时
-          if (!isTerminated && autoClickerConfig.showNotification) {
+          index++;
+          var delayValue = step.value || 500;
+          if (
+            !signal.aborted &&
+            _autoClickerExecutionId === currentExecutionId
+          ) {
             updateAutoClickerStatus(
-              `第 ${currentLoop} 轮 - 等待 ${step.value} 毫秒...`,
+              "第 " + currentLoop + " 轮 - 等待 " + delayValue + "ms",
               "pending",
-              step.value,
+              delayValue,
             );
           }
-          setTimeout(() => {
-            if (!signal.aborted && !isTerminated) runNext();
-            else if (signal.aborted) {
-              isTerminated = true;
-              finishExecution("已手动终止");
-            }
-          }, step.value);
-          index++;
-        } else if (step.type === "wait") {
-          // 智能等待 - 等待目标元素加载
-          index++;
-
-          // 如果 wait 步骤没有关联目标，尝试重新关联
-          if (!step.targetSelector && !step.targetXpath) {
-            const steps = autoClickerConfig.steps;
-            const stepIndex = steps.indexOf(step);
-            if (stepIndex !== -1) {
-              for (let i = stepIndex + 1; i < steps.length; i++) {
-                const s = steps[i];
-                if (
-                  (s.type === "click" || s.type === "input") &&
-                  (s.selector || s.xpath)
-                ) {
-                  step.targetSelector = s.selector || "";
-                  step.targetXpath = s.xpath || "";
-                  step.targetType = s.type;
-                  step.targetIndex = i;
-                  break;
-                }
-              }
-            }
-          }
-
-          const targetSelector = step.targetSelector || "";
-          const targetXpath = step.targetXpath || "";
-
-          // 如果没有目标元素，直接跳过
-          if (!targetSelector && !targetXpath) {
-            if (!isTerminated) {
-              updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 无目标元素，跳过等待`,
-                "pending",
-              );
-            }
-            setTimeout(() => {
-              if (!isTerminated) runNext();
-            }, 50);
-            return;
-          }
-
-          if (!isTerminated) {
-            updateAutoClickerStatus(
-              `第 ${currentLoop} 轮 - 等待元素加载...`,
-              "pending",
-            );
-          }
-
-          const waitTimeout = step.timeout || 30000;
-          const startTime = Date.now();
-          const checkInterval = 200;
-
-          // 使用 setTimeout 循环检查
-          function checkElement() {
-            if (signal.aborted || isTerminated) {
-              isTerminated = true;
-              finishExecution("已手动终止");
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
               return;
             }
+            runNext();
+          }, delayValue);
+          return;
+        }
 
-            let target = null;
-            // 尝试CSS选择器
-            try {
-              if (targetSelector) {
-                target = document.querySelector(targetSelector);
-              }
-            } catch (e) {}
-            // 如果没找到，尝试XPath
-            if (!target && targetXpath) {
-              try {
-                const result = document.evaluate(
-                  targetXpath,
-                  document,
-                  null,
-                  XPathResult.FIRST_ORDERED_NODE_TYPE,
-                  null,
-                );
-                target = result.singleNodeValue;
-              } catch (e) {}
-            }
-
-            // 【新增】检查元素是否真正可见
-            function isElementVisible(el) {
-              if (!el) return false;
-              if (!el.isConnected) return false;
-
-              // 检查尺寸
-              const rect = el.getBoundingClientRect();
-              if (rect.width === 0 && rect.height === 0) return false;
-
-              // 检查样式
-              const style = window.getComputedStyle(el);
-              if (style.display === "none") return false;
-              if (style.visibility === "hidden") return false;
-              if (parseFloat(style.opacity) === 0) return false;
-
-              // 递归检查父元素是否隐藏
-              let parent = el.parentElement;
-              while (parent && parent !== document.body) {
-                const parentStyle = window.getComputedStyle(parent);
-                if (parentStyle.display === "none") return false;
-                if (parentStyle.visibility === "hidden") return false;
-                if (parseFloat(parentStyle.opacity) === 0) return false;
-                parent = parent.parentElement;
-              }
-
-              return true;
-            }
-
-            // 判断元素是否存在且可见
-            const isVisible = target && isElementVisible(target);
-
-            if (isVisible) {
-              // 元素已加载
-              if (!isTerminated && autoClickerConfig.showNotification) {
-                updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 目标元素已加载`,
-                  "success",
-                );
-              }
-              // 视觉反馈
-              try {
-                const flash = document.createElement("div");
-                flash.style.cssText =
-                  "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #fbbf24;border-radius:4px;transition:opacity 0.3s;";
-                const rect = target.getBoundingClientRect();
-                flash.style.left = rect.left + window.scrollX + "px";
-                flash.style.top = rect.top + window.scrollY + "px";
-                flash.style.width = rect.width + "px";
-                flash.style.height = rect.height + "px";
-                document.body.appendChild(flash);
-                setTimeout(() => {
-                  flash.style.opacity = "0";
-                  setTimeout(() => flash.remove(), 300);
-                }, 300);
-              } catch (e) {}
-              setTimeout(() => {
-                if (!isTerminated) runNext();
-              }, 50);
-              return;
-            }
-
-            // 检查是否超时
-            if (Date.now() - startTime > waitTimeout) {
-              if (!isTerminated) {
-                updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 等待超时，未找到目标元素`,
-                  "error",
-                );
-              }
-              setTimeout(() => {
-                if (!isTerminated) runNext();
-              }, 50);
-              return;
-            }
-
-            // 继续等待
-            setTimeout(checkElement, checkInterval);
-          }
-
-          // 开始检查
-          setTimeout(checkElement, 100);
-        } else if (step.type === "click") {
-          // 点击元素（支持连点）
+        // ===== 处理点击元素 =====
+        if (step.type === "click") {
           index++;
-
-          let target = null;
+          var target = null;
           try {
-            target = document.querySelector(step.selector);
+            if (step.selector) {
+              target = document.querySelector(step.selector);
+            }
           } catch (e) {}
+
           if (!target && step.xpath) {
             try {
-              const result = document.evaluate(
+              var result = document.evaluate(
                 step.xpath,
                 document,
                 null,
@@ -19853,36 +20024,791 @@ window.addEventListener("load", function () {
           }
 
           if (target) {
-            // ★★★ 连点逻辑 ★★★
-            const clickCount = step.clickCount || 1;
-            const totalClicks = clickCount === 0 ? Infinity : clickCount;
-            let clicksDone = 0;
+            try {
+              target.scrollIntoView({ block: "center", behavior: "instant" });
+              target.click();
+
+              // 视觉反馈
+              try {
+                var flash = document.createElement("div");
+                flash.style.cssText =
+                  "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #4ade80;border-radius:4px;transition:opacity 0.3s;";
+                var rect = target.getBoundingClientRect();
+                flash.style.left = rect.left + window.scrollX + "px";
+                flash.style.top = rect.top + window.scrollY + "px";
+                flash.style.width = rect.width + "px";
+                flash.style.height = rect.height + "px";
+                document.body.appendChild(flash);
+                setTimeout(function () {
+                  flash.style.opacity = "0";
+                  setTimeout(function () {
+                    if (flash.parentNode) flash.remove();
+                  }, 300);
+                }, 200);
+              } catch (e) {}
+
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 点击成功",
+                "success",
+              );
+            } catch (e) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 点击失败",
+                "error",
+              );
+            }
+          } else {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 未找到元素",
+              "error",
+            );
+          }
+
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+            runNext();
+          }, 100);
+          return;
+        }
+
+        // ===== 处理点击位置 =====
+        if (step.type === "position") {
+          index++;
+          try {
+            var x = step.x || 0;
+            var y = step.y || 0;
+
+            window.scrollTo({
+              left: Math.max(0, x - window.innerWidth / 2),
+              top: Math.max(0, y - window.innerHeight / 2),
+              behavior: "instant",
+            });
+
+            var viewX = Math.max(
+              0,
+              Math.min(x - window.scrollX, window.innerWidth - 1),
+            );
+            var viewY = Math.max(
+              0,
+              Math.min(y - window.scrollY, window.innerHeight - 1),
+            );
+
+            var targetEl = document.elementFromPoint(viewX, viewY);
+
+            if (targetEl) {
+              var isInput =
+                targetEl.tagName === "INPUT" ||
+                targetEl.tagName === "TEXTAREA" ||
+                targetEl.isContentEditable;
+              if (isInput) {
+                try {
+                  targetEl.focus();
+                } catch (e) {}
+              }
+              targetEl.dispatchEvent(
+                new MouseEvent("click", {
+                  bubbles: true,
+                  cancelable: true,
+                  clientX: viewX,
+                  clientY: viewY,
+                }),
+              );
+            } else {
+              document.dispatchEvent(
+                new MouseEvent("click", {
+                  bubbles: true,
+                  cancelable: true,
+                  clientX: viewX,
+                  clientY: viewY,
+                }),
+              );
+            }
+
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 位置点击成功",
+              "success",
+            );
+          } catch (e) {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 位置点击失败",
+              "error",
+            );
+          }
+
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+            runNext();
+          }, 100);
+          return;
+        }
+
+        // ===== 处理输入文字 =====
+        if (step.type === "input") {
+          index++;
+          var inputTarget = document.activeElement;
+
+          if (
+            inputTarget &&
+            inputTarget !== document.body &&
+            inputTarget !== document
+          ) {
+            try {
+              var textToInsert = step.text || "";
+
+              if (
+                inputTarget.tagName === "INPUT" ||
+                inputTarget.tagName === "TEXTAREA"
+              ) {
+                var start = inputTarget.selectionStart || 0;
+                var end = inputTarget.selectionEnd || 0;
+                var currentValue = inputTarget.value || "";
+                inputTarget.value =
+                  currentValue.substring(0, start) +
+                  textToInsert +
+                  currentValue.substring(end);
+                var newPos = start + textToInsert.length;
+                inputTarget.selectionStart = inputTarget.selectionEnd = newPos;
+                inputTarget.dispatchEvent(
+                  new Event("input", { bubbles: true }),
+                );
+              } else if (inputTarget.isContentEditable) {
+                document.execCommand("insertText", false, textToInsert);
+              }
+
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 输入成功",
+                "success",
+              );
+            } catch (e) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 输入失败",
+                "error",
+              );
+            }
+          } else {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 没有聚焦的输入框",
+              "error",
+            );
+          }
+
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+            runNext();
+          }, 100);
+          return;
+        }
+
+        // ===== 处理快捷键 =====
+        if (step.type === "shortcut") {
+          index++;
+          try {
+            var shortcutTarget = document.activeElement || document.body;
+            var key = (step.key || "").toLowerCase();
+
+            // 简单的快捷键模拟
+            var eventOptions = {
+              key: step.key || "",
+              ctrlKey: !!step.ctrlKey,
+              altKey: !!step.altKey,
+              shiftKey: !!step.shiftKey,
+              metaKey: !!step.metaKey,
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            };
+
+            shortcutTarget.dispatchEvent(
+              new KeyboardEvent("keydown", eventOptions),
+            );
+            shortcutTarget.dispatchEvent(
+              new KeyboardEvent("keyup", eventOptions),
+            );
+
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 快捷键执行",
+              "success",
+            );
+          } catch (e) {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 快捷键执行失败",
+              "error",
+            );
+          }
+
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+            runNext();
+          }, 100);
+          return;
+        }
+
+        // ===== 处理脚本 =====
+        if (step.type === "script") {
+          index++;
+          try {
+            var code = step.code || "";
+            eval(code);
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 脚本执行",
+              "success",
+            );
+          } catch (e) {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 脚本执行失败",
+              "error",
+            );
+          }
+
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+            runNext();
+          }, 100);
+          return;
+        }
+
+        // ===== 处理智能等待 =====
+        if (step.type === "wait") {
+          index++;
+          var targetSelector = step.targetSelector || "";
+          var targetXpath = step.targetXpath || "";
+          var waitTimeout = step.timeout || 30000;
+          var startTime = Date.now();
+
+          function checkWaitElement() {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              finishExecution("⏹ 已终止");
+              return;
+            }
+
+            var target = null;
+            try {
+              if (targetSelector) {
+                target = document.querySelector(targetSelector);
+              }
+            } catch (e) {}
+
+            if (!target && targetXpath) {
+              try {
+                var result = document.evaluate(
+                  targetXpath,
+                  document,
+                  null,
+                  XPathResult.FIRST_ORDERED_NODE_TYPE,
+                  null,
+                );
+                target = result.singleNodeValue;
+              } catch (e) {}
+            }
+
+            if (target && target.isConnected) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 元素已加载",
+                "success",
+              );
+              setTimeout(function () {
+                if (
+                  signal.aborted ||
+                  _autoClickerExecutionId !== currentExecutionId
+                ) {
+                  finishExecution("⏹ 已终止");
+                  return;
+                }
+                runNext();
+              }, 100);
+              return;
+            }
+
+            if (Date.now() - startTime > waitTimeout) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 等待超时 ⏰",
+                "error",
+              );
+              setTimeout(function () {
+                if (
+                  signal.aborted ||
+                  _autoClickerExecutionId !== currentExecutionId
+                ) {
+                  finishExecution("⏹ 已终止");
+                  return;
+                }
+                runNext();
+              }, 100);
+              return;
+            }
+
+            setTimeout(checkWaitElement, 200);
+          }
+
+          setTimeout(checkWaitElement, 100);
+          return;
+        }
+
+        // ===== 未知类型，跳过 =====
+        index++;
+        setTimeout(function () {
+          if (
+            signal.aborted ||
+            _autoClickerExecutionId !== currentExecutionId
+          ) {
+            finishExecution("⏹ 已终止");
+            return;
+          }
+          runNext();
+        }, 50);
+      }
+
+      // 启动安全延迟
+      if (safetyDelay > 0) {
+        var delayDisplay =
+          safetyDelay < 1000 ? safetyDelay + "ms" : safetyDelay / 1000 + "秒";
+        updateAutoClickerStatus(
+          "第 " + currentLoop + " 轮 - " + delayDisplay + "后开始",
+          "pending",
+          safetyDelay,
+        );
+
+        var safetyTimer = setTimeout(function () {
+          if (
+            signal.aborted ||
+            _autoClickerExecutionId !== currentExecutionId
+          ) {
+            finishExecution("⏹ 已终止");
+            return;
+          }
+          runNext();
+        }, safetyDelay);
+
+        signal.addEventListener(
+          "abort",
+          function () {
+            clearTimeout(safetyTimer);
+            finishExecution("⏹ 已终止");
+          },
+          { once: true },
+        );
+      } else {
+        runNext();
+      }
+    }
+
+    // 开始执行
+    runLoop();
+  }
+
+  function _startExecution() {
+    // 生成新的执行 ID
+    _autoClickerExecutionId++;
+    var currentExecutionId = _autoClickerExecutionId;
+
+    // 创建新的 AbortController
+    _autoClickerAbortController = new AbortController();
+    var signal = _autoClickerAbortController.signal;
+
+    _autoClickerIsRunning = true;
+
+    showAutoClickerStatusPanel();
+
+    console.log("[自动点击器] 开始执行，执行ID:", currentExecutionId);
+
+    var currentLoop = 0;
+    var isInfinity = autoClickerConfig.loopCount === 0;
+    var maxLoop = isInfinity ? Infinity : autoClickerConfig.loopCount;
+
+    function runLoop() {
+      if (signal.aborted || _autoClickerExecutionId !== currentExecutionId) {
+        _autoClickerIsRunning = false;
+        hideAutoClickerStatusPanel();
+        return;
+      }
+
+      if (!isInfinity && currentLoop >= maxLoop) {
+        _autoClickerIsRunning = false;
+        updateAutoClickerStatus("已完成所有循环", "done");
+        var panel = document.getElementById("nopic-autoclicker-status-panel");
+        if (panel) {
+          panel._hideTimer = setTimeout(hideAutoClickerStatusPanel, 3000);
+        }
+        return;
+      }
+
+      currentLoop++;
+      var index = 0;
+      var steps = autoClickerConfig.steps || [];
+
+      var safetyDelay = autoClickerSafetyConfig.delay * 1000;
+      if (safetyDelay <= 0) {
+        runNext();
+        return;
+      }
+
+      if (!signal.aborted && _autoClickerExecutionId === currentExecutionId) {
+        var delayDisplay =
+          safetyDelay < 1000
+            ? safetyDelay + "ms"
+            : autoClickerSafetyConfig.delay + "秒";
+        updateAutoClickerStatus(
+          "第 " + currentLoop + " 轮即将开始 (" + delayDisplay + "后执行)",
+          "pending",
+          safetyDelay,
+        );
+      }
+
+      var safetyTimer = setTimeout(function () {
+        if (signal.aborted || _autoClickerExecutionId !== currentExecutionId) {
+          _autoClickerIsRunning = false;
+          hideAutoClickerStatusPanel();
+          return;
+        }
+        runNext();
+      }, safetyDelay);
+
+      signal.addEventListener(
+        "abort",
+        function () {
+          clearTimeout(safetyTimer);
+          _autoClickerIsRunning = false;
+          hideAutoClickerStatusPanel();
+        },
+        { once: true },
+      );
+
+      function runNext() {
+        if (signal.aborted || _autoClickerExecutionId !== currentExecutionId) {
+          _autoClickerIsRunning = false;
+          hideAutoClickerStatusPanel();
+          return;
+        }
+
+        if (index >= steps.length) {
+          if (
+            !signal.aborted &&
+            _autoClickerExecutionId === currentExecutionId
+          ) {
+            updateAutoClickerStatus("第 " + currentLoop + " 轮完成", "success");
+          }
+          setTimeout(runLoop, 50);
+          return;
+        }
+
+        var step = steps[index];
+        var stepNum = index + 1;
+        var totalSteps = steps.length;
+
+        if (!signal.aborted && _autoClickerExecutionId === currentExecutionId) {
+          updateAutoClickerStatus(
+            "第 " + currentLoop + " 轮 - 步骤 " + stepNum + "/" + totalSteps,
+            "pending",
+          );
+        }
+
+        // ===== 处理各种步骤类型 =====
+        if (step.type === "delay") {
+          index++;
+          if (
+            !signal.aborted &&
+            _autoClickerExecutionId === currentExecutionId
+          ) {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 等待 " + step.value + " 毫秒...",
+              "pending",
+              step.value,
+            );
+          }
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              _autoClickerIsRunning = false;
+              hideAutoClickerStatusPanel();
+              return;
+            }
+            runNext();
+          }, step.value);
+        } else if (step.type === "wait") {
+          index++;
+          // 关联目标元素
+          if (!step.targetSelector && !step.targetXpath) {
+            var stepsArr = autoClickerConfig.steps || [];
+            var stepIndex = stepsArr.indexOf(step);
+            if (stepIndex !== -1) {
+              for (var wi = stepIndex + 1; wi < stepsArr.length; wi++) {
+                var s = stepsArr[wi];
+                if (
+                  (s.type === "click" || s.type === "input") &&
+                  (s.selector || s.xpath)
+                ) {
+                  step.targetSelector = s.selector || "";
+                  step.targetXpath = s.xpath || "";
+                  step.targetType = s.type;
+                  step.targetIndex = wi;
+                  break;
+                }
+              }
+            }
+          }
+
+          var targetSelector = step.targetSelector || "";
+          var targetXpath = step.targetXpath || "";
+
+          if (!targetSelector && !targetXpath) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 无目标元素，跳过等待",
+                "pending",
+              );
+            }
+            setTimeout(function () {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
+              runNext();
+            }, 50);
+            return;
+          }
+
+          if (
+            !signal.aborted &&
+            _autoClickerExecutionId === currentExecutionId
+          ) {
+            updateAutoClickerStatus(
+              "第 " + currentLoop + " 轮 - 等待元素加载...",
+              "pending",
+            );
+          }
+
+          var waitTimeout = step.timeout || 30000;
+          var startTime = Date.now();
+
+          function checkElement() {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              _autoClickerIsRunning = false;
+              hideAutoClickerStatusPanel();
+              return;
+            }
+
+            var target = null;
+            try {
+              if (targetSelector) {
+                target = document.querySelector(targetSelector);
+              }
+            } catch (e) {}
+            if (!target && targetXpath) {
+              try {
+                var result = document.evaluate(
+                  targetXpath,
+                  document,
+                  null,
+                  XPathResult.FIRST_ORDERED_NODE_TYPE,
+                  null,
+                );
+                target = result.singleNodeValue;
+              } catch (e) {}
+            }
+
+            function isElementVisible(el) {
+              if (!el) return false;
+              if (!el.isConnected) return false;
+              var rect = el.getBoundingClientRect();
+              if (rect.width === 0 && rect.height === 0) return false;
+              var style = window.getComputedStyle(el);
+              if (style.display === "none") return false;
+              if (style.visibility === "hidden") return false;
+              if (parseFloat(style.opacity) === 0) return false;
+              var parent = el.parentElement;
+              while (parent && parent !== document.body) {
+                var parentStyle = window.getComputedStyle(parent);
+                if (parentStyle.display === "none") return false;
+                if (parentStyle.visibility === "hidden") return false;
+                if (parseFloat(parentStyle.opacity) === 0) return false;
+                parent = parent.parentElement;
+              }
+              return true;
+            }
+
+            var isVisible = target && isElementVisible(target);
+
+            if (isVisible) {
+              if (
+                !signal.aborted &&
+                _autoClickerExecutionId === currentExecutionId
+              ) {
+                updateAutoClickerStatus(
+                  "第 " + currentLoop + " 轮 - 目标元素已加载",
+                  "success",
+                );
+              }
+              try {
+                var flash = document.createElement("div");
+                flash.style.cssText =
+                  "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #fbbf24;border-radius:4px;transition:opacity 0.3s;";
+                var rect = target.getBoundingClientRect();
+                flash.style.left = rect.left + window.scrollX + "px";
+                flash.style.top = rect.top + window.scrollY + "px";
+                flash.style.width = rect.width + "px";
+                flash.style.height = rect.height + "px";
+                document.body.appendChild(flash);
+                setTimeout(function () {
+                  flash.style.opacity = "0";
+                  setTimeout(function () {
+                    flash.remove();
+                  }, 300);
+                }, 300);
+              } catch (e) {}
+              setTimeout(function () {
+                if (
+                  signal.aborted ||
+                  _autoClickerExecutionId !== currentExecutionId
+                ) {
+                  _autoClickerIsRunning = false;
+                  hideAutoClickerStatusPanel();
+                  return;
+                }
+                runNext();
+              }, 50);
+              return;
+            }
+
+            if (Date.now() - startTime > waitTimeout) {
+              if (
+                !signal.aborted &&
+                _autoClickerExecutionId === currentExecutionId
+              ) {
+                updateAutoClickerStatus(
+                  "第 " + currentLoop + " 轮 - 等待超时",
+                  "error",
+                );
+              }
+              setTimeout(function () {
+                if (
+                  signal.aborted ||
+                  _autoClickerExecutionId !== currentExecutionId
+                ) {
+                  _autoClickerIsRunning = false;
+                  hideAutoClickerStatusPanel();
+                  return;
+                }
+                runNext();
+              }, 50);
+              return;
+            }
+
+            setTimeout(checkElement, 200);
+          }
+
+          setTimeout(checkElement, 100);
+        } else if (step.type === "click") {
+          index++;
+
+          var target = null;
+          try {
+            target = document.querySelector(step.selector);
+          } catch (e) {}
+          if (!target && step.xpath) {
+            try {
+              var result = document.evaluate(
+                step.xpath,
+                document,
+                null,
+                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                null,
+              );
+              target = result.singleNodeValue;
+            } catch (e) {}
+          }
+
+          if (target) {
+            var clickCount = step.clickCount || 1;
+            var totalClicks = clickCount === 0 ? Infinity : clickCount;
+            var clicksDone = 0;
 
             function doClick() {
-              if (signal.aborted || isTerminated) {
-                isTerminated = true;
-                finishExecution("已手动终止");
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
                 return;
               }
 
               if (clicksDone >= totalClicks) {
-                // 所有点击完成
-                if (!isTerminated && autoClickerConfig.showNotification) {
+                if (
+                  !signal.aborted &&
+                  _autoClickerExecutionId === currentExecutionId
+                ) {
                   updateAutoClickerStatus(
-                    `第 ${currentLoop} 轮 - 步骤 ${stepNum} 点击完成 (共${clicksDone}次)`,
+                    "第 " +
+                      currentLoop +
+                      " 轮 - 点击完成 (共" +
+                      clicksDone +
+                      "次)",
                     "success",
                   );
                 }
-                setTimeout(() => {
-                  if (!isTerminated) runNext();
+                setTimeout(function () {
+                  if (
+                    signal.aborted ||
+                    _autoClickerExecutionId !== currentExecutionId
+                  ) {
+                    _autoClickerIsRunning = false;
+                    hideAutoClickerStatusPanel();
+                    return;
+                  }
+                  runNext();
                 }, 50);
                 return;
               }
 
               clicksDone++;
 
-              // 执行点击
               try {
+                target.scrollIntoView({ block: "center", behavior: "instant" });
                 if (typeof target.click === "function") {
                   target.click();
                 } else {
@@ -19895,35 +20821,59 @@ window.addEventListener("load", function () {
                 }
               } catch (e) {}
 
-              // 视觉反馈（每次点击都闪烁）
               try {
-                const flash = document.createElement("div");
+                var isLight =
+                  document.documentElement.getAttribute("data-nopic-theme") ===
+                  "light";
+                var flashColor = isLight ? "#16a34a" : "#4ade80";
+                var flashBg = isLight
+                  ? "rgba(22,163,74,0.12)"
+                  : "rgba(74,222,128,0.15)";
+
+                var flash = document.createElement("div");
                 flash.style.cssText =
-                  "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #4ade80;border-radius:4px;transition:opacity 0.2s;";
-                const rect = target.getBoundingClientRect();
+                  "position:absolute;pointer-events:none;z-index:2147483646;" +
+                  "border:2px solid " +
+                  flashColor +
+                  ";" +
+                  "background:" +
+                  flashBg +
+                  ";" +
+                  "border-radius:4px;transition:opacity 0.25s ease, transform 0.25s ease;";
+                var rect = target.getBoundingClientRect();
                 flash.style.left = rect.left + window.scrollX + "px";
                 flash.style.top = rect.top + window.scrollY + "px";
                 flash.style.width = rect.width + "px";
                 flash.style.height = rect.height + "px";
                 document.body.appendChild(flash);
-                setTimeout(() => {
+                setTimeout(function () {
                   flash.style.opacity = "0";
-                  setTimeout(() => flash.remove(), 200);
+                  flash.style.transform = "scale(1.03)";
+                  setTimeout(function () {
+                    try {
+                      flash.remove();
+                    } catch (e) {}
+                  }, 250);
                 }, 150);
               } catch (e) {}
 
-              // 计算下次点击的间隔（50ms ± 15ms 浮动）
-              const baseInterval = 50;
-              const variation = 15;
-              const nextInterval =
+              var baseInterval = 50;
+              var variation = 15;
+              var nextInterval =
                 baseInterval + (Math.random() * variation * 2 - variation);
 
-              // 更新状态
-              if (!isTerminated && autoClickerConfig.showNotification) {
-                const totalDisplay =
-                  totalClicks === Infinity ? "∞" : totalClicks;
+              if (
+                !signal.aborted &&
+                _autoClickerExecutionId === currentExecutionId
+              ) {
+                var totalDisplay = totalClicks === Infinity ? "∞" : totalClicks;
                 updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 点击中 ${clicksDone}/${totalDisplay}`,
+                  "第 " +
+                    currentLoop +
+                    " 轮 - 点击中 " +
+                    clicksDone +
+                    "/" +
+                    totalDisplay,
                   "pending",
                 );
               }
@@ -19931,31 +20881,34 @@ window.addEventListener("load", function () {
               setTimeout(doClick, Math.max(30, nextInterval));
             }
 
-            // 开始连点
-            if (!isTerminated) {
-              updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 开始连点 (${clickCount === 0 ? "无限" : clickCount}次)`,
-                "pending",
-              );
-            }
             doClick();
           } else {
-            if (!isTerminated) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
               updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 步骤 ${stepNum} 失败：未找到元素`,
+                "第 " + currentLoop + " 轮 - 未找到元素",
                 "error",
               );
             }
-            setTimeout(() => {
-              if (!isTerminated) runNext();
+            setTimeout(function () {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
+              runNext();
             }, 50);
           }
         } else if (step.type === "position") {
-          // 点击位置（支持连点）
           index++;
           try {
-            const x = step.x || 0;
-            const y = step.y || 0;
+            var x = step.x || 0;
+            var y = step.y || 0;
 
             window.scrollTo({
               left: Math.max(0, x - window.innerWidth / 2),
@@ -19963,475 +20916,416 @@ window.addEventListener("load", function () {
               behavior: "instant",
             });
 
-            const waitForScrollComplete = function (callback) {
-              const targetX = Math.max(0, x - window.innerWidth / 2);
-              const targetY = Math.max(0, y - window.innerHeight / 2);
-              let attempts = 0;
-              const maxAttempts = 20;
+            var viewX = x - window.scrollX;
+            var viewY = y - window.scrollY;
+            viewX = Math.max(0, Math.min(viewX, window.innerWidth - 1));
+            viewY = Math.max(0, Math.min(viewY, window.innerHeight - 1));
 
-              const checkScroll = function () {
-                attempts++;
-                const currentX = window.scrollX;
-                const currentY = window.scrollY;
+            var targetEl = document.elementFromPoint(viewX, viewY);
 
-                const reachedX = Math.abs(currentX - targetX) <= 1;
-                const reachedY = Math.abs(currentY - targetY) <= 1;
-
-                if ((reachedX && reachedY) || attempts >= maxAttempts) {
-                  callback();
-                  return;
-                }
-                requestAnimationFrame(checkScroll);
-              };
-              requestAnimationFrame(checkScroll);
-            };
-
-            waitForScrollComplete(function () {
-              if (signal.aborted || isTerminated) return;
-
-              let viewX = x - window.scrollX;
-              let viewY = y - window.scrollY;
-
-              viewX = Math.max(0, Math.min(viewX, window.innerWidth - 1));
-              viewY = Math.max(0, Math.min(viewY, window.innerHeight - 1));
-
-              let el = document.elementFromPoint(viewX, viewY);
-
-              if (!el) {
-                const offsets = [
-                  [0, 0],
-                  [5, 0],
-                  [-5, 0],
-                  [0, 5],
-                  [0, -5],
-                  [10, 10],
-                  [-10, -10],
-                ];
-                for (const [dx, dy] of offsets) {
-                  const testX = Math.max(
-                    0,
-                    Math.min(viewX + dx, window.innerWidth - 1),
-                  );
-                  const testY = Math.max(
-                    0,
-                    Math.min(viewY + dy, window.innerHeight - 1),
-                  );
-                  el = document.elementFromPoint(testX, testY);
-                  if (el) {
-                    viewX = testX;
-                    viewY = testY;
-                    break;
-                  }
+            if (!targetEl) {
+              var offsets = [
+                [0, 0],
+                [5, 0],
+                [-5, 0],
+                [0, 5],
+                [0, -5],
+                [10, 10],
+                [-10, -10],
+              ];
+              for (var oi = 0; oi < offsets.length; oi++) {
+                var testX = Math.max(
+                  0,
+                  Math.min(viewX + offsets[oi][0], window.innerWidth - 1),
+                );
+                var testY = Math.max(
+                  0,
+                  Math.min(viewY + offsets[oi][1], window.innerHeight - 1),
+                );
+                targetEl = document.elementFromPoint(testX, testY);
+                if (targetEl) {
+                  viewX = testX;
+                  viewY = testY;
+                  break;
                 }
               }
+            }
 
-              if (el) {
-                var _isInput =
-                  el.tagName === "INPUT" ||
-                  el.tagName === "TEXTAREA" ||
-                  el.isContentEditable;
-                if (_isInput) {
-                  try {
-                    el.focus();
-                  } catch (_e) {}
-                }
+            if (targetEl) {
+              var isInput =
+                targetEl.tagName === "INPUT" ||
+                targetEl.tagName === "TEXTAREA" ||
+                targetEl.isContentEditable;
+              if (isInput) {
+                try {
+                  targetEl.focus();
+                } catch (e) {}
+              }
+            }
 
-                // ★★★ 连点逻辑（位置点击） ★★★
-                const clickCount = step.clickCount || 1;
-                const totalClicks = clickCount === 0 ? Infinity : clickCount;
-                let clicksDone = 0;
+            var clickCount = step.clickCount || 1;
+            var totalClicks = clickCount === 0 ? Infinity : clickCount;
+            var clicksDone = 0;
 
-                function doPositionClick() {
-                  if (signal.aborted || isTerminated) {
-                    isTerminated = true;
-                    finishExecution("已手动终止");
-                    return;
-                  }
+            function doPositionClick() {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
 
-                  if (clicksDone >= totalClicks) {
-                    if (!isTerminated && autoClickerConfig.showNotification) {
-                      updateAutoClickerStatus(
-                        `第 ${currentLoop} 轮 - 位置点击完成 (共${clicksDone}次)`,
-                        "success",
-                      );
-                    }
-                    setTimeout(() => {
-                      if (!isTerminated) runNext();
-                    }, 50);
-                    return;
-                  }
-
-                  clicksDone++;
-
-                  try {
-                    el.dispatchEvent(
-                      new MouseEvent("mousedown", {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: viewX,
-                        clientY: viewY,
-                        button: 0,
-                      }),
-                    );
-                    el.dispatchEvent(
-                      new MouseEvent("mouseup", {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: viewX,
-                        clientY: viewY,
-                        button: 0,
-                      }),
-                    );
-                    el.dispatchEvent(
-                      new MouseEvent("click", {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: viewX,
-                        clientY: viewY,
-                        button: 0,
-                      }),
-                    );
-                  } catch (e) {
-                    try {
-                      if (typeof el.click === "function") {
-                        el.click();
-                      }
-                    } catch (e2) {}
-                  }
-
-                  // 视觉反馈
-                  try {
-                    const flash = document.createElement("div");
-                    flash.style.cssText =
-                      "position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #60a5fa;border-radius:50%;width:20px;height:20px;transform:translate(-50%,-50%);transition:all 0.25s ease-out;";
-                    flash.style.left = viewX + "px";
-                    flash.style.top = viewY + "px";
-                    document.body.appendChild(flash);
-                    setTimeout(() => {
-                      flash.style.width = "60px";
-                      flash.style.height = "60px";
-                      flash.style.opacity = "0";
-                      setTimeout(() => {
-                        try {
-                          flash.remove();
-                        } catch (e) {}
-                      }, 250);
-                    }, 50);
-                  } catch (e) {}
-
-                  const baseInterval = 90;
-                  const variation = 20;
-                  const nextInterval =
-                    baseInterval + (Math.random() * variation * 2 - variation);
-
-                  if (!isTerminated && autoClickerConfig.showNotification) {
-                    const totalDisplay =
-                      totalClicks === Infinity ? "∞" : totalClicks;
-                    updateAutoClickerStatus(
-                      `第 ${currentLoop} 轮 - 位置点击 ${clicksDone}/${totalDisplay}`,
-                      "pending",
-                    );
-                  }
-
-                  setTimeout(doPositionClick, Math.max(30, nextInterval));
-                }
-
-                if (!isTerminated) {
+              if (clicksDone >= totalClicks) {
+                if (
+                  !signal.aborted &&
+                  _autoClickerExecutionId === currentExecutionId
+                ) {
                   updateAutoClickerStatus(
-                    `第 ${currentLoop} 轮 - 开始位置连点 (${clickCount === 0 ? "无限" : clickCount}次)`,
-                    "pending",
+                    "第 " +
+                      currentLoop +
+                      " 轮 - 位置点击完成 (共" +
+                      clicksDone +
+                      "次)",
+                    "success",
                   );
                 }
-                doPositionClick();
+                setTimeout(function () {
+                  if (
+                    signal.aborted ||
+                    _autoClickerExecutionId !== currentExecutionId
+                  ) {
+                    _autoClickerIsRunning = false;
+                    hideAutoClickerStatusPanel();
+                    return;
+                  }
+                  runNext();
+                }, 50);
+                return;
+              }
+
+              clicksDone++;
+
+              if (targetEl) {
+                try {
+                  targetEl.dispatchEvent(
+                    new MouseEvent("mousedown", {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: viewX,
+                      clientY: viewY,
+                      button: 0,
+                    }),
+                  );
+                  targetEl.dispatchEvent(
+                    new MouseEvent("mouseup", {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: viewX,
+                      clientY: viewY,
+                      button: 0,
+                    }),
+                  );
+                  targetEl.dispatchEvent(
+                    new MouseEvent("click", {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: viewX,
+                      clientY: viewY,
+                      button: 0,
+                    }),
+                  );
+                } catch (e) {
+                  try {
+                    if (typeof targetEl.click === "function") targetEl.click();
+                  } catch (e2) {}
+                }
               } else {
-                // 没找到元素，坐标点击（也支持连点）
-                const clickCount = step.clickCount || 1;
-                const totalClicks = clickCount === 0 ? Infinity : clickCount;
-                let clicksDone = 0;
-
-                function doCoordClick() {
-                  if (signal.aborted || isTerminated) {
-                    isTerminated = true;
-                    finishExecution("已手动终止");
-                    return;
-                  }
-
-                  if (clicksDone >= totalClicks) {
-                    if (!isTerminated) {
-                      updateAutoClickerStatus(
-                        `第 ${currentLoop} 轮 - 坐标点击完成 (共${clicksDone}次)`,
-                        "success",
-                      );
-                    }
-                    setTimeout(() => {
-                      if (!isTerminated) runNext();
-                    }, 50);
-                    return;
-                  }
-
-                  clicksDone++;
-
-                  try {
-                    document.dispatchEvent(
-                      new MouseEvent("click", {
-                        bubbles: true,
-                        cancelable: true,
-                        clientX: viewX,
-                        clientY: viewY,
-                        button: 0,
-                      }),
-                    );
-                  } catch (e) {}
-
-                  const baseInterval = 90;
-                  const variation = 20;
-                  const nextInterval =
-                    baseInterval + (Math.random() * variation * 2 - variation);
-
-                  setTimeout(doCoordClick, Math.max(30, nextInterval));
-                }
-
-                if (!isTerminated) {
-                  updateAutoClickerStatus(
-                    `第 ${currentLoop} 轮 - 开始坐标连点 (${clickCount === 0 ? "无限" : clickCount}次)`,
-                    "warning",
+                try {
+                  document.dispatchEvent(
+                    new MouseEvent("click", {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: viewX,
+                      clientY: viewY,
+                      button: 0,
+                    }),
                   );
-                }
-                doCoordClick();
+                } catch (e) {}
               }
-            });
+
+              try {
+                var isLight =
+                  document.documentElement.getAttribute("data-nopic-theme") ===
+                  "light";
+                var flashColor = isLight ? "#2563eb" : "#60a5fa";
+                var flashBg = isLight
+                  ? "rgba(37,99,235,0.15)"
+                  : "rgba(96,165,250,0.25)";
+
+                var flash = document.createElement("div");
+                flash.style.cssText =
+                  "position:fixed;pointer-events:none;z-index:2147483646;" +
+                  "border:2px solid " +
+                  flashColor +
+                  ";" +
+                  "background:" +
+                  flashBg +
+                  ";" +
+                  "border-radius:50%;width:20px;height:20px;transform:translate(-50%,-50%);transition:all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);";
+                flash.style.left = viewX + "px";
+                flash.style.top = viewY + "px";
+                document.body.appendChild(flash);
+                setTimeout(function () {
+                  flash.style.width = "70px";
+                  flash.style.height = "70px";
+                  flash.style.borderWidth = "1px";
+                  flash.style.opacity = "0";
+                  setTimeout(function () {
+                    try {
+                      flash.remove();
+                    } catch (e) {}
+                  }, 300);
+                }, 50);
+              } catch (e) {}
+
+              var baseInterval = 90;
+              var variation = 20;
+              var nextInterval =
+                baseInterval + (Math.random() * variation * 2 - variation);
+
+              if (
+                !signal.aborted &&
+                _autoClickerExecutionId === currentExecutionId
+              ) {
+                var totalDisplay = totalClicks === Infinity ? "∞" : totalClicks;
+                updateAutoClickerStatus(
+                  "第 " +
+                    currentLoop +
+                    " 轮 - 位置点击 " +
+                    clicksDone +
+                    "/" +
+                    totalDisplay,
+                  "pending",
+                );
+              }
+
+              setTimeout(doPositionClick, Math.max(30, nextInterval));
+            }
+
+            doPositionClick();
           } catch (e) {
-            if (!isTerminated) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
               updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 位置点击错误: ${e.message}`,
+                "第 " + currentLoop + " 轮 - 位置点击错误",
                 "error",
               );
             }
-            setTimeout(() => {
-              if (!isTerminated) runNext();
+            setTimeout(function () {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
+              runNext();
             }, 300);
           }
         } else if (step.type === "input") {
-          // 输入文字 - 在光标位置插入（追加/插入模式，不替换原有内容）
           index++;
+          var target = document.activeElement;
 
-          // 获取当前聚焦的元素
-          const target = document.activeElement;
-
-          // 检查是否有有效的聚焦元素（不是body或document）
           if (target && target !== document.body && target !== document) {
             try {
-              const textToInsert = step.text || "";
+              var textToInsert = step.text || "";
 
               if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
-                // 如果是数字输入框，直接赋值到末尾
                 if (target.type === "number") {
                   target.value = textToInsert;
                 } else {
                   target.focus();
-                  const start = target.selectionStart || 0;
-                  const end = target.selectionEnd || 0;
-                  const currentValue = target.value || "";
+                  var start = target.selectionStart || 0;
+                  var end = target.selectionEnd || 0;
+                  var currentValue = target.value || "";
                   target.value =
                     currentValue.substring(0, start) +
                     textToInsert +
                     currentValue.substring(end);
-                  const newCursorPos = start + textToInsert.length;
+                  var newCursorPos = start + textToInsert.length;
                   target.selectionStart = target.selectionEnd = newCursorPos;
                 }
                 target.dispatchEvent(new Event("input", { bubbles: true }));
               } else if (target.isContentEditable) {
-                // contentEditable 元素：使用 execCommand 插入（不删除原有内容）
                 target.focus();
-                // 如果当前有选中内容，先删除（保持原生行为：插入替换选中的部分）
-                // 但这里我们不主动删除，而是直接插入，选中内容会被覆盖（浏览器默认行为）
-                // 或者使用 insertText 在光标位置插入，如果光标处有选中，会被替换
                 document.execCommand("insertText", false, textToInsert);
               } else {
-                // 其他可聚焦元素
                 if (target.focus) target.focus();
                 document.execCommand("insertText", false, textToInsert);
               }
 
-              // 触发输入事件
               target.dispatchEvent(new Event("input", { bubbles: true }));
               target.dispatchEvent(new Event("change", { bubbles: true }));
 
-              // 触发输入事件
-              target.dispatchEvent(new Event("input", { bubbles: true }));
-              target.dispatchEvent(new Event("change", { bubbles: true }));
-
-              if (!isTerminated && autoClickerConfig.showNotification) {
+              if (
+                !signal.aborted &&
+                _autoClickerExecutionId === currentExecutionId
+              ) {
                 updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 输入成功`,
+                  "第 " + currentLoop + " 轮 - 输入成功",
                   "success",
                 );
               }
 
-              // 视觉反馈
-              const flash = document.createElement("div");
+              var flash = document.createElement("div");
               flash.style.cssText =
                 "position:absolute;pointer-events:none;z-index:2147483646;border:2px solid #a78bfa;border-radius:4px;transition:opacity 0.3s;";
-              const rect = target.getBoundingClientRect();
+              var rect = target.getBoundingClientRect();
               flash.style.left = rect.left + window.scrollX + "px";
               flash.style.top = rect.top + window.scrollY + "px";
               flash.style.width = rect.width + "px";
               flash.style.height = rect.height + "px";
               document.body.appendChild(flash);
-              setTimeout(() => {
+              setTimeout(function () {
                 flash.style.opacity = "0";
-                setTimeout(() => flash.remove(), 300);
+                setTimeout(function () {
+                  flash.remove();
+                }, 300);
               }, 300);
 
-              setTimeout(() => {
-                if (!isTerminated) runNext();
+              setTimeout(function () {
+                if (
+                  signal.aborted ||
+                  _autoClickerExecutionId !== currentExecutionId
+                ) {
+                  _autoClickerIsRunning = false;
+                  hideAutoClickerStatusPanel();
+                  return;
+                }
+                runNext();
               }, 50);
             } catch (e) {
-              if (!isTerminated) {
+              if (
+                !signal.aborted &&
+                _autoClickerExecutionId === currentExecutionId
+              ) {
                 updateAutoClickerStatus(
-                  `第 ${currentLoop} 轮 - 输入失败: ${e.message}`,
+                  "第 " + currentLoop + " 轮 - 输入失败",
                   "error",
                 );
               }
-              setTimeout(() => {
-                if (!isTerminated) runNext();
+              setTimeout(function () {
+                if (
+                  signal.aborted ||
+                  _autoClickerExecutionId !== currentExecutionId
+                ) {
+                  _autoClickerIsRunning = false;
+                  hideAutoClickerStatusPanel();
+                  return;
+                }
+                runNext();
               }, 50);
             }
           } else {
-            if (!isTerminated) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
               updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 输入失败：没有聚焦的输入框，请先用"点击位置"步骤聚焦输入框`,
+                "第 " + currentLoop + " 轮 - 没有聚焦的输入框",
                 "error",
               );
             }
-            setTimeout(() => {
-              if (!isTerminated) runNext();
+            setTimeout(function () {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
+              runNext();
             }, 50);
           }
         } else if (step.type === "shortcut") {
-          // 执行快捷键 - 直接操作DOM方式（不依赖键盘事件模拟）
           index++;
-
           try {
-            const target = document.activeElement || document.body;
-            const key = (step.key || "").toLowerCase();
+            var target = document.activeElement || document.body;
+            var key = (step.key || "").toLowerCase();
 
-            // 构建快捷键描述（用于日志显示）
-            const parts = [];
-            if (step.ctrlKey) parts.push("Ctrl");
-            if (step.altKey) parts.push("Alt");
-            if (step.shiftKey) parts.push("Shift");
-            if (step.metaKey) parts.push("Meta");
-            if (step.key) parts.push(step.key.toUpperCase());
-            const shortcutDesc = parts.join("+");
-
-            // ========== 获取当前操作描述 ==========
-            let actionDesc = "";
-            let executed = false;
-            let execMethod = "";
-
-            // 检查目标是否是可编辑元素（输入框、文本域、contentEditable）
-            const isInputField =
+            var isInputField =
               target.tagName === "INPUT" || target.tagName === "TEXTAREA";
-            const isContentEditable = target.isContentEditable === true;
-            const isButton =
+            var isContentEditable = target.isContentEditable === true;
+            var isButton =
               target.tagName === "BUTTON" ||
               target.tagName === "A" ||
               target.getAttribute("role") === "button";
 
-            // ---- 退格键 (Backspace) ----
+            var executed = false;
+            var actionDesc = "";
+
             if (key === "backspace") {
               try {
                 if (isInputField) {
-                  const start = target.selectionStart || 0;
-                  const end = target.selectionEnd || 0;
-                  const value = target.value || "";
+                  var start = target.selectionStart || 0;
+                  var end = target.selectionEnd || 0;
+                  var value = target.value || "";
                   if (start === end) {
                     if (start > 0) {
-                      const deletedChar = value[start - 1] || "";
-                      actionDesc = `删除字符 "${deletedChar}" (退格)`;
                       target.value =
                         value.substring(0, start - 1) + value.substring(start);
                       target.selectionStart = target.selectionEnd = start - 1;
                       executed = true;
-                      execMethod = "直接操作";
-                    } else {
-                      actionDesc = "退格键 - 已在开头，无字符可删";
-                      executed = false;
                     }
                   } else {
-                    const deletedText = value.substring(start, end);
-                    actionDesc = `删除选中内容 "${deletedText}" (退格)`;
                     target.value =
                       value.substring(0, start) + value.substring(end);
                     target.selectionStart = target.selectionEnd = start;
                     executed = true;
-                    execMethod = "直接操作";
                   }
                   if (executed)
                     target.dispatchEvent(new Event("input", { bubbles: true }));
                 } else if (isContentEditable) {
                   document.execCommand("delete");
-                  actionDesc = "删除 (退格)";
                   executed = true;
-                  execMethod = "execCommand";
-                } else {
-                  actionDesc = "退格键 - 当前焦点不在可编辑元素上";
-                  executed = false;
                 }
-              } catch (e) {
-                actionDesc = "退格键 - 执行失败";
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ---- 删除键 (Delete) ----
             if (!executed && key === "delete") {
               try {
                 if (isInputField) {
-                  const start = target.selectionStart || 0;
-                  const end = target.selectionEnd || 0;
-                  const value = target.value || "";
+                  var start = target.selectionStart || 0;
+                  var end = target.selectionEnd || 0;
+                  var value = target.value || "";
                   if (start === end) {
                     if (start < value.length) {
-                      const deletedChar = value[start] || "";
-                      actionDesc = `删除字符 "${deletedChar}" (Delete)`;
                       target.value =
                         value.substring(0, start) + value.substring(start + 1);
                       target.selectionStart = target.selectionEnd = start;
                       executed = true;
-                      execMethod = "直接操作";
-                    } else {
-                      actionDesc = "Delete键 - 已在末尾，无字符可删";
-                      executed = false;
                     }
                   } else {
-                    const deletedText = value.substring(start, end);
-                    actionDesc = `删除选中内容 "${deletedText}" (Delete)`;
                     target.value =
                       value.substring(0, start) + value.substring(end);
                     target.selectionStart = target.selectionEnd = start;
                     executed = true;
-                    execMethod = "直接操作";
                   }
                   if (executed)
                     target.dispatchEvent(new Event("input", { bubbles: true }));
                 } else if (isContentEditable) {
                   document.execCommand("delete");
-                  actionDesc = "删除 (Delete)";
                   executed = true;
-                  execMethod = "execCommand";
-                } else {
-                  actionDesc = "Delete键 - 当前焦点不在可编辑元素上";
-                  executed = false;
                 }
-              } catch (e) {
-                actionDesc = "Delete键 - 执行失败";
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ---- Enter 键 ----
             if (!executed && key === "enter") {
               try {
                 if (isInputField) {
@@ -20440,9 +21334,8 @@ window.addEventListener("load", function () {
                     target.type === "search" ||
                     target.type === "password"
                   ) {
-                    const form = target.closest("form");
+                    var form = target.closest("form");
                     if (form) {
-                      actionDesc = "触发表单提交 (Enter)";
                       form.dispatchEvent(
                         new Event("submit", {
                           bubbles: true,
@@ -20450,141 +21343,89 @@ window.addEventListener("load", function () {
                         }),
                       );
                       executed = true;
-                      execMethod = "表单提交";
-                    } else {
-                      actionDesc = "Enter键 - 未找到父级表单";
-                      executed = false;
                     }
                   } else if (target.type === "textarea") {
-                    const start = target.selectionStart || 0;
-                    const end = target.selectionEnd || 0;
-                    const value = target.value || "";
+                    var start = target.selectionStart || 0;
+                    var end = target.selectionEnd || 0;
+                    var value = target.value || "";
                     target.value =
                       value.substring(0, start) + "\n" + value.substring(end);
                     target.selectionStart = target.selectionEnd = start + 1;
                     target.dispatchEvent(new Event("input", { bubbles: true }));
-                    actionDesc = "插入换行 (Enter)";
                     executed = true;
-                    execMethod = "直接操作";
-                  } else {
-                    actionDesc = `Enter键 - 不支持的输入框类型: ${target.type}`;
-                    executed = false;
                   }
                 } else if (isContentEditable) {
                   document.execCommand("insertText", false, "\n");
-                  actionDesc = "插入换行 (Enter)";
                   executed = true;
-                  execMethod = "execCommand";
                 } else if (isButton) {
                   target.click();
-                  actionDesc = "点击按钮/链接 (Enter)";
                   executed = true;
-                  execMethod = "点击";
-                } else {
-                  actionDesc = "Enter键 - 当前焦点不在可交互元素上";
-                  executed = false;
                 }
-              } catch (e) {
-                actionDesc = "Enter键 - 执行失败";
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ---- 空格键 ----
             if (!executed && key === " ") {
               try {
                 if (isInputField) {
-                  const start = target.selectionStart || 0;
-                  const end = target.selectionEnd || 0;
-                  const value = target.value || "";
+                  var start = target.selectionStart || 0;
+                  var end = target.selectionEnd || 0;
+                  var value = target.value || "";
                   target.value =
                     value.substring(0, start) + " " + value.substring(end);
                   target.selectionStart = target.selectionEnd = start + 1;
                   target.dispatchEvent(new Event("input", { bubbles: true }));
-                  actionDesc = "插入空格";
                   executed = true;
-                  execMethod = "直接操作";
                 } else if (isContentEditable) {
                   document.execCommand("insertText", false, " ");
-                  actionDesc = "插入空格";
                   executed = true;
-                  execMethod = "execCommand";
-                } else {
-                  actionDesc = "空格键 - 当前焦点不在可编辑元素上";
-                  executed = false;
                 }
-              } catch (e) {
-                actionDesc = "空格键 - 执行失败";
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ---- Tab 键 ----
             if (!executed && key === "tab") {
               try {
                 if (isInputField) {
-                  const start = target.selectionStart || 0;
-                  const end = target.selectionEnd || 0;
-                  const value = target.value || "";
+                  var start = target.selectionStart || 0;
+                  var end = target.selectionEnd || 0;
+                  var value = target.value || "";
                   target.value =
                     value.substring(0, start) + "  " + value.substring(end);
                   target.selectionStart = target.selectionEnd = start + 2;
                   target.dispatchEvent(new Event("input", { bubbles: true }));
-                  actionDesc = "插入Tab (两个空格)";
                   executed = true;
-                  execMethod = "直接操作";
                 } else if (isContentEditable) {
                   document.execCommand("insertText", false, "  ");
-                  actionDesc = "插入Tab (两个空格)";
                   executed = true;
-                  execMethod = "execCommand";
-                } else {
-                  actionDesc = "Tab键 - 当前焦点不在可编辑元素上";
-                  executed = false;
                 }
-              } catch (e) {
-                actionDesc = "Tab键 - 执行失败";
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ---- Escape 键 ----
             if (!executed && key === "escape") {
               try {
                 target.blur();
-                actionDesc = "取消焦点 (Escape)";
                 executed = true;
-                execMethod = "直接操作";
-              } catch (e) {
-                actionDesc = "Escape键 - 执行失败";
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ========== 字符输入（普通字母/数字/符号） ==========
             if (!executed && step.key && step.key.length === 1) {
               try {
-                const hasOnlyShift =
-                  step.shiftKey &&
-                  !step.ctrlKey &&
-                  !step.altKey &&
-                  !step.metaKey;
-                const hasNoModifiers =
+                var hasNoModifiers =
                   !step.ctrlKey &&
                   !step.altKey &&
                   !step.shiftKey &&
                   !step.metaKey;
+                var hasOnlyShift =
+                  step.shiftKey &&
+                  !step.ctrlKey &&
+                  !step.altKey &&
+                  !step.metaKey;
 
                 if (hasNoModifiers || hasOnlyShift) {
-                  const charToInsert = step.key;
-                  const displayChar = hasOnlyShift
-                    ? charToInsert.toUpperCase()
-                    : charToInsert;
-
+                  var charToInsert = step.key;
                   if (isInputField) {
-                    const start = target.selectionStart || 0;
-                    const end = target.selectionEnd || 0;
-                    const value = target.value || "";
+                    var start = target.selectionStart || 0;
+                    var end = target.selectionEnd || 0;
+                    var value = target.value || "";
                     target.value =
                       value.substring(0, start) +
                       charToInsert +
@@ -20592,125 +21433,85 @@ window.addEventListener("load", function () {
                     target.selectionStart = target.selectionEnd =
                       start + charToInsert.length;
                     target.dispatchEvent(new Event("input", { bubbles: true }));
-                    actionDesc = `输入字符 "${displayChar}"${hasOnlyShift ? " (Shift+)" : ""}`;
                     executed = true;
-                    execMethod = "直接操作";
                   } else if (isContentEditable) {
                     document.execCommand("insertText", false, charToInsert);
-                    actionDesc = `输入字符 "${displayChar}"${hasOnlyShift ? " (Shift+)" : ""}`;
                     executed = true;
-                    execMethod = "execCommand";
-                  } else {
-                    actionDesc = `字符输入 - 当前焦点不在可编辑元素上`;
-                    executed = false;
                   }
-                } else {
-                  // 有 Ctrl/Alt/Meta 修饰键，不当作普通字符
-                  actionDesc = "组合键 - 跳过字符输入";
-                  executed = false;
                 }
-              } catch (e) {
-                actionDesc = `字符输入失败: ${e.message}`;
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // ========== 组合键处理 (Ctrl+X / Ctrl+C 等) ==========
             if (!executed) {
-              const hasOnlyCtrl =
+              var hasOnlyCtrl =
                 step.ctrlKey && !step.altKey && !step.shiftKey && !step.metaKey;
-              const hasOnlyMeta =
+              var hasOnlyMeta =
                 step.metaKey && !step.ctrlKey && !step.altKey && !step.shiftKey;
 
               if (hasOnlyCtrl || hasOnlyMeta) {
-                const commandMap = {
-                  a: { cmd: "selectAll", desc: "全选 (Ctrl+A)" },
-                  z: { cmd: "undo", desc: "撤销 (Ctrl+Z)" },
-                  y: { cmd: "redo", desc: "重做 (Ctrl+Y)" },
-                  b: { cmd: "bold", desc: "加粗 (Ctrl+B)" },
-                  i: { cmd: "italic", desc: "斜体 (Ctrl+I)" },
-                  u: { cmd: "underline", desc: "下划线 (Ctrl+U)" },
+                var commandMap = {
+                  a: "selectAll",
+                  z: "undo",
+                  y: "redo",
+                  b: "bold",
+                  i: "italic",
+                  u: "underline",
                 };
-                const mapped = commandMap[key];
+                var mapped = commandMap[key];
                 if (mapped) {
                   try {
                     if (target && target.focus) target.focus();
-                    document.execCommand(mapped.cmd, false, null);
-                    actionDesc = mapped.desc;
+                    document.execCommand(mapped, false, null);
                     executed = true;
-                    execMethod = "execCommand";
-                  } catch (e) {
-                    actionDesc = mapped.desc + ` - 异常: ${e.message}`;
-                    executed = false;
-                  }
+                  } catch (e) {}
                 }
               }
 
-              // Ctrl+A: 全选（特殊处理）
               if (!executed && (step.ctrlKey || step.metaKey) && key === "a") {
                 try {
                   if (isInputField) {
                     target.focus();
                     target.select();
-                    actionDesc = "全选 (Ctrl+A)";
                     executed = true;
-                    execMethod = "直接操作";
                   } else if (isContentEditable) {
                     target.focus();
-                    const selection = window.getSelection();
-                    const range = document.createRange();
+                    var selection = window.getSelection();
+                    var range = document.createRange();
                     range.selectNodeContents(target);
                     selection.removeAllRanges();
                     selection.addRange(range);
-                    actionDesc = "全选 (Ctrl+A)";
                     executed = true;
-                    execMethod = "直接操作";
                   } else {
                     document.execCommand("selectAll");
-                    actionDesc = "全选 (Ctrl+A)";
                     executed = true;
-                    execMethod = "execCommand";
                   }
-                } catch (e) {
-                  actionDesc = "全选 (Ctrl+A) - 执行失败";
-                  executed = false;
-                }
+                } catch (e) {}
               }
 
-              // Ctrl+Enter: 提交表单
               if (
                 !executed &&
                 (step.ctrlKey || step.metaKey) &&
                 key === "enter"
               ) {
                 try {
-                  const form = target.closest("form");
+                  var form = target.closest("form");
                   if (form) {
                     form.dispatchEvent(
                       new Event("submit", { bubbles: true, cancelable: true }),
                     );
-                    actionDesc = "提交表单 (Ctrl+Enter)";
                     executed = true;
-                    execMethod = "表单提交";
-                  } else {
-                    actionDesc = "Ctrl+Enter - 未找到父级表单";
-                    executed = false;
                   }
-                } catch (e) {
-                  actionDesc = "Ctrl+Enter - 执行失败";
-                  executed = false;
-                }
+                } catch (e) {}
               }
             }
 
-            // ========== 最后兜底：尝试触发键盘事件 ==========
             if (!executed) {
               try {
-                const eventOptions = {
+                var eventOptions = {
                   key: step.key || "",
                   code: step.key
                     ? step.key.length === 1
-                      ? `Key${step.key.toUpperCase()}`
+                      ? "Key" + step.key.toUpperCase()
                       : step.key
                     : "",
                   ctrlKey: !!step.ctrlKey,
@@ -20722,89 +21523,154 @@ window.addEventListener("load", function () {
                   composed: true,
                   view: window,
                 };
-
-                const keydownEvent = new KeyboardEvent("keydown", eventOptions);
+                var keydownEvent = new KeyboardEvent("keydown", eventOptions);
                 target.dispatchEvent(keydownEvent);
-
-                const keyupEvent = new KeyboardEvent("keyup", eventOptions);
+                var keyupEvent = new KeyboardEvent("keyup", eventOptions);
                 target.dispatchEvent(keyupEvent);
-
-                if (!actionDesc) {
-                  actionDesc = `触发键盘事件: ${shortcutDesc} (可能未生效)`;
-                } else {
-                  actionDesc += " (已触发键盘事件)";
-                }
                 executed = true;
-                execMethod = "键盘事件";
-              } catch (e) {
-                if (!actionDesc) {
-                  actionDesc = `触发键盘事件失败: ${e.message}`;
-                }
-                executed = false;
-              }
+              } catch (e) {}
             }
 
-            // 如果没有操作描述，生成一个通用的
-            if (!actionDesc) {
-              if (executed) {
-                actionDesc = `执行快捷键: ${shortcutDesc}`;
-              } else {
-                actionDesc = `快捷键 ${shortcutDesc} - 未执行任何操作（可能不支持）`;
-              }
-            }
+            var parts = [];
+            if (step.ctrlKey) parts.push("Ctrl");
+            if (step.altKey) parts.push("Alt");
+            if (step.shiftKey) parts.push("Shift");
+            if (step.metaKey) parts.push("Meta");
+            if (step.key) parts.push(step.key.toUpperCase());
+            var shortcutDesc = parts.join("+");
 
-            // 构建最终状态信息
-            let statusMsg = `第 ${currentLoop} 轮 - ${actionDesc}`;
-            if (executed && execMethod) {
-              statusMsg += ` [${execMethod}]`;
-            }
-            if (!executed) {
-              statusMsg += " ⚠️ 未执行任何操作";
-            }
-
-            // 更新状态显示
-            if (!isTerminated) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
               updateAutoClickerStatus(
-                statusMsg,
+                "第 " +
+                  currentLoop +
+                  " 轮 - " +
+                  shortcutDesc +
+                  (executed ? " ✅" : " ⚠️"),
                 executed ? "success" : "warning",
               );
             }
 
-            // 延迟后继续下一步
-            setTimeout(() => {
-              if (!isTerminated) runNext();
+            setTimeout(function () {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
+              runNext();
             }, 50);
           } catch (e) {
-            if (!isTerminated) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
               updateAutoClickerStatus(
-                `第 ${currentLoop} 轮 - 快捷键执行异常: ${e.message}`,
+                "第 " + currentLoop + " 轮 - 快捷键执行异常",
                 "error",
               );
             }
-            setTimeout(() => {
-              if (!isTerminated) runNext();
+            setTimeout(function () {
+              if (
+                signal.aborted ||
+                _autoClickerExecutionId !== currentExecutionId
+              ) {
+                _autoClickerIsRunning = false;
+                hideAutoClickerStatusPanel();
+                return;
+              }
+              runNext();
             }, 50);
           }
+        } else if (step.type === "script") {
+          index++;
+          try {
+            var code = step.code || "";
+            var result = eval(code);
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 脚本执行完成",
+                "success",
+              );
+            }
+          } catch (e) {
+            if (
+              !signal.aborted &&
+              _autoClickerExecutionId === currentExecutionId
+            ) {
+              updateAutoClickerStatus(
+                "第 " + currentLoop + " 轮 - 脚本执行错误",
+                "error",
+              );
+            }
+          }
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              _autoClickerIsRunning = false;
+              hideAutoClickerStatusPanel();
+              return;
+            }
+            runNext();
+          }, 50);
+        } else {
+          // 未知步骤类型，跳过
+          index++;
+          setTimeout(function () {
+            if (
+              signal.aborted ||
+              _autoClickerExecutionId !== currentExecutionId
+            ) {
+              _autoClickerIsRunning = false;
+              hideAutoClickerStatusPanel();
+              return;
+            }
+            runNext();
+          }, 50);
         }
       }
-      runNext();
     }
 
     runLoop();
+  }
 
-    function finishExecution(msg) {
-      isTerminated = true;
-      isAutoClickerRunning = false;
-      autoClickerAbortController = null;
-      // 只有没有被终止过才更新状态，避免覆盖"已终止"的显示
-      if (!isTerminated) {
-        updateAutoClickerStatus(msg, "done");
-      }
-      const panel = document.getElementById("nopic-autoclicker-status-panel");
-      if (panel) {
-        panel._hideTimer = setTimeout(hideAutoClickerStatusPanel, 3000);
-      }
+  function forceStopAutoClicker() {
+    // 1. 终止 AbortController
+    if (_autoClickerAbortController) {
+      try {
+        _autoClickerAbortController.abort();
+      } catch (e) {}
+      _autoClickerAbortController = null;
     }
+
+    // 2. 强制递增执行 ID，使旧流程立即失效
+    _autoClickerExecutionId++;
+
+    // 3. 重置运行状态
+    _autoClickerIsRunning = false;
+    isAutoClickerRunning = false;
+    autoClickerAbortController = null;
+
+    // 4. 隐藏状态面板
+    hideAutoClickerStatusPanel();
+
+    // 5. 更新状态文字
+    var textEl = document.getElementById("nopic-ac-status-text");
+    if (textEl) {
+      textEl.textContent = "⏹ 已终止";
+      textEl.style.color = "#fbbf24";
+    }
+
+    console.log("[自动点击器] 已强制终止");
   }
 
   // 自动点击器事件绑定
@@ -22736,11 +23602,25 @@ window.addEventListener("load", function () {
       );
 
       if (document.readyState === "complete") {
-        setTimeout(executeAutoClicker, 500);
+        setTimeout(function () {
+          // 重置状态，确保刷新后可以重新执行
+          _autoClickerIsRunning = false;
+          isAutoClickerRunning = false;
+          _autoClickerAbortController = null;
+          autoClickerAbortController = null;
+          executeAutoClicker();
+        }, 500);
       } else {
         window.addEventListener("load", function onLoad() {
           window.removeEventListener("load", onLoad);
-          setTimeout(executeAutoClicker, 500);
+          setTimeout(function () {
+            // 重置状态，确保刷新后可以重新执行
+            _autoClickerIsRunning = false;
+            isAutoClickerRunning = false;
+            _autoClickerAbortController = null;
+            autoClickerAbortController = null;
+            executeAutoClicker();
+          }, 500);
         });
       }
       return true;

@@ -8358,3 +8358,31 @@ html[data-nopic-theme] #nopic-widget {
   --ar-card-active: rgba(96, 165, 250, 0.12);
   --ar-card-border: transparent;
 }
+/* 分隔线 */
+.nopic-ar-divider {
+  margin: 10px 0 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* 点击方式标题 */
+.nopic-ar-click-mode-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 4px 0 6px 0;
+  letter-spacing: 0.3px;
+}
+
+/* 点击方式选项（稍微紧凑一些） */
+.nopic-ar-click-option {
+  padding: 8px 12px !important;
+  margin-bottom: 4px !important;
+}
+
+.nopic-ar-click-option .nopic-ar-option-tag {
+  font-size: 9px !important;
+}
+/* 点击方式标题 - 适配浅色模式 */
+[data-nopic-theme="light"] .nopic-ar-click-mode-title {
+  color: rgba(0, 0, 0, 0.5);
+}
