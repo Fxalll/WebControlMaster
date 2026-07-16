@@ -18872,6 +18872,7 @@ window.addEventListener("load", function () {
     );
     document.removeEventListener("mousemove", _autoRecordBarDodge, true);
     _autoRecordActive = false;
+
     if (_autoRecordBarDodgeTimer) {
       clearTimeout(_autoRecordBarDodgeTimer);
       _autoRecordBarDodgeTimer = null;
@@ -18890,18 +18891,171 @@ window.addEventListener("load", function () {
       return;
     }
 
-    for (var j = 0; j < _autoRecordSteps.length; j++) {
-      autoClickerConfig.steps.push(_autoRecordSteps[j]);
+    // 弹出选择框
+    showAutoRecordSaveDialog(function (selectedScope) {
+      var config = getAutoClickerConfigByScope(selectedScope);
+      _autoRecordSteps.forEach(function (step) {
+        config.steps.push(step);
+      });
+      setAutoClickerConfigByScope(selectedScope, config);
+
+      if (currentAutoClickerScope !== selectedScope) {
+        var effective = getEffectiveAutoClickerConfig();
+        autoClickerConfig = effective.config;
+        currentAutoClickerScope = effective.scope;
+      } else {
+        autoClickerConfig = getAutoClickerConfigByScope(selectedScope);
+      }
+
+      _autoRecordSteps = [];
+      refreshAllWaitLinks();
+      updateAutoClickerFlowList();
+      updateAutoClickerScopeUI();
+      showAutoClickerSubmenu();
+
+      // ★★★ 删除或注释掉下面这段自动执行的代码 ★★★
+      /*
+        if (autoClickerConfig.autoStartOnLoad && autoClickerConfig.steps.length > 0) {
+            setTimeout(executeAutoClicker, 300);
+        }
+        */
+    });
+  }
+
+  function showAutoRecordSaveDialog(callback) {
+    // 移除已存在的弹窗
+    var existing = document.getElementById("nopic-autorecord-save-overlay");
+    if (existing) {
+      existing.remove();
     }
 
-    _autoRecordSteps = [];
+    // 创建遮罩
+    var overlay = document.createElement("div");
+    overlay.id = "nopic-autorecord-save-overlay";
+    overlay.className = "nopic-autorecord-overlay";
 
-    setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
-    refreshAllWaitLinks();
-    updateAutoClickerFlowList();
-    updateAutoClickerScopeUI();
+    // 创建弹窗
+    var box = document.createElement("div");
+    box.className = "nopic-autorecord-box";
 
-    showAutoClickerSubmenu();
+    var stepCount = _autoRecordSteps.length;
+
+    // 用 innerHTML 构建
+    box.innerHTML = [
+      '<div class="nopic-ar-header">',
+      '<span class="nopic-ar-header-title">保存录制的操作</span>',
+      "</div>",
+      '<div class="nopic-ar-desc">',
+      "共录制了 <strong>" +
+        stepCount +
+        "</strong> 个操作步骤，请选择保存范围：",
+      "</div>",
+
+      // 选项1：仅当前页
+      '<div class="nopic-ar-option" data-scope="url">',
+      '<div class="nopic-ar-radio"><div class="nopic-ar-radio-dot"></div></div>',
+      '<div style="flex:1;min-width:0;">',
+      '<div class="nopic-ar-option-title">仅当前页</div>',
+      '<div class="nopic-ar-option-sub">仅对当前 <strong>' +
+        location.pathname +
+        "</strong> 页面生效</div>",
+      '<div class="nopic-ar-option-tag">适合单次任务、临时操作</div>',
+      "</div>",
+      "</div>",
+
+      // 选项2：当前网站
+      '<div class="nopic-ar-option" data-scope="domain">',
+      '<div class="nopic-ar-radio"><div class="nopic-ar-radio-dot"></div></div>',
+      '<div style="flex:1;min-width:0;">',
+      '<div class="nopic-ar-option-title">当前网站</div>',
+      '<div class="nopic-ar-option-sub">对整个 <strong>' +
+        location.host +
+        "</strong> 下的所有页面生效</div>",
+      '<div class="nopic-ar-option-tag">适合跨页面自动化、重复性任务</div>',
+      "</div>",
+      "</div>",
+
+      // 按钮
+      '<div class="nopic-ar-actions">',
+      '<button class="nopic-ar-btn-cancel">取消</button>',
+      '<button class="nopic-ar-btn-confirm">确定保存</button>',
+      "</div>",
+    ].join("");
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // ---- 逻辑 ----
+    var selectedScope = null;
+    var optionEls = box.querySelectorAll(".nopic-ar-option");
+    var confirmBtn = box.querySelector(".nopic-ar-btn-confirm");
+    var cancelBtn = box.querySelector(".nopic-ar-btn-cancel");
+
+    // 点击选项
+    optionEls.forEach(function (opt) {
+      opt.addEventListener("click", function (e) {
+        e.stopPropagation();
+
+        optionEls.forEach(function (o) {
+          o.classList.remove("active");
+          o.querySelector(".nopic-ar-radio").classList.remove("active");
+          o.querySelector(".nopic-ar-radio-dot").classList.remove("active");
+        });
+
+        selectedScope = opt.dataset.scope;
+        opt.classList.add("active");
+        opt.querySelector(".nopic-ar-radio").classList.add("active");
+        opt.querySelector(".nopic-ar-radio-dot").classList.add("active");
+
+        confirmBtn.classList.add("enabled");
+      });
+    });
+
+    // 默认选中"仅当前页"
+    var defaultScope = "url";
+
+    optionEls.forEach(function (opt) {
+      if (opt.dataset.scope === defaultScope) {
+        opt.click();
+      }
+    });
+    // 确认
+    confirmBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (!selectedScope) return;
+      overlay.remove();
+      if (typeof callback === "function") {
+        callback(selectedScope);
+      }
+    });
+
+    // 取消
+    cancelBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      overlay.remove();
+      _autoRecordSteps = [];
+      showAutoClickerSubmenu();
+    });
+
+    // 点击遮罩关闭（等同于取消）
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) {
+        overlay.remove();
+        _autoRecordSteps = [];
+        showAutoClickerSubmenu();
+      }
+    });
+
+    // ESC关闭
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        overlay.remove();
+        _autoRecordSteps = [];
+        showAutoClickerSubmenu();
+        document.removeEventListener("keydown", onKeyDown);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
   }
 
   function _autoRecordMousedown(e) {

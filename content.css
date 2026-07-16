@@ -8060,3 +8060,301 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] .nopic-autoclicker-step-item {
   background: rgb(119 118 118 / 17%) !important;
 }
+
+/* ===== 自动录制保存弹窗 ===== */
+
+/* 遮罩层 */
+.nopic-autorecord-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483650;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: nopic-ar-fadeIn 0.25s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* 弹窗主体 */
+.nopic-autorecord-box {
+  background: var(--ar-bg, rgba(26, 26, 34, 0.96));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--ar-border, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  padding: 24px 28px 20px;
+  max-width: 440px;
+  width: 92%;
+  color: var(--ar-text, #ffffff);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: nopic-ar-scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: auto;
+  position: relative;
+}
+
+/* 弹窗头部 */
+.nopic-ar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.nopic-ar-header-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nopic-ar-header-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ar-text, #ffffff);
+}
+
+/* 弹窗描述 */
+.nopic-ar-desc {
+  font-size: 13px;
+  color: var(--ar-sub, rgba(255, 255, 255, 0.45));
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.nopic-ar-desc strong {
+  color: #60a5fa;
+}
+
+/* 选项卡片 */
+.nopic-ar-option {
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  background: var(--ar-card, rgba(255, 255, 255, 0.04));
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nopic-ar-option:hover {
+  background: var(--ar-card-hover, rgba(255, 255, 255, 0.08));
+}
+
+.nopic-ar-option.active {
+  border-color: #60a5fa;
+}
+
+/* 单选按钮 */
+.nopic-ar-radio {
+  flex-shrink: 0;
+  margin-top: 1px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.nopic-ar-radio.active {
+  border-color: #60a5fa;
+}
+
+.nopic-ar-radio-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.nopic-ar-radio-dot.active {
+  background: #60a5fa;
+}
+
+/* 选项文字 */
+.nopic-ar-option-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ar-text, #ffffff);
+}
+
+.nopic-ar-option-sub {
+  font-size: 12px;
+  color: var(--ar-sub, rgba(255, 255, 255, 0.45));
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.nopic-ar-option-sub strong {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nopic-ar-option-tag {
+  font-size: 11px;
+  color: var(--ar-sub, rgba(255, 255, 255, 0.45));
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+/* 底部按钮 */
+.nopic-ar-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.nopic-ar-btn-cancel {
+  padding: 8px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--ar-sub, rgba(255, 255, 255, 0.45));
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 400;
+}
+
+.nopic-ar-btn-cancel:hover {
+  background: var(--ar-card-hover, rgba(255, 255, 255, 0.08));
+}
+
+.nopic-ar-btn-confirm {
+  padding: 8px 24px;
+  background: rgba(96, 165, 250, 0.2);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 8px;
+  color: #60a5fa;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.nopic-ar-btn-confirm.enabled {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(96, 165, 250, 0.25);
+  border-color: rgba(96, 165, 250, 0.5);
+}
+
+.nopic-ar-btn-confirm.enabled:hover {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+/* 动画 */
+@keyframes nopic-ar-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nopic-ar-scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 浅色主题适配 */
+[data-nopic-theme="light"] .nopic-autorecord-box {
+  --ar-bg: rgba(245, 245, 250, 0.96);
+  --ar-border: rgba(0, 0, 0, 0.08);
+  --ar-text: #1a1a2e;
+  --ar-sub: rgba(0, 0, 0, 0.5);
+  --ar-card: rgba(0, 0, 0, 0.03);
+  --ar-card-hover: rgba(0, 0, 0, 0.05);
+}
+
+[data-nopic-theme="dark"] .nopic-autorecord-box {
+  --ar-bg: rgba(26, 26, 34, 0.96);
+  --ar-border: rgba(255, 255, 255, 0.08);
+  --ar-text: #ffffff;
+  --ar-sub: rgba(255, 255, 255, 0.45);
+  --ar-card: rgba(255, 255, 255, 0.04);
+  --ar-card-hover: rgba(255, 255, 255, 0.08);
+}
+/* 修复浅色模式下 strong 标签文字颜色 */
+.nopic-ar-desc strong {
+  color: #60a5fa;
+}
+
+.nopic-ar-option-sub strong {
+  color: var(--ar-text, #ffffff);
+}
+
+/* 浅色主题下 strong 颜色更深 */
+[data-nopic-theme="light"] .nopic-ar-option-sub strong {
+  color: rgba(0, 0, 0, 0.75);
+}
+
+[data-nopic-theme="dark"] .nopic-ar-option-sub strong {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 选项卡片 - 基础样式 */
+.nopic-ar-option {
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  background: var(--ar-card, rgba(255, 255, 255, 0.04));
+  border: 2px solid var(--ar-card-border, transparent);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nopic-ar-option:hover {
+  background: var(--ar-card-hover, rgba(255, 255, 255, 0.08));
+}
+
+.nopic-ar-option.active {
+  border-color: #60a5fa;
+  background: var(--ar-card-active, rgba(96, 165, 250, 0.12));
+}
+
+/* ===== 浅色主题 - 选项卡片更显眼 ===== */
+[data-nopic-theme="light"] .nopic-autorecord-box {
+  --ar-bg: rgba(245, 245, 250, 0.96);
+  --ar-border: rgba(0, 0, 0, 0.08);
+  --ar-text: #1a1a2e;
+  --ar-sub: rgba(0, 0, 0, 0.5);
+  --ar-card: rgba(0, 0, 0, 0.05);
+  --ar-card-hover: rgba(0, 0, 0, 0.08);
+  --ar-card-active: rgba(96, 165, 250, 0.15);
+  --ar-card-border: rgba(0, 0, 0, 0.06);
+}
+
+/* ===== 深色主题 ===== */
+[data-nopic-theme="dark"] .nopic-autorecord-box {
+  --ar-bg: rgba(26, 26, 34, 0.96);
+  --ar-border: rgba(255, 255, 255, 0.08);
+  --ar-text: #ffffff;
+  --ar-sub: rgba(255, 255, 255, 0.45);
+  --ar-card: rgba(255, 255, 255, 0.04);
+  --ar-card-hover: rgba(255, 255, 255, 0.08);
+  --ar-card-active: rgba(96, 165, 250, 0.12);
+  --ar-card-border: transparent;
+}
