@@ -7887,9 +7887,9 @@ window.addEventListener("load", function () {
       }
 
       // 隐藏终止执行按钮
-      if (stopBtn) {
-        stopBtn.style.display = "none";
-      }
+      // if (stopBtn) {
+      //   stopBtn.style.display = "none";
+      // }
 
       // 延迟隐藏整个面板
       if (panel) {
