@@ -1456,7 +1456,7 @@ window.addEventListener("load", function () {
         <button class="nopic-pm-btn ${monitor.active ? "danger" : "success"}" data-pm-toggle="${monitor.id}">${monitor.active ? "停止" : "启动"}</button>
         <button class="nopic-pm-btn danger" data-pm-delete="${monitor.id}">删除</button>
       </div>
-  ${monitor.active && monitor._configChanged ? '<div style="font-size:10px;color:#fbbf24;margin-top:4px;text-align:center;">⚠️ 修改已保存，需停止再启动才可生效</div>' : ""}
+  ${monitor.active && monitor._configChanged ? '<div style="font-size:10px;color:#fbbf24;margin-top:4px;text-align:center;">注意：修改已保存，需停止再启动才可生效</div>' : ""}
     `;
       container.appendChild(item);
     });
@@ -1870,8 +1870,13 @@ window.addEventListener("load", function () {
     const afterDisplay =
       afterValue !== undefined && afterValue !== null ? afterValue : "无";
 
+    const BELL_ICON_BASE64 =
+      "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MGE1ZmEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTggOEE2IDYgMCAwIDAgNiA4YzAgNy0zIDktMyA5aDE4czAtMi0zLTl6Ii8+PHBhdGggZD0iTTEzLjczIDIxYTIgMiAwIDAgMS0zLjQ2IDAiLz48L3N2Zz4=";
+
     toast.innerHTML = `
-    <div style="width:36px;height:36px;border-radius:50%;background:${isLight ? "rgba(59,130,246,0.15)" : "rgba(96,165,250,0.2)"};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔔</div>
+   <div style="width:36px;height:36px;border-radius:50%;background:${isLight ? "rgba(59,130,246,0.15)" : "rgba(96,165,250,0.2)"};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+  <img src="${BELL_ICON_BASE64}" style="width:20px;height:20px;filter:${isLight ? "none" : "brightness(0) invert(1)"};" />
+</div>
     <div style="flex:1;min-width:0;">
       <div style="font-size:14px;font-weight:600;color:${isLight ? "#2563eb" : "#60a5fa"};margin-bottom:4px;">${escapeHtml(monitor.name)}</div>
       <div style="color:${isLight ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.7)"};font-size:12px;word-break:break-all;">
@@ -1991,12 +1996,12 @@ window.addEventListener("load", function () {
     animation: nopic-fadeIn 0.3s ease;
   `;
     tip.innerHTML = `
-    <div style="font-size:20px;margin-bottom:8px;">🔔</div>
+    <div style="font-size:20px;margin-bottom:8px;color:#f87171;">注意！</div>
     <div style="font-weight:600;margin-bottom:4px;color:#f87171;">桌面通知被拒绝</div>
     <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8;text-align:left;padding:0 4px;">
-      <div>📌 <strong>Chrome/Edge：</strong>地址栏左侧锁图标 → 网站设置 → 通知 → 改为"允许"</div>
-      <div>📌 <strong>Firefox：</strong>地址栏左侧锁图标 → 权限 → 通知 → 改为"允许"</div>
-      <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.4);">💡 修改后刷新页面即可生效</div>
+      <div>• <strong>Chrome/Edge：</strong>地址栏左侧锁图标 → 网站设置 → 通知 → 改为"允许"</div>
+      <div>• <strong>Firefox：</strong>地址栏左侧锁图标 → 权限 → 通知 → 改为"允许"</div>
+      <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.4);">提示：修改后刷新页面即可生效</div>
     </div>
     <div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,0.3);cursor:pointer;" id="nopic-tip-close">点击关闭</div>
   `;
@@ -2018,7 +2023,7 @@ window.addEventListener("load", function () {
     const afterDisplay =
       afterValue !== undefined && afterValue !== null ? afterValue : "无";
 
-    const notification = new Notification("🔔 页面监控触发", {
+    const notification = new Notification("页面监控触发", {
       body: `${monitor.name}\n变化前: ${String(beforeDisplay).substring(0, 50)}\n变化后: ${String(afterDisplay).substring(0, 50)}`,
       icon: "data:image/png;base64,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",
     });
@@ -8219,7 +8224,7 @@ window.addEventListener("load", function () {
                 // 延迟弹出安全警告
                 setTimeout(function () {
                   showConfirmModalWithAck(
-                    "⚠️ 安全警告",
+                    "安全警告",
                     '您已使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在隐私锁设置中重置密码，以保护页面安全。',
                   );
                 }, 400);
@@ -9631,7 +9636,7 @@ window.addEventListener("load", function () {
     var banner = document.createElement("div");
     banner.id = "nopic-security-banner";
     banner.innerHTML = `
-    <span>⚠️ 检测到您曾使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在<a href="#" id="nopic-security-link" style="color:#60a5fa;text-decoration:underline;">隐私锁设置</a>中重置密码。</span>
+    <span>检测到您曾使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在<a href="#" id="nopic-security-link" style="color:#60a5fa;text-decoration:underline;">隐私锁设置</a>中重置密码。</span>
     <span id="nopic-security-countdown" style="font-weight:bold;color:#fbbf24;margin-left:8px;"></span>
     <span id="nopic-security-close" style="cursor:pointer;margin-left:12px;color:rgba(255,255,255,0.5);">✕</span>
   `;
@@ -14487,8 +14492,8 @@ window.addEventListener("load", function () {
     dcState.pickHighlight._currentEl = el;
 
     let txt = (el.innerText || el.textContent || "").trim().substring(0, 60);
-    if (!txt && el.tagName === "IMG") txt = "🖼 图片";
-    else if (!txt && el.tagName === "A") txt = "🔗 链接";
+    if (!txt && el.tagName === "IMG") txt = "图片";
+    else if (!txt && el.tagName === "A") txt = "链接";
     else if (!txt) txt = "[" + el.tagName.toLowerCase() + "]";
     dcState.pickPreview.textContent = txt;
     dcState.pickPreview.style.display = "block";
@@ -14999,7 +15004,7 @@ window.addEventListener("load", function () {
                   ? parsed.link.substring(0, 48) + "…"
                   : parsed.link;
               rowHtml +=
-                '<div style="font-size:10px;color:rgba(96,165,250,0.7);line-height:1.3;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔗 ' +
+                '<div style="font-size:10px;color:rgba(96,165,250,0.7);line-height:1.3;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">[链接]' +
                 dcEscapeHtml(displayLink) +
                 "</div>";
             }
@@ -17364,7 +17369,7 @@ window.addEventListener("load", function () {
     if (pendingReset === "true") {
       setTimeout(function () {
         showConfirmModalWithAck(
-          "⚠️ 安全警告",
+          "安全警告",
           '检测到您曾使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在隐私锁设置中重置密码，以保护页面安全。',
         );
       }, 500);
@@ -20356,7 +20361,7 @@ window.addEventListener("load", function () {
 
             if (Date.now() - startTime > waitTimeout) {
               updateAutoClickerStatus(
-                "第 " + currentLoop + " 轮 - 等待超时 ⏰",
+                "第 " + currentLoop + " 轮 - 等待超时",
                 "error",
               );
               setTimeout(function () {
@@ -21550,7 +21555,7 @@ window.addEventListener("load", function () {
                   currentLoop +
                   " 轮 - " +
                   shortcutDesc +
-                  (executed ? " ✅" : " ⚠️"),
+                  (executed ? " [成功]" : " [警告]"),
                 executed ? "success" : "warning",
               );
             }
@@ -21937,7 +21942,7 @@ window.addEventListener("load", function () {
         const panel = document.getElementById("nopic-autoclicker-status-panel");
         const textEl = document.getElementById("nopic-ac-status-text");
         if (textEl) {
-          textEl.textContent = "⚠️ 没有可执行的步骤";
+          textEl.textContent = "提示：没有可执行的步骤";
           textEl.style.color = "#fbbf24";
           panel.classList.add("active");
           setTimeout(() => {
@@ -22544,7 +22549,7 @@ window.addEventListener("load", function () {
           // 延迟弹出安全警告
           setTimeout(function () {
             showConfirmModalWithAck(
-              "⚠️ 安全警告",
+              "安全警告",
               '您已使用"忘记密码跳过解锁"功能，当前密码尚未重置。请立即在隐私锁设置中重置密码，以保护页面安全。',
             );
           }, 400);
