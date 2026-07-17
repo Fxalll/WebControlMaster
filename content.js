@@ -5779,6 +5779,8 @@ window.addEventListener("load", function () {
       btn.style.opacity = showBtn ? "1" : "0";
       btn.style.pointerEvents = showBtn ? "auto" : "none";
       if (zoomBtn) {
+        // 修复：zoomBtn 的显示条件与 btn 一致（悬停时显示，且不在悬停显图模式下）
+        const showZoomBtn = !!effectiveHover && !hoverShowImgConfig;
         zoomBtn.style.opacity = showZoomBtn ? "1" : "0";
         zoomBtn.style.pointerEvents = showZoomBtn ? "auto" : "none";
       }
