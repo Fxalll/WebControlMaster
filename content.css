@@ -8386,3 +8386,117 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] .nopic-ar-click-mode-title {
   color: rgba(0, 0, 0, 0.5);
 }
+
+.nopic-ext-buttons-row.nopic-four-cols-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.nopic-ext-buttons-row.nopic-four-cols-row .nopic-col {
+  flex: 1;
+  min-width: 0;
+}
+/* 随心一问弹窗样式 */
+#nopic-randomqa-submenu .nopic-randomqa-mode-btn.active {
+  background: rgba(167, 139, 250, 0.15) !important;
+  border-color: rgba(167, 139, 250, 0.3) !important;
+  color: #a78bfa !important;
+}
+
+#nopic-randomqa-result {
+  animation: nopic-fadeIn 0.4s ease;
+}
+
+@keyframes nopic-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 扩展菜单四列布局 */
+.nopic-ext-buttons-row.nopic-four-cols-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.nopic-ext-buttons-row.nopic-four-cols-row .nopic-col {
+  flex: 1;
+  min-width: 0;
+}
+.nopic-col-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@keyframes nopic-fadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.nopic-qa-row {
+  transition:
+    opacity 0.5s ease,
+    filter 0.5s ease;
+}
+.nopic-qa-row.show {
+  opacity: 1;
+  filter: blur(0px);
+}
+.nopic-qa-hash-part {
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+/* ===== 随心一问 · 模式切换按钮增强 ===== */
+/* 让两个按钮默认左右均分，已经在 inline-style 中用 flex:1 实现了 */
+
+/* 激活状态的过渡（配合 js 切换 class） */
+.nopic-randomqa-mode-btn.active {
+  background: rgba(167, 139, 250, 0.1) !important;
+  border: 1.5px solid rgba(167, 139, 250, 0.3) !important;
+  color: #a78bfa !important;
+}
+
+.nopic-randomqa-mode-btn:not(.active) {
+  background: transparent !important;
+  border: 1.5px solid transparent !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* 悬浮效果（可选） */
+.nopic-randomqa-mode-btn:hover {
+  background: rgba(167, 139, 250, 0.06);
+  border-color: rgba(167, 139, 250, 0.15);
+}
+
+/* 图标只保留轮廓，简洁干净（已在 SVG 中设置 fill="none"） */
+/* ===== 随心一问 - 浅色模式按钮适配 ===== */
+[data-nopic-theme="light"] #nopic-randomqa-submit-btn {
+  background: rgba(139, 92, 246, 0.15) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] #nopic-randomqa-submit-btn:hover {
+  background: rgba(139, 92, 246, 0.25) !important;
+}
+
+[data-nopic-theme="light"] #nopic-randomqa-continue-btn {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] #nopic-randomqa-continue-btn:hover {
+  background: rgba(0, 0, 0, 0.1) !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+}

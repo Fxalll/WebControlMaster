@@ -7079,6 +7079,9 @@ window.addEventListener("load", function () {
     <div class="nopic-menu-separator" id="nopic-ext-separator"></div>
     <div class="nopic-menu-item nopic-submenu-trigger" data-submenu="disguise" style="justify-content:space-between;"><span>扩展</span></div>
     <div class="nopic-menu-item nopic-submenu-trigger" data-submenu="settings" style="justify-content:space-between;"><span>设置</span></div>
+    <div class="nopic-menu-item" data-submenu="randomqa" id="nopic-randomqa-menu-trigger" style="justify-content:space-between;">
+  <span>随心一问</span>
+</div>
     <div class="nopic-menu-item" data-action="about">关于</div>
     <div class="nopic-menu-item nopic-hide-item" data-action="hide" style="margin-top:4px;">隐藏面板 (Alt+H)</div>
     <div class="nopic-menu-item nopic-hide-item" data-action="permaHide" style="margin-top:2px;color:#f87171;">永久隐藏此站</div>
@@ -7244,6 +7247,11 @@ window.addEventListener("load", function () {
       <span>数据采集</span>
       <div class="nopic-switch" id="nopic-datacollect-toggle"></div>
     </div>
+    <div class="nopic-menu-separator">随心一问</div>
+<div class="nopic-menu-item" style="justify-content:space-between;">
+  <span>随心一问</span>
+  <div class="nopic-switch" id="nopic-randomqa-toggle"></div>
+</div>
   `;
 
   // ===== 标签伪装设置弹窗 =====
@@ -8068,6 +8076,77 @@ window.addEventListener("load", function () {
   </div>
 `;
   document.documentElement.appendChild(quickTextSubmenu);
+
+  // ===== 随心一问弹窗 =====
+  const randomQASubmenu = document.createElement("div");
+  randomQASubmenu.id = "nopic-randomqa-submenu";
+  randomQASubmenu.className = "nopic-modal-popup";
+  randomQASubmenu.style.minWidth = "480px";
+  randomQASubmenu.style.maxWidth = "560px";
+  randomQASubmenu.style.display = "none";
+  // ★★★ 添加独立的模糊+透明度动画样式 ★★★
+  randomQASubmenu.style.transition =
+    "opacity 0.35s ease, filter 0.35s ease, transform 0.35s ease";
+  randomQASubmenu.style.opacity = "0";
+  randomQASubmenu.style.filter = "blur(8px)";
+  randomQASubmenu.style.transform = "scale(0.95)";
+
+  randomQASubmenu.innerHTML = `
+  <div class="nopic-modal-header">
+    <span class="nopic-modal-title">随心一问</span>
+    <div class="nopic-modal-close" id="nopic-randomqa-close">×</div>
+  </div>
+  <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:0px;text-align:center;">
+    输入你想问的问题，答案将由提问文字与其他因素共同计算生成
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:0px 0 14px 0;">
+    <div style="display:flex;gap:8px;width:100%;">
+      <input type="text" id="nopic-randomqa-input" placeholder="请输入你想问的问题..." 
+        style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
+        border-radius:8px;color:#fff;font-size:14px;padding:10px 14px;outline:none;
+        transition:border-color 0.3s;">
+      <button id="nopic-randomqa-submit-btn" 
+        style="padding:10px 20px;background:rgba(167,139,250,0.25);
+        border:1px solid rgba(167,139,250,0.4);border-radius:8px;color:#a78bfa;
+        font-size:14px;cursor:pointer;transition:all 0.2s;white-space:nowrap;">
+        提问
+      </button>
+    </div>
+    <div id="nopic-randomqa-mode-selector" style="display:flex !important;flex-direction:row;gap:12px;width:100%;">
+      <div class="nopic-randomqa-mode-btn active" data-mode="book" 
+        style="flex:1;padding:10px 0;text-align:center;border-radius:10px;font-size:13px;font-weight:500;
+        cursor:pointer;background:rgba(167,139,250,0.10);border:1.5px solid rgba(167,139,250,0.30);
+        color:#a78bfa;transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;">
+        <span>答案之书</span>
+      </div>
+      <div class="nopic-randomqa-mode-btn" data-mode="tarot" 
+        style="flex:1;padding:10px 0;text-align:center;border-radius:10px;font-size:13px;font-weight:500;
+        cursor:pointer;background:transparent;border:1.5px solid transparent;
+        color:rgba(255,255,255,0.45);transition:all 0.2s ease;display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;">
+        <span>塔罗牌</span>
+      </div>
+    </div>
+    <div id="nopic-randomqa-result" style="width:100%;min-height:140px;display:none;flex-direction:column;align-items:center;gap:4px;padding:8px 0 12px 0;">
+      <div id="nopic-randomqa-lines" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;max-height:600px;overflow:hidden;transition:max-height 0.5s ease, opacity 0.4s ease;"></div>
+      <div id="nopic-randomqa-answer-display" style="display:none;width:100%;font-size:18px;color:rgba(255,255,255,0.95);text-align:center;line-height:1.8;padding:12px 8px;background:rgba(167,139,250,0.08);border-radius:12px;border:1px solid rgba(167,139,250,0.15);"></div>
+      <div id="nopic-randomqa-tarot-cards" style="display:none;width:100%;justify-content:center;gap:16px;flex-wrap:wrap;"></div>
+      <div id="nopic-randomqa-tarot-meanings" style="display:none;width:100%;font-size:13px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.8;padding:0 8px;"></div>
+      <div id="nopic-randomqa-hash-display" style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;display:none;word-break:break-all;padding:0 8px;margin-top:2px;"></div>
+      <button id="nopic-randomqa-continue-btn" 
+        style="padding:6px 20px;background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.5);
+        font-size:12px;cursor:pointer;transition:all 0.2s;display:none;margin-top:2px;">
+        继续提问
+      </button>
+    </div>
+    <div id="nopic-randomqa-error" style="font-size:13px;color:#f87171;display:none;text-align:center;"></div>
+  </div>
+  <div style="font-size:10px;color:rgba(255,255,255,0.2);text-align:center;padding-top:6px;border-top:1px solid rgba(255,255,255,0.04);">
+    仅供娱乐
+  </div>
+`;
+  document.documentElement.appendChild(randomQASubmenu);
+  makeDraggable(randomQASubmenu);
 
   // 这8个依然挂载在 menu 下（保持点击时的相对定位基准）
   menu.appendChild(settingsSubmenu);
@@ -8974,6 +9053,24 @@ window.addEventListener("load", function () {
       dcMenuEntry.style.display = dcEnabled ? "flex" : "none";
     }
 
+    // ===== 随心一问UI更新 (全局同步) =====
+    const qaToggleUI = document.getElementById("nopic-randomqa-toggle");
+    const qaMenuEntry = document.getElementById("nopic-randomqa-menu-entry");
+    const qaMenuTrigger = document.getElementById(
+      "nopic-randomqa-menu-trigger",
+    );
+    const qaEnabled = GM_getValue("nopic_randomqa_global", false);
+    if (qaToggleUI) {
+      if (qaEnabled) qaToggleUI.classList.add("on");
+      else qaToggleUI.classList.remove("on");
+    }
+    if (qaMenuEntry) {
+      qaMenuEntry.style.display = qaEnabled ? "flex" : "none";
+    }
+    if (qaMenuTrigger) {
+      qaMenuTrigger.style.display = qaEnabled ? "flex" : "none";
+    }
+
     // ===== 页面可编辑UI更新 =====
     const pageEditToggle = document.getElementById("nopic-pageedit-toggle");
     const pageEditMenuEntry = document.getElementById(
@@ -9426,7 +9523,8 @@ window.addEventListener("load", function () {
       
       <div class="about-method method-1">
         <div class="method-label">方式一：</div>
-        <span class="btn-edge disabled">Edge 商店安装</span>
+        <a class="btn-edge" href="
+https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagllnh" target="_blank">Edge 商店安装</a>
         <span class="badge-pending">已安装</span>
       </div>
       
@@ -13091,7 +13189,6 @@ window.addEventListener("load", function () {
     isComposing = false;
   });
 
-  // ===== 通用弹窗显示和拖动功能 =====
   // ===== 通用弹窗显示和拖动功能 =====
   function showPopupAtTrigger(popup, trigger) {
     popup.style.display = "flex";
@@ -23830,4 +23927,1923 @@ window.addEventListener("load", function () {
 
     console.log("[nopic] 主体功能已就绪");
   });
+
+  // ===== 随心一问功能核心逻辑 =====
+  let randomQASubmenuOpen = false;
+
+  // ---- 哈希函数 (DJB2) ----
+  function nopicHashDJB2(str) {
+    var hash = 5381;
+    for (var i = 0; i < str.length; i++) {
+      hash = (hash << 5) + hash + str.charCodeAt(i);
+      hash = hash & hash; // 保持32位有符号整数
+    }
+    return Math.abs(hash);
+  }
+
+  // ---- 获取当前2小时时段编号 (0-11) ----
+  function getTimeSlot() {
+    const hour = new Date().getHours();
+    return Math.floor(hour / 2);
+  }
+
+  // ---- 生成拼接种子串 ----
+  function buildSeedString(question) {
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = now.getMonth() + 1;
+    var day = now.getDate();
+    var hour = now.getHours();
+    var minute = now.getMinutes();
+
+    // 1. 公历
+    var dateStr =
+      year +
+      "年" +
+      String(month).padStart(2, "0") +
+      "月" +
+      String(day).padStart(2, "0") +
+      "日";
+
+    // 2. 农历（模拟）
+    var lunarMonth = ((month + 5) % 12) + 1;
+    var lunarDay = ((day + 3) % 30) + 1;
+    var lunarStr = "农历" + lunarMonth + "月" + lunarDay + "日";
+
+    // 3. 干支
+    var ganList = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+    var zhiList = [
+      "子",
+      "丑",
+      "寅",
+      "卯",
+      "辰",
+      "巳",
+      "午",
+      "未",
+      "申",
+      "酉",
+      "戌",
+      "亥",
+    ];
+    var ganIdx = (year + 7) % 10;
+    var zhiIdx = (year + 9) % 12;
+    var ganzhi = ganList[ganIdx] + zhiList[zhiIdx] + "年";
+
+    // 4. 时辰
+    var shichenList = [
+      "子时(23-1)",
+      "丑时(1-3)",
+      "寅时(3-5)",
+      "卯时(5-7)",
+      "辰时(7-9)",
+      "巳时(9-11)",
+      "午时(11-13)",
+      "未时(13-15)",
+      "申时(15-17)",
+      "酉时(17-19)",
+      "戌时(19-21)",
+      "亥时(21-23)",
+    ];
+    var hourIdx = hour === 23 ? 0 : Math.floor((hour + 1) / 2);
+    var shichen = shichenList[hourIdx] || "未知";
+
+    // 5. 星期
+    var weekList = ["日", "一", "二", "三", "四", "五", "六"];
+    var weekStr = "星期" + weekList[now.getDay()];
+
+    // 6. 季节
+    var seasonMap = {
+      0: "冬季",
+      1: "冬季",
+      2: "春季",
+      3: "春季",
+      4: "春季",
+      5: "夏季",
+      6: "夏季",
+      7: "夏季",
+      8: "秋季",
+      9: "秋季",
+      10: "秋季",
+      11: "冬季",
+    };
+    var season = seasonMap[month - 1] || "未知";
+
+    // 7. 节气
+    var jieqiMap = {
+      1: "大寒/立春",
+      2: "雨水/惊蛰",
+      3: "春分/清明",
+      4: "谷雨/立夏",
+      5: "小满/芒种",
+      6: "夏至/小暑",
+      7: "大暑/立秋",
+      8: "处暑/白露",
+      9: "秋分/寒露",
+      10: "霜降/立冬",
+      11: "小雪/大雪",
+      12: "冬至/小寒",
+    };
+    var jieqi = jieqiMap[month] || "未知";
+
+    // 8. 月相
+    var moonPhaseList = [
+      "新月",
+      "蛾眉月",
+      "上弦月",
+      "盈凸月",
+      "满月",
+      "亏凸月",
+      "下弦月",
+      "残月",
+    ];
+    var moonIdx = Math.floor((day / 30) * 8) % 8;
+    var moonPhase = moonPhaseList[moonIdx];
+
+    // 9. 星座
+    var zodiacList = [
+      "摩羯座",
+      "水瓶座",
+      "双鱼座",
+      "白羊座",
+      "金牛座",
+      "双子座",
+      "巨蟹座",
+      "狮子座",
+      "处女座",
+      "天秤座",
+      "天蝎座",
+      "射手座",
+    ];
+    var zodiacIdx = (month - 1 + (day > 20 ? 1 : 0)) % 12;
+    var zodiac = zodiacList[zodiacIdx] || "未知";
+
+    // 10. 提问
+    var questionStr = question;
+
+    // ---- 返回所有因素数组 ----
+    return {
+      factors: [
+        { label: "提问", value: questionStr },
+        { label: "公历", value: dateStr },
+        { label: "时辰", value: shichen },
+        { label: "星期", value: weekStr },
+        { label: "季节", value: season },
+        { label: "月相", value: moonPhase },
+        { label: "星座", value: zodiac },
+      ],
+      seed:
+        dateStr + shichen + weekStr + season + moonPhase + zodiac + questionStr,
+    };
+  }
+
+  // ---- 答案之书：对500取模 ----
+  function getBookIndex(seed) {
+    return nopicHashDJB2(seed) % 500;
+  }
+
+  // ---- 塔罗牌：生成3张不重复的牌 (0-21) ----
+  function getTarotCards(seed) {
+    var baseHash = nopicHashDJB2(String(seed));
+
+    // 第一张
+    var card1 = baseHash % 22;
+    // 第二张
+    var card2 = (baseHash * 13 + 7) % 22;
+    var attempts = 0;
+    while ((card2 === card1 || card2 < 0) && attempts < 50) {
+      attempts++;
+      card2 = (baseHash * 17 + attempts * 3) % 22;
+    }
+    // 第三张
+    var card3 = (baseHash * 29 + 11) % 22;
+    attempts = 0;
+    while ((card3 === card1 || card3 === card2 || card3 < 0) && attempts < 50) {
+      attempts++;
+      card3 = (baseHash * 31 + attempts * 5) % 22;
+    }
+
+    // 正逆位
+    var isReversed1 = baseHash % 4 === 3;
+    var isReversed2 = (baseHash >> 1) % 4 === 3;
+    var isReversed3 = (baseHash >> 2) % 4 === 3;
+
+    // 塔罗牌名称列表
+    var tarotNames = [
+      "愚者",
+      "魔术师",
+      "女祭司",
+      "女皇",
+      "皇帝",
+      "教皇",
+      "恋人",
+      "战车",
+      "力量",
+      "隐者",
+      "命运之轮",
+      "正义",
+      "倒吊人",
+      "死神",
+      "节制",
+      "恶魔",
+      "高塔",
+      "星星",
+      "月亮",
+      "太阳",
+      "审判",
+      "世界",
+    ];
+
+    // 塔罗牌释义
+    // 塔罗牌释义（正位 + 逆位）
+    var tarotMeanings = {
+      愚者: {
+        upright: "新的开始，冒险，天真，自由，活在当下",
+        reversed: "鲁莽，冒险过度，逃避现实，不负责任",
+      },
+      魔术师: {
+        upright: "创造力，自信，技巧，掌握，行动",
+        reversed: "欺骗，操控，能力被滥用，缺乏方向",
+      },
+      女祭司: {
+        upright: "直觉，智慧，沉思，内在声音，潜意识",
+        reversed: "压抑直觉，忽视内在声音，表面化",
+      },
+      女皇: {
+        upright: "丰盛，母性，自然，滋养，创造力",
+        reversed: "依赖，缺乏成长，创造力受阻，过度付出",
+      },
+      皇帝: {
+        upright: "权威，结构，秩序，保护，领导力",
+        reversed: "专制，控制欲强，缺乏纪律，滥用权力",
+      },
+      教皇: {
+        upright: "传统，信仰，教育，指引，精神智慧",
+        reversed: "教条，盲从，传统束缚，精神空虚",
+      },
+      恋人: {
+        upright: "爱情，选择，和谐，吸引力，价值观",
+        reversed: "失衡，沟通不畅，需要做出艰难选择",
+      },
+      战车: {
+        upright: "意志力，胜利，决心，控制，前进",
+        reversed: "失控，冲动，缺乏方向，陷入冲突",
+      },
+      力量: {
+        upright: "勇气，耐心，内在力量，克服，温柔",
+        reversed: "软弱，缺乏自信，被欲望控制，自暴自弃",
+      },
+      隐者: {
+        upright: "内省，智慧，孤独，寻找，指引",
+        reversed: "过度孤立，逃避现实，拒绝帮助",
+      },
+      命运之轮: {
+        upright: "变化，机遇，命运，转折，因果",
+        reversed: "抗拒变化，运气不好，错失良机",
+      },
+      正义: {
+        upright: "公正，真相，因果，平衡，责任",
+        reversed: "不公，推卸责任，法律纠纷，欺骗",
+      },
+      倒吊人: {
+        upright: "臣服，牺牲，换个视角，等待，放下",
+        reversed: "抗拒臣服，被迫牺牲，停滞不前",
+      },
+      死神: {
+        upright: "结束，转变，重生，放下旧事物",
+        reversed: "抗拒改变，拖延，无法放手，停滞",
+      },
+      节制: {
+        upright: "平衡，调和，耐心，合作，中庸",
+        reversed: "失衡，急躁，冲突，过度或不足",
+      },
+      恶魔: {
+        upright: "束缚，欲望，物质，执着，挣脱",
+        reversed: "挣脱束缚，觉醒，放下执念",
+      },
+      高塔: {
+        upright: "剧变，觉醒，颠覆，真相，崩塌",
+        reversed: "抗拒改变，逃避真相，延迟崩塌",
+      },
+      星星: {
+        upright: "希望，灵感，疗愈，平静，指引",
+        reversed: "失去希望，灵感枯竭，需要重新连接内心",
+      },
+      月亮: {
+        upright: "潜意识，梦境，直觉，恐惧，不确定",
+        reversed: "恐惧消散，看清真相，走出迷惑",
+      },
+      太阳: {
+        upright: "成功，喜悦，活力，成长，清晰",
+        reversed: "骄傲，盲目乐观，失去热情，拖延",
+      },
+      审判: {
+        upright: "觉醒，重生，回顾，召唤，宽恕",
+        reversed: "逃避召唤，自我怀疑，拒绝改变",
+      },
+      世界: {
+        upright: "完成，圆满，整合，成就，旅行",
+        reversed: "不完整，停滞，逃避结束，需要重新整合",
+      },
+    };
+
+    var positions = ["过去", "现在", "未来"];
+    var cards = [card1, card2, card3];
+    var reversed = [isReversed1, isReversed2, isReversed3];
+    var result = [];
+
+    for (var i = 0; i < 3; i++) {
+      var idx = cards[i];
+      var isRev = reversed[i];
+      result.push({
+        position: positions[i],
+        index: idx,
+        isReversed: isRev,
+        name: tarotNames[idx] || "未知牌",
+        fullMeaning: tarotMeanings[tarotNames[idx]]?.upright || "含义待解",
+        reversedMeaning: tarotMeanings[tarotNames[idx]]?.reversed || "含义待解",
+      });
+    }
+
+    return result;
+  }
+
+  // ---- 塔罗牌名字和释义 (22张大阿卡纳) ----
+  const TAROT_CARDS = [
+    { name: "愚者", meaning: "新的开始，冒险，天真，自由，活在当下" },
+    { name: "魔术师", meaning: "创造力，自信，技巧，掌握，行动" },
+    { name: "女祭司", meaning: "直觉，智慧，沉思，内在声音，潜意识" },
+    { name: "女皇", meaning: "丰盛，母性，自然，滋养，创造力" },
+    { name: "皇帝", meaning: "权威，结构，秩序，保护，领导力" },
+    { name: "教皇", meaning: "传统，信仰，教育，指引，精神智慧" },
+    { name: "恋人", meaning: "爱情，选择，和谐，吸引力，价值观" },
+    { name: "战车", meaning: "意志力，胜利，决心，控制，前进" },
+    { name: "力量", meaning: "勇气，耐心，内在力量，克服，温柔" },
+    { name: "隐者", meaning: "内省，智慧，孤独，寻找，指引" },
+    { name: "命运之轮", meaning: "变化，机遇，命运，转折，因果" },
+    { name: "正义", meaning: "公正，真相，因果，平衡，责任" },
+    { name: "倒吊人", meaning: "臣服，牺牲，换个视角，等待，放下" },
+    { name: "死神", meaning: "结束，转变，重生，放下旧事物" },
+    { name: "节制", meaning: "平衡，调和，耐心，合作，中庸" },
+    { name: "恶魔", meaning: "束缚，欲望，物质，执着，挣脱" },
+    { name: "高塔", meaning: "剧变，觉醒，颠覆，真相，崩塌" },
+    { name: "星星", meaning: "希望，灵感，疗愈，平静，指引" },
+    { name: "月亮", meaning: "潜意识，梦境，直觉，恐惧，不确定" },
+    { name: "太阳", meaning: "成功，喜悦，活力，成长，清晰" },
+    { name: "审判", meaning: "觉醒，重生，回顾，召唤，宽恕" },
+    { name: "世界", meaning: "完成，圆满，整合，成就，旅行" },
+  ];
+
+  // ---- 获取答案之书文本 (500条) ----
+  function getBookAnswer(index) {
+    const answers = [
+      // ===== 鼓励类 60% (300条) =====
+      "你比想象中更接近目标，再推一把。",
+      "此刻的坚持，正在为未来的你铺路。",
+      "大胆一点，你值得拥有更好的结果。",
+      "别怕失败，它只是成功的减速带。",
+      "你拥有扭转局势的全部筹码。",
+      "继续前行，风景就在下一个弯道。",
+      "相信你的直觉，它很少出错。",
+      "每一步都算数，别否定自己的进度。",
+      "勇气不是无畏，而是带着恐惧前进。",
+      "你等的那阵风，很快就要吹来了。",
+      "别低估自己，你比困难更强大。",
+      "先做再说，完美是行动的敌人。",
+      "过去的积累，正在此刻发酵。",
+      "跨出那一步，剩下的路会自然展开。",
+      "你的能量远未被完全释放。",
+      "今天种下的，明天会以惊喜回报。",
+      "别回头看，前方有更好的在等你。",
+      "你已经有能力解决眼前的问题。",
+      "坚持到别人放弃时，你就赢了。",
+      "这个选择值得你全情投入。",
+      "低谷是蓄力，不是终点。",
+      "你的独特，正是你最大的武器。",
+      "别怕慢，怕的是停下来。",
+      "信任这个过程中的颠簸。",
+      "你远比自己以为的更坚韧。",
+      "此刻的不安，是成长的信号。",
+      "放手去做，结果会给你交代。",
+      "你的努力正在悄然改变局面。",
+      "别被噪音干扰，听见自己的节奏。",
+      "你已经走在正确的方向上了。",
+      "困难是化了妆的礼物，拆开它。",
+      "你比昨天更接近那个版本。",
+      "别因为一时阴天就放弃整片天空。",
+      "你的潜能在等一个勇敢的开关。",
+      "先完成，再谈完美。",
+      "别人能做到的，你也能适配。",
+      "别让恐惧偷走你的可能性。",
+      "此刻的付出，不会石沉大海。",
+      "你拥有改变现状的全部力量。",
+      "向前一步，视野会完全不同。",
+      "别怀疑，你的时机正在成熟。",
+      "最难的阶段已经过去了。",
+      "你配得上自己争取的一切。",
+      "别用别人的尺子丈量自己。",
+      "坚持你的路线，别轻易偏移。",
+      "你的韧性比想象中更惊人。",
+      "这个坎，你一定能跨过去。",
+      "别让完美主义挡住完成的路。",
+      "你的努力正在悄悄兑现。",
+      "现在的你，已经足够应对挑战。",
+      "信任时间，它会给你答案。",
+      "别怕未知，未知里有惊喜。",
+      "你选择的这条路，值得走到底。",
+      "你的判断力比你以为的更准。",
+      "别被暂时的挫败定义。",
+      "每一步都是必经之路。",
+      "你的可能性比限制多得多。",
+      "别等完美时机，现在就是最好的。",
+      "你的韧性正在被锻造得更强。",
+      "这个决定，你会庆幸做了。",
+      "别让犹豫吞噬你的机会。",
+      "你已经积累了足够多的智慧。",
+      "向前走，别回头张望。",
+      "你的胆量配得上你的野心。",
+      "别怕孤独，那是成长的必经。",
+      "此刻的苦，是未来的甜的前奏。",
+      "你比困境更持久。",
+      "别否定自己的微光。",
+      "你的方向感比你想的更清晰。",
+      "先投入，再调整策略。",
+      "你的存在本身就是一个优势。",
+      "别因别人的节奏乱了自己的步伐。",
+      "你已经跨过了最难的那道槛。",
+      "你的坚持正在改写结局。",
+      "别怕试错，试错是捷径。",
+      "你的能量比你想象中更充沛。",
+      "这个选择会带你去该去的地方。",
+      "别被表象迷惑，看本质。",
+      "你的勇气正在被点醒。",
+      "别因为害怕就停在原地。",
+      "你的洞察力足够穿透迷雾。",
+      "今天的努力不会白费。",
+      "你比环境更强大。",
+      "别让消极情绪拖住你的腿。",
+      "你的潜力正在被唤醒。",
+      "别犹豫，行动会带来答案。",
+      "你的真诚是最好的策略。",
+      "别怕破局，破局才有新生。",
+      "你已经在路上了，别停。",
+      "别低估坚持的力量。",
+      "你的敏感是天赋，不是弱点。",
+      "这个挑战正是为你量身定制。",
+      "别因为一次跌倒就放弃奔跑。",
+      "你拥有重塑自己的自由。",
+      "别被标签限制住你的可能性。",
+      "你的热情是最强大的燃料。",
+      "别怕选择，选择即是自由。",
+      "你已经在用行动证明自己。",
+      "别被杂音扰乱内心秩序。",
+      "你的视野正在被拓宽。",
+      "别因为惯性而错过转弯。",
+      "你比你知道的更坚韧。",
+      "这个困难是来成就你的。",
+      "别怕变动，变动是转机。",
+      "你的节奏是对的，别怀疑。",
+      "别让过去绑架你的未来。",
+      "你值得被自己认真对待。",
+      "别怕重来，重来是另一种前进。",
+      "你的判断正在被验证。",
+      "别被情绪左右，你是主人。",
+      "你的力量来自内在的稳定。",
+      "这个阶段很快就会过去。",
+      "别因为别人的话就否定自己。",
+      "你离目标只差再坚持一下。",
+      "别怕黑暗，黑暗里有方向。",
+      "你的积累正在产生复利。",
+      "别被表面的失败欺骗。",
+      "你已经具备了成功的条件。",
+      "别怕慢，慢是一种精度。",
+      "你的韧性是最大的资本。",
+      "别因为舒适就停止探索。",
+      "你比你认为的更值得。",
+      "这个选择会带你走向高处。",
+      "别怕不确定，不确定里有空间。",
+      "你的行动力正在被激发。",
+      "别被旧模式限制住新可能。",
+      "你已经在进步了，保持住。",
+      "别怕真实，真实最有力量。",
+      "你的目标正在向你靠近。",
+      "别因为噪音就偏离航道。",
+      "你拥有翻篇的能力。",
+      "别怕承认自己的脆弱。",
+      "你的方向正在被点亮。",
+      "别被琐事耗光你的精力。",
+      "你比问题更灵活。",
+      "别怕开始，开始就是胜利。",
+      "你的智慧正在被需要。",
+      "别因为畏惧就放弃尝试。",
+      "你已经在创造自己的故事。",
+      "别怕变化，变化是生机。",
+      "你的坚持正在被看见。",
+      "别被外界评价捆绑。",
+      "你拥有破茧而出的力量。",
+      "别怕失败，失败是数据。",
+      "你的直觉值得信赖。",
+      "别因为短期困难否定长期价值。",
+      "你正在成为更好的自己。",
+      "别怕沉重，沉重是深度。",
+      "你的策略需要一点耐心。",
+      "别被惯性拖着走。",
+      "你比障碍更高。",
+      "别怕失控，失控里有创造。",
+      "你的潜力深不见底。",
+      "别因为怀疑就停下脚步。",
+      "你已经在正确的位置上了。",
+      "别怕燃烧，燃烧才有光。",
+      "你的坚韧正在被锻炼。",
+      "别被假想敌吓住。",
+      "你拥有解决问题的能力。",
+      "别怕未知，未知是邀请。",
+      "你的努力正在形成惯性。",
+      "别因为疲惫就放弃终点。",
+      "你比昨天更清醒。",
+      "别怕冒险，冒险是催化剂。",
+      "你的热情正在感染周围。",
+      "别被小事缠住大方向。",
+      "你拥有翻越障碍的体力。",
+      "别怕沉默，沉默是蓄能。",
+      "你的目标值得你全力以赴。",
+      "别因为落差就否定过程。",
+      "你正在接近核心答案。",
+      "别怕激烈，激烈是突破。",
+      "你的耐心正在被回报。",
+      "别被过去的成功困住。",
+      "你拥有重新定义的权力。",
+      "别怕短痛，短痛换长乐。",
+      "你的视野正在被打开。",
+      "别因为风浪就放弃航行。",
+      "你比困难更有想象力。",
+      "别怕独行，独行是修行。",
+      "你的内在正在变得更强。",
+      "别被表象绑架判断。",
+      "你拥有扭转乾坤的契机。",
+      "别怕舍弃，舍弃是获得。",
+      "你的选择正在被证实。",
+      "别因为压力就屈服。",
+      "你正在走向自己的高地。",
+      "别怕空白，空白是画布。",
+      "你的勇气正在被召唤。",
+      "别被旧观念框住新思路。",
+      "你比昨天的自己更强大。",
+      "别怕笨拙，笨拙是练习。",
+      "你的方向比路径更重要。",
+      "别因为噪音就失聪。",
+      "你拥有穿越周期的能力。",
+      "别怕拆解，拆解是重构。",
+      "你的热情正在被点燃。",
+      "别被短期波动干扰。",
+      "你比环境更有弹性。",
+      "别怕延迟，延迟是酝酿。",
+      "你的努力正在被计数。",
+      "别因为复杂就简化放弃。",
+      "你正在铺自己的路。",
+      "别怕低处，低处是根基。",
+      "你的判断正在被校准。",
+      "别被赞美冲昏头脑。",
+      "你拥有启动新局面的按钮。",
+      "别怕裂痕，裂痕是光照进来的地方。",
+      "你的韧性正在被证实。",
+      "别因为混乱就逃避。",
+      "你比混乱更有序。",
+      "别怕边缘，边缘是视角。",
+      "你的行动正在结出果实。",
+      "别被幻想拖入虚空。",
+      "你拥有定义自己的权利。",
+      "别怕清算，清算是净化。",
+      "你的潜力正在被开发。",
+      "别因为阻力就调头。",
+      "你正在跨越关键节点。",
+      "别怕窄门，窄门是捷径。",
+      "你的耐心正在被奖赏。",
+      "别被虚荣心带偏航向。",
+      "你比路径更灵活。",
+      "别怕卸载，卸载是轻装。",
+      "你的智慧正在被启封。",
+      "别因为质疑就动摇。",
+      "你正在成为自己期待的样子。",
+      "别怕颠覆，颠覆是进化。",
+      "你的能量正在被汇聚。",
+      "别被琐碎淹没焦点。",
+      "你拥有逆转的底牌。",
+      "别怕停顿，停顿是调整。",
+      "你的方向正在被验证。",
+      "别因为惯性就错过新机。",
+      "你比困境更聪明。",
+      "别怕解构，解构是理解。",
+      "你的勇气正在被淬炼。",
+      "别被光环迷惑本质。",
+      "你拥有再出发的燃料。",
+      "别怕下沉，下沉是深潜。",
+      "你的坚持正在被见证。",
+      "别因为轻信就放弃质疑。",
+      "你正在靠近真正的答案。",
+      "别怕颠覆，颠覆是新生。",
+      "你的节奏由你自己定。",
+
+      // ===== 不确定类 20% (100条) =====
+      "答案可能在你看不见的地方。",
+      "结果取决于你下一步的动作。",
+      "这取决于你愿意相信什么。",
+      "时机尚未完全成熟。",
+      "可能性还在流动中。",
+      "这取决于你如何定义成功。",
+      "答案藏在你的下一步选择里。",
+      "结局有多种版本在并行。",
+      "这取决于你愿意放弃什么。",
+      "风向正在转变，稍安勿躁。",
+      "答案取决于你问问题的方式。",
+      "这取决于你能否看见全局。",
+      "结果还在酝酿中。",
+      "这取决于你的行动速度。",
+      "答案在边界之外。",
+      "这取决于你承担风险的能力。",
+      "命运尚未做出最终决定。",
+      "这取决于你如何看待失败。",
+      "答案在你未走过的路上。",
+      "这取决于你愿意等多久。",
+      "结果取决于你的专注程度。",
+      "这取决于你能否放下执念。",
+      "答案还在拼合中。",
+      "这取决于你的下一步棋。",
+      "结局取决于你的勇气值。",
+      "这取决于你能否听见沉默。",
+      "答案在时间的褶皱里。",
+      "这取决于你如何回应挑战。",
+      "结果尚未被书写。",
+      "这取决于你选择相信谁。",
+      "答案取决于你的视角转换。",
+      "这取决于你能否承受变化。",
+      "结局还在反复中。",
+      "这取决于你的耐心极限。",
+      "答案在矛盾的缝隙里。",
+      "这取决于你能否接纳不完美。",
+      "结果取决于你的直觉强弱。",
+      "这取决于你愿意走多远。",
+      "答案在暗处闪烁。",
+      "这取决于你能否识别信号。",
+      "结局取决于你的弹性。",
+      "这取决于你能否跳出框架。",
+      "答案在可能性光谱上。",
+      "这取决于你选择强化什么。",
+      "结果取决于你的内在状态。",
+      "这取决于你能否看清自己。",
+      "答案在不确定的中心。",
+      "这取决于你行动的时机。",
+      "结局取决于你的清醒程度。",
+      "这取决于你能否放手。",
+      "答案在风暴眼里。",
+      "这取决于你能否直面真相。",
+      "结果取决于你的情绪管理。",
+      "这取决于你能否保持开放。",
+      "答案在系统的漏洞里。",
+      "这取决于你能否重新开始。",
+      "结局取决于你的牺牲意愿。",
+      "这取决于你能否整合碎片。",
+      "答案在认知的边界。",
+      "这取决于你能否接受无常。",
+      "结果取决于你的决断力。",
+      "这取决于你能否看见微光。",
+      "答案在未知的缝隙里。",
+      "这取决于你能否超越恐惧。",
+      "结局取决于你的坚持度。",
+      "这取决于你能否放下防御。",
+      "答案在可能性的边缘。",
+      "这取决于你如何调整方向。",
+      "结果取决于你的清醒度。",
+      "这取决于你能否信任过程。",
+      "答案在流动的河床上。",
+      "这取决于你能否驾驭混乱。",
+      "结局取决于你的应变力。",
+      "这取决于你能否破茧。",
+      "答案在迷雾的深处。",
+      "这取决于你能否接纳延迟。",
+      "结果取决于你的专注度。",
+      "这取决于你能否转换角度。",
+      "答案在反复的质疑里。",
+      "这取决于你能否保持弹性。",
+      "结局取决于你的清醒度。",
+      "这取决于你能否听见回声。",
+      "答案在暗流之下。",
+      "这取决于你能否看见整体。",
+      "结果取决于你的定力。",
+      "这取决于你能否忍受模糊。",
+      "答案在逻辑的断层里。",
+      "这取决于你能否原谅自己。",
+      "结局取决于你的觉醒度。",
+      "这取决于你能否重新想象。",
+      "答案在静默的间隙里。",
+      "这取决于你能否持续行动。",
+      "结果取决于你的感知力。",
+      "这取决于你能否识别机会。",
+      "答案在复杂的简单面。",
+      "这取决于你能否穿透表象。",
+      "结局取决于你的复原力。",
+
+      // ===== 警示类 10% (50条) =====
+      "小心你此刻的傲慢。",
+      "别让欲望蒙蔽你的判断。",
+      "捷径往往会绕远路。",
+      "你忽略的信息可能致命。",
+      "别把运气当作实力。",
+      "过度的自信是陷阱。",
+      "你现在最需要的是暂停。",
+      "别在愤怒时做决定。",
+      "你看似安全，实则脆弱。",
+      "别让贪婪模糊你的底线。",
+      "危险往往藏在熟悉里。",
+      "你的弱点正在被利用。",
+      "别用战术上的勤奋掩盖战略懒惰。",
+      "你正在忽视一个重要的警告。",
+      "别让骄傲挡住求救的手。",
+      "表面的平静下暗流涌动。",
+      "别用过去的成功预测未来。",
+      "你正在低估对手的韧性。",
+      "别在疲倦时做重大选择。",
+      "你的盲点比你想象的大。",
+      "别让习惯扼杀新可能。",
+      "你正在靠近一个危险边界。",
+      "别把别人的认可当真。",
+      "危机正在你视线之外成形。",
+      "别用情绪代替思考。",
+      "你的舒适区正在缩小。",
+      "别让期待变成枷锁。",
+      "你忽视的细节会反噬。",
+      "别在混乱中仓促出手。",
+      "你的依赖正在变脆弱。",
+      "别让过往绑架现在。",
+      "你正在透支未来的资源。",
+      "别把侥幸当作策略。",
+      "你的信任可能被辜负。",
+      "别在孤独时轻信他人。",
+      "你正站在薄冰之上。",
+      "别让效率吞噬深度。",
+      "你的优势正在变成负担。",
+      "别在压力下违背原则。",
+      "你低估了代价的规模。",
+      "别让短期利益遮蔽长期眼光。",
+      "你的固执是最大的风险。",
+      "别在得意时暴露底牌。",
+      "你正在忽视身体的信号。",
+      "别让忙碌掩盖空虚。",
+      "你的假设可能是错的。",
+      "别在焦虑时加速奔跑。",
+      "你正在靠近一个转折点。",
+      "别让比较偷走你的平静。",
+      "你的防守有漏洞。",
+
+      // ===== 反问类 10% (50条) =====
+      "你确定这是你真正想要的吗？",
+      "如果明天就结束，你还选这个吗？",
+      "你害怕的究竟是结果还是过程？",
+      "你是在逃避，还是在前进？",
+      "这件事五年后还重要吗？",
+      "你是在为自己，还是在为别人活？",
+      "如果没人看见，你还会这样做吗？",
+      "你是在坚持，还是在固执？",
+      "你问这个问题，真的想知道答案吗？",
+      "如果答案是相反的，你能接受吗？",
+      "你是在等待，还是在浪费？",
+      "这件事是你自己能控制的吗？",
+      "你怕的是失败，还是怕被评价？",
+      "你是在寻找，还是在逃避寻找？",
+      "这个选择让你更自由还是更束缚？",
+      "你是在爱，还是在依赖？",
+      "如果必须失去一个，你选哪个？",
+      "你是在前进，还是在重复？",
+      "你是在解决问题，还是在制造问题？",
+      "如果答案是你最怕的那个，你怎么办？",
+      "你是在倾听，还是在等待说话？",
+      "你是在成长，还是在变老？",
+      "这件事真的需要现在决定吗？",
+      "你是在保护自己，还是在囚禁自己？",
+      "如果没有任何回报，你还做吗？",
+      "你是在选择，还是在被选择？",
+      "你是在看见，还是在想象？",
+      "你是在接受，还是在放弃？",
+      "这个问题是你自己的，还是别人的？",
+      "你是在努力，还是在自我感动？",
+      "如果答案就在眼前，你看得到吗？",
+      "你是在改变，还是在掩饰？",
+      "这个决定你愿意承担后果吗？",
+      "你是在学习，还是在逃避实践？",
+      "你是在对话，还是在对抗？",
+      "如果重新来过，你还会这样选吗？",
+      "你是在看见真相，还是看见自己？",
+      "你是在建造，还是在摧毁？",
+      "这件事让你变强还是变弱？",
+      "你是在等待许可，还是等待勇气？",
+      "你是在理解，还是在评判？",
+      "如果答案是沉默，你听得懂吗？",
+      "你是在前行，还是在原地转圈？",
+      "这个选择对得起你的过去吗？",
+      "你是在接受建议，还是在寻找认同？",
+      "你是在处理事情，还是在处理情绪？",
+      "如果必须舍弃，你舍得下什么？",
+      "你是在面对，还是在回避？",
+      "这个答案你真的准备好了吗？",
+      "你问完这个问题，然后呢？",
+    ];
+
+    // 用哈希让答案分布均匀
+    const idx = index % answers.length;
+    return answers[idx];
+  }
+
+  // ---- 获取塔罗牌正/逆位显示名称 ----
+  function getTarotCardDisplay(cardData, position) {
+    const card = TAROT_CARDS[cardData.index];
+    const orientation = cardData.isReversed ? "逆位" : "正位";
+    return `${position} · ${card.name} (${orientation})`;
+  }
+
+  // ---- 获取塔罗牌释义 (含正逆位) ----
+  function getTarotMeaning(cardData) {
+    const card = TAROT_CARDS[cardData.index];
+    const base = card.meaning;
+    if (cardData.isReversed) {
+      return `${base} (逆位：受阻、延迟、内在挑战)`;
+    }
+    return base;
+  }
+
+  // ---- 主计算函数 ----
+  function calculateAnswer(question, mode) {
+    if (!question || question.trim().length < 4) {
+      return { error: "请输入至少4个字符的有效问题" };
+    }
+    if (question.length > 120) {
+      return { error: "问题不能超过120个字符" };
+    }
+
+    // 获取所有因素
+    var context = buildSeedString(question);
+    var factors = context.factors;
+    var seed = context.seed;
+
+    // ---- 核心：每个因素独立哈希，产生长数字 ----
+    var factorHashes = [];
+    var totalHash = 0;
+
+    factors.forEach(function (factor, idx) {
+      // 每个因素单独计算哈希（DJB2），产生一个长整数
+      var hash = nopicHashDJB2(factor.value);
+      factorHashes.push({
+        label: factor.label,
+        value: factor.value,
+        hash: hash,
+      });
+      // 累加所有哈希值（取模防止溢出，但保留大数特征）
+      totalHash = (totalHash + hash) & 0x7fffffff;
+    });
+
+    // ---- 最终答案序号 = 总哈希值取模 ----
+    var finalIndex = totalHash % 500;
+
+    // ---- 同时用完整种子算一个全局哈希（用于塔罗牌） ----
+    var globalHash = nopicHashDJB2(seed);
+
+    if (mode === "book") {
+      var answer = getBookAnswer(finalIndex);
+      return {
+        type: "book",
+        answer: answer,
+        hash: totalHash,
+        index: finalIndex,
+        factorHashes: factorHashes,
+        globalHash: globalHash,
+      };
+    } else {
+      // 塔罗牌使用全局哈希（更均匀分布）
+      var cards = getTarotCards(globalHash);
+      return {
+        type: "tarot",
+        cards: cards,
+        hash: globalHash,
+        factorHashes: factorHashes,
+      };
+    }
+  }
+
+  // ---- 显示答案之书结果 ----
+  function showBookResult(question, result) {
+    var answerDisplay = document.getElementById(
+      "nopic-randomqa-answer-display",
+    );
+    var cardsEl = document.getElementById("nopic-randomqa-tarot-cards");
+    var meaningsEl = document.getElementById("nopic-randomqa-tarot-meanings");
+
+    if (cardsEl) cardsEl.style.display = "none";
+    if (meaningsEl) meaningsEl.style.display = "none";
+
+    if (answerDisplay) {
+      answerDisplay.style.display = "block";
+      answerDisplay.textContent = result.answer;
+      // 样式由 showResultWithTransition 控制，这里只设置内容
+    }
+  }
+
+  // ---- 显示塔罗牌结果 ----
+  // ===== 替换 showTarotResult 函数（完整保留样式） =====
+  function showTarotResult(question, result) {
+    var cardsEl = document.getElementById("nopic-randomqa-tarot-cards");
+    var meaningsEl = document.getElementById("nopic-randomqa-tarot-meanings");
+    var answerDisplay = document.getElementById(
+      "nopic-randomqa-answer-display",
+    );
+
+    if (answerDisplay) answerDisplay.style.display = "none";
+
+    // ★★★ 显示塔罗牌容器 ★★★
+    if (cardsEl) {
+      cardsEl.innerHTML = "";
+      // ★★★ 只保留 display:flex，其他样式由 CSS 控制 ★★★
+      cardsEl.style.display = "flex";
+      cardsEl.style.opacity = "0";
+      cardsEl.style.filter = "blur(6px)";
+      cardsEl.style.transform = "scale(0.95)";
+
+      var cards = result.cards || [];
+      var cardEmojis = [
+        "🃏",
+        "🧙",
+        "🌙",
+        "👑",
+        "🏛️",
+        "📜",
+        "💕",
+        "🏎️",
+        "💪",
+        "🧘",
+        "🎡",
+        "⚖️",
+        "🙃",
+        "💀",
+        "⚖️",
+        "😈",
+        "🏰",
+        "⭐",
+        "🌕",
+        "☀️",
+        "📯",
+        "🌍",
+      ];
+
+      cards.forEach(function (card, idx) {
+        var cardDiv = document.createElement("div");
+        // ★★★ 完整的卡片样式（保留原有设计）★★★
+        cardDiv.style.cssText = `
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 4px;background:rgba(255,255,255,0.04);
+  border-radius:8px;border:1px solid rgba(255,255,255,0.06);
+  min-width:56px;flex:1;max-width:100px;
+  opacity:0;filter:blur(6px);transform:scale(0.92) translateY(10px);
+  transition:opacity 0.5s ease, filter 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+`;
+
+        var emoji = cardEmojis[card.index] || "🃏";
+        var positionText = card.position || "";
+        var nameText = card.name || "未知牌";
+        var orientationText = card.isReversed ? "逆位" : "正位";
+        var nameColor = card.isReversed ? "#fbbf24" : "#4ade80";
+        var orientationColor = card.isReversed
+          ? "rgba(251,191,36,0.4)"
+          : "rgba(74,222,128,0.4)";
+
+        cardDiv.innerHTML = `
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:500;letter-spacing:0.5px;">${positionText}</div>
+          <div style="font-size:32px;line-height:1.2;margin:2px 0;">${emoji}</div>
+          <div style="font-size:11px;font-weight:600;color:${nameColor};text-align:center;line-height:1.3;">${nameText}</div>
+          <div style="font-size:8px;color:${orientationColor};background:rgba(255,255,255,0.04);padding:1px 8px;border-radius:10px;margin-top:2px;">${orientationText}</div>
+        `;
+        cardsEl.appendChild(cardDiv);
+
+        // 卡片淡入动画（错开时间）
+        setTimeout(
+          function () {
+            cardDiv.style.opacity = "1";
+            cardDiv.style.filter = "blur(0px)";
+            cardDiv.style.transform = "scale(1) translateY(0)";
+          },
+          100 + idx * 200,
+        );
+      });
+
+      // 容器淡入
+      setTimeout(function () {
+        cardsEl.style.opacity = "1";
+        cardsEl.style.filter = "blur(0px)";
+        cardsEl.style.transform = "scale(1)";
+      }, 50);
+    }
+
+    // ★★★ 显示塔罗牌释义 ★★★
+    if (meaningsEl) {
+      meaningsEl.innerHTML = "";
+      meaningsEl.style.display = "block";
+      meaningsEl.style.opacity = "0";
+      meaningsEl.style.filter = "blur(4px)";
+
+      var cards = result.cards || [];
+      cards.forEach(function (card, idx) {
+        var p = document.createElement("p");
+        p.style.cssText = `
+  margin:1px 0;opacity:0;filter:blur(4px);
+  transition:opacity 0.4s ease, filter 0.4s ease;
+  font-size:12px;
+`;
+        var nameColor = card.isReversed ? "#fbbf24" : "#4ade80";
+        p.innerHTML = `
+          <strong style="color:${nameColor};">${card.position || ""}</strong> 
+          <span style="color:rgba(255,255,255,0.5);">·</span> 
+          <span style="color:rgba(255,255,255,0.8);">${card.name || "未知牌"}</span>
+          <span style="color:rgba(255,255,255,0.3);font-size:10px;margin-left:6px;">(${card.isReversed ? "逆位" : "正位"})</span>
+          <br>
+          <span style="font-size:11px;color:rgba(255,255,255,0.5);">${card.isReversed ? card.reversedMeaning : card.fullMeaning}</span>
+        `;
+        meaningsEl.appendChild(p);
+        setTimeout(
+          function () {
+            p.style.opacity = "1";
+            p.style.filter = "blur(0px)";
+          },
+          300 + idx * 250,
+        );
+      });
+
+      setTimeout(function () {
+        meaningsEl.style.opacity = "1";
+        meaningsEl.style.filter = "blur(0px)";
+      }, 50);
+    }
+  }
+
+  // ---- 处理提问 ----
+  function handleRandomQA() {
+    var input = document.getElementById("nopic-randomqa-input");
+    var errorEl = document.getElementById("nopic-randomqa-error");
+    var activeModeBtn = document.querySelector(
+      ".nopic-randomqa-mode-btn.active",
+    );
+    var mode = activeModeBtn ? activeModeBtn.dataset.mode : "book";
+    var question = input ? input.value.trim() : "";
+
+    if (!question) {
+      if (errorEl) {
+        errorEl.textContent = "请输入你想问的问题";
+        errorEl.style.display = "block";
+      }
+      return;
+    }
+    if (question.length < 4) {
+      if (errorEl) {
+        errorEl.textContent = "请输入至少4个字符的有效问题";
+        errorEl.style.display = "block";
+      }
+      return;
+    }
+    if (question.length > 120) {
+      if (errorEl) {
+        errorEl.textContent = "问题不能超过120个字符";
+        errorEl.style.display = "block";
+      }
+      return;
+    }
+    if (errorEl) errorEl.style.display = "none";
+
+    // 隐藏输入区域
+    var inputArea = document.getElementById("nopic-randomqa-input");
+    var submitBtn = document.getElementById("nopic-randomqa-submit-btn");
+    var modeSelector = document.getElementById("nopic-randomqa-mode-selector");
+    var resultEl = document.getElementById("nopic-randomqa-result");
+    var linesContainer = document.getElementById("nopic-randomqa-lines");
+
+    if (inputArea) inputArea.style.display = "none";
+    if (submitBtn) submitBtn.style.display = "none";
+    if (modeSelector) modeSelector.style.display = "none";
+
+    if (resultEl) {
+      resultEl.style.display = "flex";
+      resultEl.style.maxHeight = "0"; // 先设为0
+      resultEl.style.overflow = "hidden";
+      resultEl.style.transition =
+        "max-height 0.6s cubic-bezier(0.34, 1, 0.64, 1)";
+      resultEl.style.animation = "none";
+      void resultEl.offsetHeight; // 强制回流
+      // 等一帧后再展开
+      requestAnimationFrame(function () {
+        resultEl.style.maxHeight = "600px"; // 展开到足够高度
+      });
+      resultEl.style.minHeight = "auto";
+    }
+
+    // 计算答案
+    var result = calculateAnswer(question, mode);
+    if (result.error) {
+      if (errorEl) {
+        errorEl.textContent = result.error;
+        errorEl.style.display = "block";
+      }
+      return;
+    }
+
+    // 颜色列表（7个因素）
+    var colorList = [
+      "#60a5fa", // 公历
+      "#fbbf24", // 时辰
+      "#34d399", // 星期
+      "#f472b6", // 季节
+      "#60a5fa", // 月相
+      "#a78bfa", // 星座
+      "#a78bfa", // 提问
+    ];
+
+    var lineData = result.factorHashes.map(function (fh, idx) {
+      return {
+        label: fh.label,
+        value: fh.value,
+        hash: fh.hash,
+        color: colorList[idx % colorList.length] || "#a78bfa",
+      };
+    });
+
+    // ---- 创建行 ----
+    if (linesContainer) {
+      linesContainer.innerHTML = "";
+      var rowElements = [];
+
+      lineData.forEach(function (data, idx) {
+        var row = document.createElement("div");
+        row.className = "nopic-qa-row";
+        row.style.cssText = `
+        display:flex;align-items:center;justify-content:center;gap:8px;
+        padding:3px 10px;width:100%;max-width:520px;box-sizing:border-box;
+        opacity:0;filter:blur(6px);
+        transition:opacity 0.35s ease, filter 0.35s ease;
+        border-radius:4px;background:rgba(255,255,255,0.02);
+        min-height:28px;
+      `;
+
+        row.innerHTML = `
+        <span style="font-size:10px;color:rgba(255,255,255,0.2);min-width:32px;flex-shrink:0;font-weight:300;text-align:center;">${data.label}</span>
+        <span class="nopic-qa-text" style="font-size:13px;color:${data.color};font-weight:400;flex:1;text-align:center;word-break:break-word;transition:opacity 0.3s ease, filter 0.3s ease;">${data.value}</span>
+        <span class="nopic-qa-hash-part" style="font-size:11px;color:rgba(167,139,250,0.5);font-family:monospace;min-width:50px;text-align:center;display:none;letter-spacing:0.3px;transition:opacity 0.35s ease;flex-shrink:0;"></span>
+      `;
+        linesContainer.appendChild(row);
+        rowElements.push(row);
+
+        // 行出现
+        setTimeout(
+          function () {
+            row.style.opacity = "1";
+            row.style.filter = "blur(0px)";
+          },
+          50 + idx * 120,
+        );
+      });
+
+      // ---- 行出现后逐行转换 ----
+      rowElements.forEach(function (row, idx) {
+        var textSpan = row.querySelector(".nopic-qa-text");
+        var hashSpan = row.querySelector(".nopic-qa-hash-part");
+        var hashValue = lineData[idx] ? lineData[idx].hash : 0;
+
+        var startDelay = 120 + idx * 120 + 350;
+
+        setTimeout(function () {
+          if (textSpan) {
+            textSpan.style.transition = "opacity 0.3s ease, filter 0.3s ease";
+            textSpan.style.opacity = "0";
+            textSpan.style.filter = "blur(4px)";
+          }
+          var labelSpan = row.querySelector("span:first-child");
+          if (labelSpan) {
+            labelSpan.style.transition = "color 0.3s ease";
+            labelSpan.style.color = "rgba(167,139,250,0.2)";
+          }
+
+          setTimeout(function () {
+            if (hashSpan) {
+              hashSpan.style.display = "inline";
+              hashSpan.textContent = String(hashValue);
+              hashSpan.style.opacity = "0";
+              hashSpan.style.transition = "none";
+              void hashSpan.offsetHeight;
+              hashSpan.style.transition = "opacity 0.4s ease";
+              setTimeout(function () {
+                hashSpan.style.opacity = "1";
+              }, 20);
+            }
+            if (textSpan) {
+              setTimeout(function () {
+                textSpan.style.display = "none";
+              }, 200);
+            }
+          }, 250);
+        }, startDelay);
+      });
+      // ---- 所有行转换完成后：数字汇聚成结果 ----
+      var totalLines = rowElements.length;
+      var lastRowAppear = 50 + (totalLines - 1) * 120;
+      var lastRowConvertStart = lastRowAppear + 350;
+      var lastRowConvertEnd = lastRowConvertStart + 250 + 250;
+      var resultDelay = lastRowConvertEnd + 500;
+
+      setTimeout(function () {
+        // 第一步：所有数字行收缩汇聚
+        if (linesContainer) {
+          var rowEls = linesContainer.querySelectorAll(".nopic-qa-row");
+          rowEls.forEach(function (row, idx) {
+            var delay = idx * 30;
+            setTimeout(function () {
+              row.style.transition =
+                "transform 0.5s cubic-bezier(0.34, 1.0, 0.64, 1), opacity 0.4s ease, height 0.4s ease, padding 0.4s ease";
+              row.style.transform = "scale(0.85)";
+              row.style.opacity = "0.6";
+              row.style.height = "0px";
+              row.style.padding = "0px 10px";
+              row.style.overflow = "hidden";
+            }, delay);
+          });
+
+          // 汇聚动画完成后，行容器高度平滑收缩
+          setTimeout(
+            function () {
+              // 容器高度收缩动画
+              linesContainer.style.transition =
+                "max-height 0.5s ease, opacity 0.3s ease";
+              linesContainer.style.maxHeight = "0px";
+              linesContainer.style.opacity = "0";
+
+              // 同时结果显示
+              setTimeout(function () {
+                showResultWithTransition(question, result);
+                linesContainer.style.display = "none";
+
+                // ---- 绑定继续按钮事件 ----
+                var continueBtn = document.getElementById(
+                  "nopic-randomqa-continue-btn",
+                );
+                if (continueBtn) {
+                  // 确保按钮初始状态是隐藏的
+                  continueBtn.style.display = "none";
+                  continueBtn.style.opacity = "0";
+                }
+              }, 500);
+            },
+            500 + totalLines * 30,
+          );
+        }
+      }, resultDelay);
+    }
+  }
+
+  // ---- 重置到输入状态（继续提问） ----
+  // ===== 替换 resetRandomQA 函数（保留塔罗牌样式） =====
+  function resetRandomQA() {
+    var input = document.getElementById("nopic-randomqa-input");
+    var submitBtn = document.getElementById("nopic-randomqa-submit-btn");
+    var modeSelector = document.getElementById("nopic-randomqa-mode-selector");
+    var resultEl = document.getElementById("nopic-randomqa-result");
+    var linesContainer = document.getElementById("nopic-randomqa-lines");
+    var answerDisplay = document.getElementById(
+      "nopic-randomqa-answer-display",
+    );
+    var hashDisplay = document.getElementById("nopic-randomqa-hash-display");
+    var cardsEl = document.getElementById("nopic-randomqa-tarot-cards");
+    var meaningsEl = document.getElementById("nopic-randomqa-tarot-meanings");
+    var continueBtn = document.getElementById("nopic-randomqa-continue-btn");
+    var errorEl = document.getElementById("nopic-randomqa-error");
+
+    // 1. 重置行容器（完全清空并重置样式）
+    if (linesContainer) {
+      linesContainer.style.display = "flex";
+      linesContainer.style.opacity = "1";
+      linesContainer.style.maxHeight = "600px";
+      linesContainer.style.overflow = "hidden";
+      linesContainer.style.padding = "2px 0";
+      linesContainer.innerHTML = "";
+      // 清除所有行内联样式残留
+      var rows = linesContainer.querySelectorAll(".nopic-qa-row");
+      rows.forEach(function (row) {
+        row.style.cssText = "";
+      });
+    }
+
+    // 2. 重置答案显示
+    if (answerDisplay) {
+      answerDisplay.style.display = "none";
+      answerDisplay.textContent = "";
+      answerDisplay.style.opacity = "0";
+      answerDisplay.style.filter = "blur(8px)";
+      answerDisplay.style.transform = "scale(0.92)";
+      answerDisplay.style.marginTop = "0px";
+    }
+
+    // 3. 重置哈希显示
+    if (hashDisplay) {
+      hashDisplay.style.display = "none";
+      hashDisplay.textContent = "";
+      hashDisplay.style.opacity = "0";
+      hashDisplay.style.fontSize = "28px";
+      hashDisplay.style.transform = "scale(0.8)";
+    }
+
+    // 4. ★★★ 重置塔罗牌（保留样式，只清除内容和状态）★★★
+    if (cardsEl) {
+      cardsEl.innerHTML = "";
+      // ★★★ 关键：只清除显示状态相关的样式，保留布局样式 ★★★
+      cardsEl.style.display = "none";
+      cardsEl.style.opacity = "";
+      cardsEl.style.filter = "";
+      cardsEl.style.transform = "";
+    }
+    if (meaningsEl) {
+      meaningsEl.innerHTML = "";
+      meaningsEl.style.display = "none";
+      meaningsEl.style.opacity = "";
+      meaningsEl.style.filter = "";
+    }
+
+    // 5. 重置继续按钮
+    if (continueBtn) {
+      continueBtn.style.display = "none";
+      continueBtn.textContent = "继续提问";
+      continueBtn.style.opacity = "0";
+      continueBtn.style.transform = "scale(0.92)";
+    }
+
+    // 6. 重置错误
+    if (errorEl) {
+      errorEl.style.display = "none";
+      errorEl.textContent = "";
+    }
+
+    // 7. 重置结果容器
+    if (resultEl) {
+      resultEl.style.display = "none";
+      resultEl.style.opacity = "1";
+      resultEl.style.maxHeight = "";
+      resultEl.style.padding = "8px 0 12px 0";
+    }
+
+    // 8. 恢复输入区域
+    if (input) {
+      input.style.display = "";
+      input.value = "";
+      input.focus();
+    }
+    if (submitBtn) submitBtn.style.display = "";
+    if (modeSelector) modeSelector.style.display = "";
+  }
+
+  // ---- 显示/隐藏随心一问弹窗 ----
+  const randomQATrigger = document.getElementById(
+    "nopic-randomqa-menu-trigger",
+  );
+  const randomQAMenuEntry = document.getElementById(
+    "nopic-randomqa-menu-entry",
+  );
+
+  function showRandomQASubmenu() {
+    randomQASubmenuOpen = true;
+    var popup = randomQASubmenu;
+
+    // 先完全重置所有状态
+    resetRandomQA();
+
+    // 确保 linesContainer 可见并清空
+    var linesContainer = document.getElementById("nopic-randomqa-lines");
+    if (linesContainer) {
+      linesContainer.style.display = "flex";
+      linesContainer.style.opacity = "1";
+      linesContainer.style.maxHeight = "600px";
+      linesContainer.style.overflow = "hidden";
+      linesContainer.innerHTML = "";
+    }
+
+    popup.style.display = "flex";
+    popup.style.opacity = "0";
+    popup.style.filter = "blur(8px)";
+    popup.style.transform = "scale(0.95)";
+    popup.classList.remove("active");
+
+    void popup.offsetHeight;
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        popup.classList.add("active");
+        popup.style.opacity = "1";
+        popup.style.filter = "blur(0px)";
+        popup.style.transform = "scale(1)";
+
+        var rect = popup.getBoundingClientRect();
+        var left = Math.max(10, (window.innerWidth - rect.width) / 2);
+        var top = Math.max(10, (window.innerHeight - rect.height) / 2);
+        popup.style.left = left + "px";
+        popup.style.top = top + "px";
+      });
+    });
+
+    setTimeout(function () {
+      var input = document.getElementById("nopic-randomqa-input");
+      if (input) input.focus();
+    }, 400);
+  }
+
+  // ---- 结果过渡动画：从数字汇聚到答案 ----
+  function showResultWithTransition(question, result) {
+    var hashDisplay = document.getElementById("nopic-randomqa-hash-display");
+    var answerDisplay = document.getElementById(
+      "nopic-randomqa-answer-display",
+    );
+    var cardsEl = document.getElementById("nopic-randomqa-tarot-cards");
+    var meaningsEl = document.getElementById("nopic-randomqa-tarot-meanings");
+    var continueBtn = document.getElementById("nopic-randomqa-continue-btn");
+
+    // 显示总哈希（大号、居中、带装饰）
+    if (hashDisplay) {
+      hashDisplay.style.display = "flex"; // 改为 flex
+      hashDisplay.style.justifyContent = "center"; // 新增水平居中
+      hashDisplay.style.alignItems = "center"; // 新增垂直居中
+      hashDisplay.textContent = "✦ " + result.hash + " ✦";
+      hashDisplay.style.fontSize = "28px";
+      hashDisplay.style.fontWeight = "600";
+      hashDisplay.style.color = "rgba(167,139,250,0.7)";
+      hashDisplay.style.textAlign = "center";
+      hashDisplay.style.letterSpacing = "4px";
+      hashDisplay.style.opacity = "0";
+      hashDisplay.style.transform = "scale(0.8)";
+      hashDisplay.style.transition = "none";
+      void hashDisplay.offsetHeight;
+      hashDisplay.style.transition =
+        "opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)";
+      setTimeout(function () {
+        hashDisplay.style.opacity = "1";
+        hashDisplay.style.transform = "scale(1)";
+      }, 30);
+    }
+
+    // 稍后，哈希"裂变"出答案
+    setTimeout(function () {
+      // 哈希淡出
+      if (hashDisplay) {
+        hashDisplay.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+        hashDisplay.style.opacity = "0";
+        hashDisplay.style.transform = "scale(0.9)";
+      }
+
+      // 答案出现
+      setTimeout(function () {
+        if (hashDisplay) hashDisplay.style.display = "none";
+
+        if (result.type === "book") {
+          if (answerDisplay) {
+            answerDisplay.style.display = "block";
+            answerDisplay.textContent = result.answer;
+            answerDisplay.style.opacity = "0";
+            answerDisplay.style.filter = "blur(8px)";
+            answerDisplay.style.transform = "scale(0.92) translateY(10px)";
+            answerDisplay.style.transition = "none";
+            void answerDisplay.offsetHeight;
+            answerDisplay.style.transition =
+              "opacity 0.7s ease, filter 0.7s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)";
+            setTimeout(function () {
+              answerDisplay.style.opacity = "1";
+              answerDisplay.style.filter = "blur(0px)";
+              answerDisplay.style.transform = "scale(1) translateY(0)";
+            }, 50);
+          }
+        } else {
+          showTarotResult(question, result);
+        }
+
+        // 继续按钮 - 重新绑定事件
+        if (continueBtn) {
+          var newBtn = continueBtn.cloneNode(true);
+          continueBtn.parentNode.replaceChild(newBtn, continueBtn);
+          newBtn.style.display = "block";
+          newBtn.textContent = "继续提问";
+          newBtn.style.opacity = "0";
+          newBtn.style.transform = "scale(0.92)";
+          newBtn.style.transition = "none";
+          void newBtn.offsetHeight;
+          newBtn.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+          setTimeout(function () {
+            newBtn.style.opacity = "1";
+            newBtn.style.transform = "scale(1)";
+          }, 400);
+
+          newBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            transitionBackToInput();
+          });
+        }
+      }, 400);
+    }, 800);
+  }
+
+  // ---- 从结果状态优雅地返回到输入状态 ----
+  function transitionBackToInput() {
+    var resultEl = document.getElementById("nopic-randomqa-result");
+    var hashDisplay = document.getElementById("nopic-randomqa-hash-display");
+    var answerDisplay = document.getElementById(
+      "nopic-randomqa-answer-display",
+    );
+    var cardsEl = document.getElementById("nopic-randomqa-tarot-cards");
+    var meaningsEl = document.getElementById("nopic-randomqa-tarot-meanings");
+    var continueBtn = document.getElementById("nopic-randomqa-continue-btn");
+    var input = document.getElementById("nopic-randomqa-input");
+    var submitBtn = document.getElementById("nopic-randomqa-submit-btn");
+    var modeSelector = document.getElementById("nopic-randomqa-mode-selector");
+    var linesContainer = document.getElementById("nopic-randomqa-lines");
+
+    // 第一步：结果内容淡出（答案/塔罗牌消失）
+    var fadeTargets = [];
+    if (answerDisplay && answerDisplay.style.display !== "none") {
+      fadeTargets.push(answerDisplay);
+    }
+    if (cardsEl && cardsEl.style.display !== "none") {
+      fadeTargets.push(cardsEl);
+    }
+    if (meaningsEl && meaningsEl.style.display !== "none") {
+      fadeTargets.push(meaningsEl);
+    }
+    if (hashDisplay && hashDisplay.style.display !== "none") {
+      fadeTargets.push(hashDisplay);
+    }
+
+    // 继续按钮单独处理（保留，但淡出）
+    if (continueBtn) {
+      continueBtn.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+      continueBtn.style.opacity = "0";
+      continueBtn.style.transform = "scale(0.92)";
+    }
+
+    // 其他元素淡出
+    fadeTargets.forEach(function (el, idx) {
+      var delay = idx * 80;
+      setTimeout(function () {
+        el.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+        el.style.opacity = "0";
+        el.style.transform = "scale(0.92) translateY(10px)";
+      }, delay);
+    });
+
+    // 第二步：结果容器高度收缩
+    var totalFade = fadeTargets.length * 80 + 400;
+    setTimeout(function () {
+      if (resultEl) {
+        resultEl.style.transition =
+          "max-height 0.5s ease, padding 0.5s ease, opacity 0.3s ease";
+        resultEl.style.maxHeight = "0px";
+        resultEl.style.padding = "0px";
+        resultEl.style.opacity = "0";
+      }
+    }, totalFade);
+
+    // 第三步：所有结果隐藏，恢复输入区域
+    setTimeout(function () {
+      // 隐藏所有结果元素
+      if (answerDisplay) {
+        answerDisplay.style.display = "none";
+        answerDisplay.style.transform = "scale(0.92)";
+        answerDisplay.style.opacity = "0";
+      }
+      if (cardsEl) {
+        cardsEl.style.display = "none";
+        cardsEl.innerHTML = "";
+      }
+      if (meaningsEl) {
+        meaningsEl.style.display = "none";
+        meaningsEl.innerHTML = "";
+      }
+      if (hashDisplay) {
+        hashDisplay.style.display = "none";
+        hashDisplay.textContent = "";
+        hashDisplay.style.opacity = "0";
+      }
+      // 继续按钮隐藏
+      if (continueBtn) {
+        continueBtn.style.display = "none";
+        continueBtn.style.opacity = "0";
+        continueBtn.style.transform = "scale(0.92)";
+      }
+
+      // 重置行容器
+      if (linesContainer) {
+        linesContainer.style.display = "flex";
+        linesContainer.style.opacity = "1";
+        linesContainer.style.maxHeight = "600px";
+        linesContainer.style.overflow = "hidden";
+        linesContainer.style.padding = "2px 0";
+        linesContainer.innerHTML = "";
+      }
+
+      // 重置结果容器
+      if (resultEl) {
+        resultEl.style.display = "none";
+        resultEl.style.maxHeight = "";
+        resultEl.style.padding = "8px 0 12px 0";
+        resultEl.style.opacity = "1";
+      }
+
+      // 显示输入区域（带淡入动画）
+      if (input) {
+        input.style.display = "";
+        input.style.opacity = "0";
+        input.style.transition = "none";
+        void input.offsetHeight;
+        input.style.transition = "opacity 0.4s ease";
+        setTimeout(function () {
+          input.style.opacity = "1";
+          input.focus();
+        }, 30);
+      }
+      if (submitBtn) {
+        submitBtn.style.display = "";
+        submitBtn.style.opacity = "0";
+        submitBtn.style.transition = "none";
+        void submitBtn.offsetHeight;
+        submitBtn.style.transition = "opacity 0.4s ease";
+        setTimeout(function () {
+          submitBtn.style.opacity = "1";
+        }, 30);
+      }
+      if (modeSelector) {
+        modeSelector.style.display = "";
+        modeSelector.style.opacity = "0";
+        modeSelector.style.transition = "none";
+        void modeSelector.offsetHeight;
+        modeSelector.style.transition = "opacity 0.4s ease";
+        setTimeout(function () {
+          modeSelector.style.opacity = "1";
+        }, 30);
+      }
+
+      // ★★★ 关键：恢复继续按钮（重新创建并隐藏，供下次使用）★★★
+      var continueBtnNew = document.getElementById(
+        "nopic-randomqa-continue-btn",
+      );
+      if (continueBtnNew) {
+        continueBtnNew.style.display = "none";
+        continueBtnNew.style.opacity = "0";
+        continueBtnNew.style.transform = "scale(0.92)";
+      }
+    }, totalFade + 600);
+  }
+
+  function hideRandomQASubmenu() {
+    randomQASubmenuOpen = false;
+
+    var popup = randomQASubmenu;
+
+    // 触发消失动画：模糊 + 透明度归零 + 缩小
+    popup.classList.remove("active");
+    popup.style.opacity = "0";
+    popup.style.filter = "blur(8px)";
+    popup.style.transform = "scale(0.95)";
+
+    // 等动画完成后隐藏
+    setTimeout(function () {
+      popup.style.display = "none";
+      // 重置内容
+      resetRandomQA();
+    }, 400); // 与 transition 时间匹配
+  }
+
+  // 绑定触发事件
+  if (randomQATrigger) {
+    randomQATrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (randomQASubmenuOpen) {
+        hideRandomQASubmenu();
+      } else {
+        showRandomQASubmenu();
+        hideAllSubmenus("randomqa");
+      }
+    });
+  }
+  if (randomQAMenuEntry) {
+    randomQAMenuEntry.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (randomQASubmenuOpen) {
+        hideRandomQASubmenu();
+      } else {
+        showRandomQASubmenu();
+        hideAllSubmenus("randomqa");
+      }
+    });
+  }
+
+  // 关闭按钮
+  const randomQACloseBtn = document.getElementById("nopic-randomqa-close");
+  if (randomQACloseBtn) {
+    randomQACloseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hideRandomQASubmenu();
+    });
+  }
+
+  // 提交按钮
+  const submitBtn = document.getElementById("nopic-randomqa-submit-btn");
+  if (submitBtn) {
+    submitBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleRandomQA();
+    });
+  }
+
+  // 输入框回车提交
+  const qaInput = document.getElementById("nopic-randomqa-input");
+  if (qaInput) {
+    qaInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        handleRandomQA();
+      }
+    });
+    // 阻止弹窗拖动干扰输入
+    qaInput.addEventListener("mousedown", (e) => e.stopPropagation());
+  }
+
+  // 模式切换
+  // 模式切换 - 修复：取消选中时边框完全消失
+  document.querySelectorAll(".nopic-randomqa-mode-btn").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      // 所有按钮重置为未选中状态
+      document
+        .querySelectorAll(".nopic-randomqa-mode-btn")
+        .forEach(function (b) {
+          b.classList.remove("active");
+          b.style.background = "transparent";
+          b.style.borderColor = "transparent";
+          b.style.color = "rgba(255,255,255,0.45)";
+          var icon = b.querySelector("svg");
+          if (icon) {
+            icon.style.color = "rgba(255,255,255,0.45)";
+          }
+        });
+      // 当前按钮设为选中状态
+      btn.classList.add("active");
+      btn.style.background = "rgba(167,139,250,0.10)";
+      btn.style.borderColor = "rgba(167,139,250,0.30)";
+      btn.style.color = "#a78bfa";
+      var icon = btn.querySelector("svg");
+      if (icon) {
+        icon.style.color = "#a78bfa";
+      }
+    });
+  });
+
+  // 继续提问按钮
+  var continueBtn = document.getElementById("nopic-randomqa-continue-btn");
+  if (continueBtn) {
+    continueBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+
+      // 完全重置所有状态，然后恢复输入界面
+      resetRandomQA();
+      var input = document.getElementById("nopic-randomqa-input");
+      var submitBtn = document.getElementById("nopic-randomqa-submit-btn");
+      var modeSelector = document.getElementById(
+        "nopic-randomqa-mode-selector",
+      );
+      var resultEl = document.getElementById("nopic-randomqa-result");
+
+      if (input) input.style.display = "";
+      if (submitBtn) submitBtn.style.display = "";
+      if (modeSelector) modeSelector.style.display = "";
+      if (resultEl) resultEl.style.display = "none";
+
+      // 重新显示行容器
+      var linesContainer = document.getElementById("nopic-randomqa-lines");
+      if (linesContainer) {
+        linesContainer.style.display = "flex";
+        linesContainer.style.opacity = "1";
+        linesContainer.style.maxHeight = "600px";
+        linesContainer.innerHTML = "";
+      }
+
+      if (input)
+        setTimeout(function () {
+          input.focus();
+        }, 100);
+    });
+  }
+
+  // ---- 随心一问开关 (全局同步) ----
+  // 使用 GM_getValue / GM_setValue 实现跨页面同步
+  // ---- 监听其他页面的变化 (全局同步) ----
+  if (
+    typeof chrome !== "undefined" &&
+    chrome.storage &&
+    chrome.storage.onChanged
+  ) {
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (area === "local" && changes.nopic_randomqa_global) {
+        const newVal = changes.nopic_randomqa_global.newValue;
+        randomQAEnabled = newVal;
+        updateRandomQAToggleUI();
+      }
+    });
+  }
+
+  // 同时监听 localStorage 变化 (同源页面间同步)
+  window.addEventListener("storage", function (e) {
+    if (e.key === "nopic_randomqa_global") {
+      const newVal = JSON.parse(e.newValue);
+      randomQAEnabled = newVal;
+      updateRandomQAToggleUI();
+    }
+  });
+  function setRandomQAEnabled(val) {
+    GM_setValue("nopic_randomqa_global", val);
+    // 同时存一份到 localStorage 作为备份
+    try {
+      localStorage.setItem("nopic_randomqa_global", JSON.stringify(val));
+    } catch (e) {}
+  }
+
+  // ---- 随心一问开关 (全局同步) ----
+  function getRandomQAEnabled() {
+    // 优先从 GM_getValue 读取（跨域共享）
+    const val = GM_getValue("nopic_randomqa_global", null);
+    if (val !== null) return val;
+    // 降级：从 localStorage 读取
+    try {
+      const local = localStorage.getItem("nopic_randomqa_global");
+      if (local !== null) return JSON.parse(local);
+    } catch (e) {}
+    return false;
+  }
+
+  function setRandomQAEnabled(val) {
+    GM_setValue("nopic_randomqa_global", val);
+    try {
+      localStorage.setItem("nopic_randomqa_global", JSON.stringify(val));
+    } catch (e) {}
+  }
+
+  let randomQAEnabled = getRandomQAEnabled();
+
+  function updateRandomQAToggleUI() {
+    // 重新读取最新状态（防止其他页面修改后不同步）
+    randomQAEnabled = getRandomQAEnabled();
+
+    const toggle = document.getElementById("nopic-randomqa-toggle");
+    const menuEntry = document.getElementById("nopic-randomqa-menu-entry");
+    const menuTrigger = document.getElementById("nopic-randomqa-menu-trigger");
+    if (toggle) {
+      if (randomQAEnabled) toggle.classList.add("on");
+      else toggle.classList.remove("on");
+    }
+    if (menuEntry) {
+      menuEntry.style.display = randomQAEnabled ? "flex" : "none";
+    }
+    if (menuTrigger) {
+      menuTrigger.style.display = randomQAEnabled ? "flex" : "none";
+    }
+  }
+
+  // 开关点击事件 (全局同步)
+  const qaToggle = document.getElementById("nopic-randomqa-toggle");
+  if (qaToggle) {
+    qaToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      randomQAEnabled = !randomQAEnabled;
+      setRandomQAEnabled(randomQAEnabled);
+      updateRandomQAToggleUI();
+      // 如果关闭时弹窗打开，关闭它
+      if (!randomQAEnabled && randomQASubmenuOpen) {
+        hideRandomQASubmenu();
+      }
+    });
+  }
+
+  // 初始化状态
+  updateRandomQAToggleUI();
+
+  // 扩展菜单中"随心一问"开关的显示控制（在updateAllUI中调用）
+  // 在updateAllUI函数中添加对随心一问的支持
+  // 由于无法直接修改updateAllUI，我们通过覆盖方式增强
+  const _origUpdateAllUI = updateAllUI;
+  updateAllUI = function () {
+    _origUpdateAllUI();
+    updateRandomQAToggleUI();
+  };
+
+  // 在hideAllSubmenus中支持randomqa
+  const _origHideAllSubmenus = hideAllSubmenus;
+  hideAllSubmenus = function (except) {
+    _origHideAllSubmenus(except);
+    if (except !== "randomqa") {
+      if (randomQASubmenuOpen) hideRandomQASubmenu();
+    }
+  };
 })();
