@@ -3,6 +3,8 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![GreasyFork](https://img.shields.io/badge/GreasyFork-安装-blue)](https://greasyfork.org/zh-CN/scripts/496216)
 
+Edge 扩展程序商店安装链接：https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagllnh
+
 一个功能强大、高度集成的浏览器用户脚本，为您提供全方位的网页浏览增强体验。它集成了图片控制、隐私保护、自动化操作和页面监控等多种实用工具，旨在成为您日常浏览的瑞士军刀。
 
 ## 🌟 主要特性
