@@ -6202,6 +6202,46 @@ window.addEventListener("load", function () {
     debounceTriggerSpinner();
   };
 
+  function recycleDistantImages() {
+    const BUFFER = 1000;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const toRecycle = [];
+    imageControls.forEach((btn, el) => {
+      if (!el || !el.isConnected) {
+        toRecycle.push(el);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const isOutOfView =
+        rect.bottom < -BUFFER ||
+        rect.top > vh + BUFFER ||
+        rect.right < -BUFFER ||
+        rect.left > vw + BUFFER;
+      if (isOutOfView) {
+        toRecycle.push(el);
+      }
+    });
+
+    toRecycle.forEach((el) => {
+      el.classList.remove("nopic-hidden");
+      el.dataset.isHidden = "false";
+
+      const btn = imageControls.get(el);
+      if (btn) btn.remove();
+      const outline = imageOutlines.get(el);
+      if (outline) outline.remove();
+      const zoomBtn = imageZoomControls.get(el);
+      if (zoomBtn) zoomBtn.remove();
+
+      imageControls.delete(el);
+      imageOutlines.delete(el);
+      imageZoomControls.delete(el);
+      cancelHoverZoomTimer(el, true);
+    });
+  }
+
   function imgHiden() {
     // ===== 新增：如果被手动关闭，直接返回 =====
     if (window._nopicManuallyClosed) {
@@ -6283,6 +6323,9 @@ window.addEventListener("load", function () {
     for (const el of targetEls) {
       createControlButton(el);
     }
+
+    // ===== 新增：回收远离视口的图片控件 =====
+    recycleDistantImages();
 
     // 5. 可选：如果开启调试，输出统计信息
     // console.log("[nopic] 视口内图片:", targetEls.length, "总数:", allCandidates.length);
