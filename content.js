@@ -6059,6 +6059,9 @@ window.addEventListener("load", function () {
   );
 
   let createControlButton = function (el) {
+    if (el.closest && el.closest("#nopic-zoom-container")) {
+      return;
+    }
     if (imageControls.has(el)) return;
     // 跳过赞助二维码和关于弹窗内的图片
     if (el.id === "nopic-about-img" || el.closest("#nopic-about-modal")) return;
@@ -6199,18 +6202,20 @@ window.addEventListener("load", function () {
     debounceTriggerSpinner();
   };
 
-  let imgHiden = function () {
+  function imgHiden() {
     // ===== 新增：如果被手动关闭，直接返回 =====
     if (window._nopicManuallyClosed) {
       console.log("[nopic] 图片隐藏功能已被手动关闭，跳过启动");
       return;
     }
-    // 新增：根据配置切换动画禁用类
+    // 根据配置切换动画禁用类
     if (disableAnimationConfig) {
       document.body.classList.add("nopic-animation-disabled");
     } else {
       document.body.classList.remove("nopic-animation-disabled");
     }
+
+    // ===== 清理已断开连接的图片控制 =====
     imageControls.forEach((btn, el) => {
       if (!el.isConnected) {
         btn?.remove();
@@ -6224,35 +6229,64 @@ window.addEventListener("load", function () {
         syncElementPosition(el);
       }
     });
-    // ★【修改3】排除阅兵克隆图，防止被重复控制
-    document
-      .querySelectorAll(
-        'img:not(.nopic-clone):not(.nopic-parade-clone), svg:not(.nopic-clone):not(.nopic-parade-clone), .nopic-has-bg:not(.nopic-clone):not(.nopic-parade-clone), [style*="background-image"]:not(.nopic-clone):not(.nopic-parade-clone)',
-      )
-      .forEach((el) => {
-        // 跳过赞助二维码和关于弹窗内的图片
-        if (el.id === "nopic-about-img" || el.closest("#nopic-about-modal"))
-          return;
-        const bg = window.getComputedStyle(el).backgroundImage,
-          isTarget =
-            el.tagName === "IMG" ||
-            el.tagName === "SVG" ||
-            (bg && bg !== "none" && bg.includes("url"));
-        if (isTarget) {
-          const rect = el.getBoundingClientRect();
-          const hasText =
-            (el.tagName === "DIV" || el.tagName === "SPAN") &&
-            el.innerText.trim().length > 0;
-          if (
-            rect.width > 15 &&
-            rect.height > 15 &&
-            !hasText &&
-            !imageControls.has(el)
-          )
-            createControlButton(el);
-        }
-      });
-  };
+
+    // ============================================================
+    // ★★★ 核心优化：只检测视口内的图片 ★★★
+    // ============================================================
+
+    // 1. 获取所有候选图片
+    const allCandidates = document.querySelectorAll(
+      'img:not(.nopic-clone):not(.nopic-parade-clone), svg:not(.nopic-clone):not(.nopic-parade-clone), .nopic-has-bg:not(.nopic-clone):not(.nopic-parade-clone), [style*="background-image"]:not(.nopic-clone):not(.nopic-parade-clone)',
+    );
+
+    // 2. 获取视口尺寸（含缓冲区，提前处理即将进入视口的图片）
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const BUFFER = 500; // 上下左右各扩展500px，提前处理滚动边缘的图片
+
+    // 3. 只处理视口内（含缓冲区）的图片
+    const targetEls = [];
+    for (const el of allCandidates) {
+      // 跳过赞助二维码和关于弹窗内的图片
+      if (el.id === "nopic-about-img" || el.closest("#nopic-about-modal"))
+        continue;
+
+      const bg = window.getComputedStyle(el).backgroundImage;
+      const isTarget =
+        el.tagName === "IMG" ||
+        el.tagName === "SVG" ||
+        (bg && bg !== "none" && bg.includes("url"));
+      if (!isTarget) continue;
+
+      const rect = el.getBoundingClientRect();
+      const hasText =
+        (el.tagName === "DIV" || el.tagName === "SPAN") &&
+        el.innerText.trim().length > 0;
+
+      // 尺寸过滤（小于15x15的忽略）
+      if (rect.width <= 15 || rect.height <= 15) continue;
+      if (hasText) continue;
+
+      // ★★★ 视口检测（含缓冲区）★★★
+      const inViewport =
+        rect.bottom >= -BUFFER &&
+        rect.top <= vh + BUFFER &&
+        rect.right >= -BUFFER &&
+        rect.left <= vw + BUFFER;
+
+      if (inViewport && !imageControls.has(el)) {
+        targetEls.push(el);
+      }
+    }
+
+    // 4. 批量创建控制按钮（只针对视口内的图片）
+    for (const el of targetEls) {
+      createControlButton(el);
+    }
+
+    // 5. 可选：如果开启调试，输出统计信息
+    // console.log("[nopic] 视口内图片:", targetEls.length, "总数:", allCandidates.length);
+  }
 
   function imgShown() {
     // ===== 新增：彻底停止图片隐藏功能 =====
@@ -8388,6 +8422,7 @@ window.addEventListener("load", function () {
   // ===== 隐私锁日志面板 =====
   const privacyLogPanel = document.createElement("div");
   privacyLogPanel.id = "nopic-privacy-log-panel";
+  privacyLogPanel.style.minHeight = "540px";
   privacyLogPanel.innerHTML = `
     <div class="nopic-privacy-log-header">
       <span class="nopic-privacy-log-title">解锁日志</span>
@@ -13787,6 +13822,26 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
     pageEditSubmenu.style.transform = "scale(0.92) translateY(-10px)";
     pageEditSubmenu.style.opacity = "0";
     pageEditSubmenu.classList.remove("active");
+
+    // ===== 关闭编辑模式并清理拦截器 =====
+    if (pageEditMode) {
+      pageEditMode = false;
+      document.designMode = "off";
+      // 移除点击拦截器
+      if (pageEditSwitch && pageEditSwitch._clickInterceptor) {
+        document.removeEventListener(
+          "click",
+          pageEditSwitch._clickInterceptor,
+          true,
+        );
+        pageEditSwitch._clickInterceptor = null;
+      }
+      // 更新UI状态
+      const switchEl = document.getElementById("nopic-pageedit-switch");
+      if (switchEl) switchEl.classList.remove("on");
+      updateAllUI();
+    }
+
     setTimeout(() => {
       pageEditSubmenu.style.display = "none";
       pageEditSubmenu.style.transform = "";
@@ -17443,8 +17498,6 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
 
   // 初始化时检查是否需要显示锁定遮罩
   function initPrivacyLock() {
-    console.log(111);
-
     // 注册快捷键上锁监听（等待存储就绪，解决跨域同步延迟）
     function _registerWithRetry() {
       if (_nopicStorageReady) {
@@ -22180,12 +22233,53 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
   // 页面可编辑事件绑定
   const pageEditSwitch = document.getElementById("nopic-pageedit-switch");
   if (pageEditSwitch) {
+    // 存储点击拦截器函数
+    let pageEditClickInterceptor = null;
+
     pageEditSwitch.addEventListener("click", function (e) {
       e.stopPropagation();
       pageEditMode = !pageEditMode;
       document.designMode = pageEditMode ? "on" : "off";
       updateAllUI();
       triggerTextWaveEffect();
+
+      // ===== 控制点击事件拦截 =====
+      if (pageEditMode) {
+        // 开启编辑模式：拦截所有点击事件
+        if (!pageEditClickInterceptor) {
+          pageEditClickInterceptor = function (ev) {
+            // 允许点击事件在脚本UI元素上正常触发
+            if (
+              ev.target.closest &&
+              (ev.target.closest("#nopic-widget") ||
+                ev.target.closest("#nopic-menu") ||
+                ev.target.closest("[id^='nopic-']") ||
+                ev.target.closest("#nopic-zoom-container") ||
+                ev.target.closest("#nopic-parade-overlay") ||
+                ev.target.closest("#nopic-about-modal") ||
+                ev.target.closest("#nopic-confirm-modal") ||
+                ev.target.closest(".nopic-submenu") ||
+                ev.target.closest(".nopic-modal-popup") ||
+                ev.target.closest(".nopic-switch") ||
+                ev.target.closest(".nopic-float-btn"))
+            ) {
+              return;
+            }
+            // 其他所有点击事件阻止默认行为和冒泡
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+          };
+          // 使用捕获阶段拦截
+          document.addEventListener("click", pageEditClickInterceptor, true);
+        }
+      } else {
+        // 关闭编辑模式：移除点击拦截器
+        if (pageEditClickInterceptor) {
+          document.removeEventListener("click", pageEditClickInterceptor, true);
+          pageEditClickInterceptor = null;
+        }
+      }
     });
   }
 
@@ -22690,13 +22784,17 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
     const start = (logCurrentPage - 1) * logPageSize;
     const pageLogs = logs.slice(start, start + logPageSize);
     const listEl = document.getElementById("nopic-privacy-log-list");
+    listEl.style.minHeight = "385px"; // 或者你想要的高度
     listEl.innerHTML =
       pageLogs.length === 0
         ? '<div style="text-align:center;color:rgba(255,255,255,0.5);padding:20px;">暂无日志</div>'
         : pageLogs
             .map((log) => {
               const time = new Date(log.time);
-              const timeStr = time.toLocaleTimeString("zh-CN", {
+              const timeStr = time.toLocaleString("zh-CN", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",

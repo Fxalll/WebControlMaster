@@ -383,12 +383,12 @@ svg:not(.nopic-clone),
   transition: none !important;
 }
 .nopic-hidden {
-  filter: blur(25px) !important;
+  filter: blur(10px) !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
 .nopic-animation-disabled .nopic-hidden {
-  filter: blur(25px) !important;
+  filter: blur(10px) !important;
   opacity: 0 !important;
 }
 
