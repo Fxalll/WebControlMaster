@@ -2481,7 +2481,16 @@ window.addEventListener("load", function () {
   let paradeZIndexCounter = 10;
   let paradeMenuItem = null;
 
+  // ★★★ 阅兵模式性能控制 ★★★
+  const PARADE_PERFORMANCE_THRESHOLD = 999999; // 超过此数量禁用动画，使用批量恢复
+  let paradeUseAnimation = true;
+  let paradeAnimationDisabled = false;
+  // ★★★ 批量恢复缓冲区 ★★★
+  let _paradeRestoreQueue = [];
+  let _paradeRestoreTimer = null;
+
   window.imgHidenSet = null;
+  var _nopicPendingImages = new Set();
   let imageControls = new Map();
   let imageOutlines = new Map();
   let imageZoomControls = new Map();
@@ -2769,7 +2778,6 @@ window.addEventListener("load", function () {
       if (el.id === "nopic-about-img" || el.closest("#nopic-about-modal"))
         return;
 
-      // 添加和 imgHiden() 一致的过滤逻辑
       const bg = window.getComputedStyle(el).backgroundImage;
       const isTarget =
         el.tagName === "IMG" ||
@@ -2782,7 +2790,6 @@ window.addEventListener("load", function () {
         (el.tagName === "DIV" || el.tagName === "SPAN") &&
         el.innerText.trim().length > 0;
 
-      // 使用 imgHiden() 一致的过滤条件：width > 15 && height > 15 && !hasText
       if (rect.width > 15 && rect.height > 15 && !hasText) {
         if (paradeFilter.enabled) {
           const naturalW = Math.round(rect.width) || el.offsetWidth;
@@ -2801,6 +2808,16 @@ window.addEventListener("load", function () {
     });
     if (imageData.length === 0) return;
 
+    // ★★★ 根据图片数量决定是否使用动画 ★★★
+    paradeUseAnimation = imageData.length <= PARADE_PERFORMANCE_THRESHOLD;
+    paradeAnimationDisabled = !paradeUseAnimation;
+
+    if (!paradeUseAnimation) {
+      console.log(
+        `[nopic] 阅兵模式图片数量 (${imageData.length}) 超过阈值 (${PARADE_PERFORMANCE_THRESHOLD})，已禁用动画并使用批量恢复`,
+      );
+    }
+
     isParadeMode = true;
     const paradeBtn = document.querySelector('[data-action="paradeMode"]');
     if (paradeBtn) {
@@ -2817,7 +2834,7 @@ window.addEventListener("load", function () {
 
     // 【第一步】取消所有图片隐藏状态，虚线消失
     imageData.forEach(({ el, wasHidden }) => {
-      el._paradeWasHidden = wasHidden; // 记录原状态
+      el._paradeWasHidden = wasHidden;
       if (wasHidden) {
         el.classList.remove("nopic-hidden");
         el.dataset.isHidden = "false";
@@ -2828,11 +2845,11 @@ window.addEventListener("load", function () {
       }
     });
 
-    // 等待显现动画完成（0.5s）
-    setTimeout(() => {
-      if (!isParadeMode) return; // 防御性检查
+    const revealDelay = paradeUseAnimation ? 100 : 30;
 
-      // 【第二步】收集最新位置并创建克隆图
+    setTimeout(() => {
+      if (!isParadeMode) return;
+
       const layoutData = [];
       imageData.forEach(({ el }) => {
         const rect = el.getBoundingClientRect();
@@ -2862,7 +2879,8 @@ window.addEventListener("load", function () {
       const vh = window.innerHeight;
       const maxRowW = vw - SIDE_PAD * 2;
 
-      const TEMP_H = 200;
+      let uniHBase = paradeUseAnimation ? 200 : 140;
+      const TEMP_H = uniHBase;
       let tempRows = 0,
         tempRowW = 0;
       layoutData.forEach(({ rect }) => {
@@ -2877,15 +2895,21 @@ window.addEventListener("load", function () {
       if (tempRowW > 0) tempRows++;
 
       const availH = vh - TOP_PAD - 20;
-      const UNI_H = Math.min(
-        80,
+      let UNI_H = Math.min(
+        paradeUseAnimation ? 280 : 160,
         Math.max(
-          80,
+          paradeUseAnimation ? 80 : 60,
           Math.floor(
             (availH - Math.max(0, tempRows - 1) * GAP) / Math.max(1, tempRows),
           ),
         ),
       );
+      if (layoutData.length > 150) {
+        UNI_H = Math.min(UNI_H, 100);
+      }
+      if (layoutData.length > 300) {
+        UNI_H = Math.min(UNI_H, 70);
+      }
 
       const rows = [];
       let curRow = [];
@@ -2935,13 +2959,18 @@ window.addEventListener("load", function () {
       paradeHeader.id = "nopic-parade-header";
       const titleSpan = document.createElement("span");
       titleSpan.className = "nopic-parade-title";
-      titleSpan.innerHTML =
+      let titleHTML =
         "阅兵模式 · 共 <strong>" +
         imageData.length +
         "</strong> 张图片" +
         (paradeFilter.enabled
           ? ' <span style="color:#60a5fa;font-size:11px;">(已过滤)</span>'
           : "");
+      if (!paradeUseAnimation) {
+        titleHTML +=
+          ' <span style="color:#fbbf24;font-size:11px;">(性能模式)</span>';
+      }
+      titleSpan.innerHTML = titleHTML;
 
       const closeBtn = document.createElement("div");
       closeBtn.className = "nopic-parade-close-btn";
@@ -2952,7 +2981,7 @@ window.addEventListener("load", function () {
       });
       paradeHeader.appendChild(titleSpan);
 
-      // ---- 右侧按钮组（下载 + 关闭） ----
+      // ---- 右侧按钮组 ----
       const headerRight = document.createElement("div");
       headerRight.style.cssText = "display:flex;align-items:center;gap:8px;";
 
@@ -2964,29 +2993,26 @@ window.addEventListener("load", function () {
         enterDownloadMode();
       });
 
-      // ★★★ 显示尺寸按钮（和批量下载完全一样的样式）★★★
       const sizeToggleBtn = document.createElement("div");
       sizeToggleBtn.className = "nopic-parade-dl-btn";
       sizeToggleBtn.textContent = "显示尺寸";
       sizeToggleBtn.style.cssText = `
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  user-select: none;
-      background: #204d2691;
-`;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            user-select: none;
+            background: #204d2691;
+        `;
 
       let sizeLabelsVisible = false;
       sizeToggleBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         sizeLabelsVisible = !sizeLabelsVisible;
-
         paradeClones.forEach((data) => {
           if (data.sizeLabel) {
             data.sizeLabel.style.display = sizeLabelsVisible ? "block" : "none";
           }
         });
-
         sizeToggleBtn.textContent = sizeLabelsVisible ? "隐藏尺寸" : "显示尺寸";
       });
       headerRight.appendChild(sizeToggleBtn);
@@ -2994,7 +3020,12 @@ window.addEventListener("load", function () {
       headerRight.appendChild(closeBtn);
       paradeHeader.appendChild(headerRight);
 
-      // ---- 创建克隆图（初始位置=原图屏幕位置） ----
+      // ---- 创建克隆图 ----
+      const transitionDuration = paradeUseAnimation ? "0.6s" : "0.01s";
+      const transitionEasing = paradeUseAnimation
+        ? "cubic-bezier(0.4, 0, 0.2, 1)"
+        : "linear";
+
       layoutData.forEach(({ el, rect }) => {
         const tp = positions.get(el);
         el._paradeSavedVisibility = el.style.visibility;
@@ -3053,7 +3084,6 @@ window.addEventListener("load", function () {
           clone.textContent = "";
         }
 
-        // ★★★ 尺寸标签放在 wrapper 内部 ★★★
         const sizeLabel = document.createElement("div");
         sizeLabel.className = "nopic-parade-size-label";
         sizeLabel.style.display = "none";
@@ -3073,7 +3103,6 @@ window.addEventListener("load", function () {
         sizeLabel.style.pointerEvents = "none";
         sizeLabel.style.textAlign = "center";
         sizeLabel.style.zIndex = "2";
-        // ★★★ 关键：设置反向缩放，抵消父元素的 scale ★★★
         sizeLabel._baseScale = 1;
         wrapper.appendChild(sizeLabel);
 
@@ -3094,12 +3123,15 @@ window.addEventListener("load", function () {
       document.documentElement.appendChild(paradeOverlay);
       document.documentElement.appendChild(paradeHeader);
 
-      // ---- 激活遮罩 + 飞入动画 ----
+      // ---- 激活遮罩 ----
       requestAnimationFrame(() => {
         paradeOverlay.classList.add("active");
         paradeHeader.classList.add("active");
         requestAnimationFrame(() => {
-          const ez = "cubic-bezier(0.4, 0, 0.2, 1)";
+          const ez = paradeUseAnimation
+            ? "cubic-bezier(0.4, 0, 0.2, 1)"
+            : "linear";
+          const dur = paradeUseAnimation ? "0.6s" : "0.01s";
 
           paradeClones.forEach(
             ({
@@ -3109,7 +3141,28 @@ window.addEventListener("load", function () {
               sizeLabel,
               originalRect: rect,
             }) => {
-              wrapper.style.transition = "transform 0.6s " + ez;
+              if (!paradeUseAnimation) {
+                wrapper.style.transition = "none";
+                const scaleX = tp.width / rect.width;
+                const scaleY = tp.height / rect.height;
+                const scale = Math.min(scaleX, scaleY);
+                wrapper.style.transform = `translate(${tp.left}px, ${tp.top}px) scale(${scale})`;
+                clone.style.filter = "drop-shadow(0 8px 24px rgba(0,0,0,0.5))";
+                clone.style.boxShadow = "none";
+                if (sizeLabel) {
+                  const invScale = 1 / scale;
+                  const displayedHeight = rect.height * scale;
+                  const offset = -(4 + Math.sqrt(displayedHeight) * 0.35);
+                  const clampedOffset = Math.min(-15, offset);
+                  sizeLabel.style.transform = `translateX(0%)  translateY(${clampedOffset}px)  scale(${invScale})`;
+                  sizeLabel.style.transformOrigin = "center bottom";
+                  sizeLabel.textContent =
+                    Math.round(rect.width) + "×" + Math.round(rect.height);
+                }
+                return;
+              }
+
+              wrapper.style.transition = "transform " + dur + " " + ez;
               const scaleX = tp.width / rect.width;
               const scaleY = tp.height / rect.height;
               const scale = Math.min(scaleX, scaleY);
@@ -3120,12 +3173,10 @@ window.addEventListener("load", function () {
               if (sizeLabel) {
                 const invScale = 1 / scale;
                 const displayedHeight = rect.height * scale;
-                // 基于放大后的高度计算偏移（例如放大后高度的 2-3%）
                 const offset = -(4 + Math.sqrt(displayedHeight) * 0.35);
                 const clampedOffset = Math.min(-15, offset);
                 sizeLabel.style.transform = `translateX(0%)  translateY(${clampedOffset}px)  scale(${invScale})`;
                 sizeLabel.style.transformOrigin = "center bottom";
-                // ★★★ 显示网页渲染尺寸（即布局时计算的尺寸），不是缩放后的尺寸 ★★★
                 sizeLabel.textContent =
                   Math.round(rect.width) + "×" + Math.round(rect.height);
               }
@@ -3135,90 +3186,41 @@ window.addEventListener("load", function () {
       });
 
       // ---- 阅兵模式批量高清替换 ----
-      setTimeout(function () {
-        if (!isParadeMode) return;
-        var delay = 0;
-        paradeClones.forEach(function (data, el) {
-          var hiResUrl = getHighResUrl(el);
-          if (!hiResUrl) return;
+      setTimeout(
+        function () {
+          if (!isParadeMode) return;
+          var delay = 0;
+          var stepDelay = paradeUseAnimation ? 200 : 50;
 
-          var isBg = el.tagName !== "IMG";
-          var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
-          var wrapper = data.wrapper;
-          var cloneEl = data.clone;
+          paradeClones.forEach(function (data, el) {
+            var hiResUrl = getHighResUrl(el);
+            if (!hiResUrl) return;
 
-          var invScale = 1 / 10;
+            var isBg = el.tagName !== "IMG";
+            var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
+            var wrapper = data.wrapper;
+            var cloneEl = data.clone;
+            var invScale = 1 / 10;
 
-          setTimeout(function () {
-            if (!isParadeMode) return;
-
-            var newImg = document.createElement("img");
-            newImg.className = "nopic-parade-clone";
-            newImg.style.cssText =
-              "width:100%;height:100%;object-fit:contain;display:block;position:absolute;top:0;left:0;visibility:hidden;opacity:0;pointer-events:none;";
-            newImg.src = hiResUrl;
-
-            newImg.onload = function () {
+            setTimeout(function () {
               if (!isParadeMode) return;
-              var newArea =
-                (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
-              if (!isBg && newArea <= origArea) {
-                if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
-                return;
-              }
 
-              var scanLine = document.createElement("div");
-              scanLine.style.cssText = `
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 1px;
-    top: 0%;
-    pointer-events: none;
-    z-index: 10;
+              var newImg = document.createElement("img");
+              newImg.className = "nopic-parade-clone";
+              newImg.style.cssText =
+                "width:100%;height:100%;object-fit:contain;display:block;position:absolute;top:0;left:0;visibility:hidden;opacity:0;pointer-events:none;";
+              newImg.src = hiResUrl;
 
-    transform-origin: left top;
+              newImg.onload = function () {
+                if (!isParadeMode) return;
+                var newArea =
+                  (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
+                if (!isBg && newArea <= origArea) {
+                  if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
+                  return;
+                }
 
-    transform: scaleX(1) scaleY(${invScale});
-    background: linear-gradient(90deg,
-        transparent 0%,
-        rgba(120,200,255,0.15) 10%,
-        rgba(120,200,255,0.85) 35%,
-        rgba(200,230,255,1) 50%,
-        rgba(120,200,255,0.85) 65%,
-        rgba(120,200,255,0.15) 90%,
-        transparent 100%
-    );
-    box-shadow: 0 0 10px 3px rgba(100,180,255,0.4);
-`;
-              wrapper.appendChild(scanLine);
-
-              newImg.style.visibility = "visible";
-              newImg.style.opacity = "1";
-              newImg.style.clipPath = "inset(0 0 100% 0)";
-              wrapper.insertBefore(newImg, scanLine);
-
-              var dur = 800;
-              var st = 0;
-              function animScan(now) {
-                if (!st) st = now;
-                var t = Math.min((now - st) / dur, 1);
-                var ease =
-                  t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-                var pct = ease * 100;
-                newImg.style.clipPath = "inset(0 0 " + (100 - pct) + "% 0)";
-                scanLine.style.top = pct + "%";
-                scanLine.style.opacity =
-                  t < 0.05 ? t / 0.05 : t > 0.95 ? (1 - t) / 0.05 : 1;
-                if (t < 1) requestAnimationFrame(animScan);
-                else {
-                  newImg.style.clipPath = "none";
-                  setTimeout(function () {
-                    try {
-                      scanLine.remove();
-                    } catch (e) {}
-                  }, 100);
-                  // 阅兵模式：旧图直接替换，无模糊动画
+                if (!paradeUseAnimation) {
                   if (isBg) {
                     cloneEl.style.setProperty(
                       "background-image",
@@ -3233,18 +3235,87 @@ window.addEventListener("load", function () {
                     } catch (e) {}
                     data.clone = newImg;
                   }
+                  return;
                 }
-              }
-              requestAnimationFrame(animScan);
-            };
-            newImg.onerror = function () {
-              if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
-            };
-          }, delay);
 
-          delay += 200;
-        });
-      }, 700);
+                var scanLine = document.createElement("div");
+                scanLine.style.cssText = `
+                            position: absolute;
+                            left: 0;
+                            right: 0;
+                            height: 1px;
+                            top: 0%;
+                            pointer-events: none;
+                            z-index: 10;
+                            transform-origin: left top;
+                            transform: scaleX(1) scaleY(${invScale});
+                            background: linear-gradient(90deg,
+                                transparent 0%,
+                                rgba(120,200,255,0.15) 10%,
+                                rgba(120,200,255,0.85) 35%,
+                                rgba(200,230,255,1) 50%,
+                                rgba(120,200,255,0.85) 65%,
+                                rgba(120,200,255,0.15) 90%,
+                                transparent 100%
+                            );
+                            box-shadow: 0 0 10px 3px rgba(100,180,255,0.4);
+                        `;
+                wrapper.appendChild(scanLine);
+
+                newImg.style.visibility = "visible";
+                newImg.style.opacity = "1";
+                newImg.style.clipPath = "inset(0 0 100% 0)";
+                wrapper.insertBefore(newImg, scanLine);
+
+                var dur = paradeUseAnimation ? 800 : 100;
+                var st = 0;
+
+                function animScan(now) {
+                  if (!st) st = now;
+                  var t = Math.min((now - st) / dur, 1);
+                  var ease =
+                    t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                  var pct = ease * 100;
+                  newImg.style.clipPath = "inset(0 0 " + (100 - pct) + "% 0)";
+                  scanLine.style.top = pct + "%";
+                  scanLine.style.opacity =
+                    t < 0.05 ? t / 0.05 : t > 0.95 ? (1 - t) / 0.05 : 1;
+                  if (t < 1) requestAnimationFrame(animScan);
+                  else {
+                    newImg.style.clipPath = "none";
+                    setTimeout(function () {
+                      try {
+                        scanLine.remove();
+                      } catch (e) {}
+                    }, 100);
+                    if (isBg) {
+                      cloneEl.style.setProperty(
+                        "background-image",
+                        'url("' + hiResUrl + '")',
+                        "important",
+                      );
+                      if (newImg.parentNode)
+                        newImg.parentNode.removeChild(newImg);
+                    } else {
+                      try {
+                        cloneEl.remove();
+                      } catch (e) {}
+                      data.clone = newImg;
+                    }
+                  }
+                }
+                requestAnimationFrame(animScan);
+              };
+              newImg.onerror = function () {
+                if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
+              };
+            }, delay);
+
+            delay += stepDelay;
+          });
+        },
+        paradeUseAnimation ? 700 : 200,
+      );
 
       // ---- 阅兵模式交互事件 ----
       paradeOverlay.addEventListener("click", (e) => {
@@ -3314,8 +3385,7 @@ window.addEventListener("load", function () {
           }
 
           const step = e.deltaY < 0 ? 1.1 : 0.9;
-          const newScale = currentScale * step;
-          const clampedScale = Math.max(0.1, newScale);
+          const newScale = Math.max(0.1, currentScale * step);
 
           const translateMatch = currentTransform.match(
             /translate\(([^,]+),\s*([^)]+)\)/,
@@ -3337,27 +3407,23 @@ window.addEventListener("load", function () {
 
           const originalWidth = rect.width / currentScale;
           const originalHeight = rect.height / currentScale;
-          const newWidth = originalWidth * clampedScale;
-          const newHeight = originalHeight * clampedScale;
+          const newWidth = originalWidth * newScale;
+          const newHeight = originalHeight * newScale;
 
           const newLeft =
-            centerX - offsetX * (clampedScale / currentScale) - newWidth / 2;
+            centerX - offsetX * (newScale / currentScale) - newWidth / 2;
           const newTop =
-            centerY - offsetY * (clampedScale / currentScale) - newHeight / 2;
+            centerY - offsetY * (newScale / currentScale) - newHeight / 2;
 
           wrapper.style.transition = "none";
-          wrapper.style.transform = `translate(${newLeft}px, ${newTop}px) scale(${clampedScale})`;
+          wrapper.style.transform = `translate(${newLeft}px, ${newTop}px) scale(${newScale})`;
 
-          // 在滚轮事件中，获取缩放后的实际高度
           const displayedHeight = rect.height;
-
-          // 根据显示高度计算偏移（显示高度的 1.5%，范围 -4px ~ -14px）
           const offset = -(4 + Math.sqrt(displayedHeight) * 0.35);
           const clampedOffset = Math.min(-15, offset);
 
-          // 更新 sizeLabel
           if (sizeLabel) {
-            const invScale = 1 / clampedScale;
+            const invScale = 1 / newScale;
             sizeLabel.style.transition = "none";
             sizeLabel.style.transform = `translateX(0%) translateY(${clampedOffset}px) scale(${invScale})`;
             sizeLabel.style.transformOrigin = "center bottom";
@@ -3379,6 +3445,7 @@ window.addEventListener("load", function () {
         paradeDragState.wasDragged = false;
         paradeDragState.startX = e.clientX;
         paradeDragState.startY = e.clientY;
+
         function getTranslateValues(el) {
           const style = el.style.transform;
           const match = style.match(/translate\(([^,]+),\s*([^)]+)\)/);
@@ -3398,7 +3465,7 @@ window.addEventListener("load", function () {
 
       document.addEventListener("mousemove", paradeDragMoveHandler);
       document.addEventListener("mouseup", paradeDragUpHandler);
-    }, 100); // 等待图片显现动画完成
+    }, revealDelay);
   }
 
   // 拖拽移动处理函数（独立定义，方便注销）
@@ -3841,9 +3908,108 @@ window.addEventListener("load", function () {
     document.removeEventListener("mousemove", paradeDragMoveHandler);
     document.removeEventListener("mouseup", paradeDragUpHandler);
 
-    const scrollLeft = paradeOverlay.scrollLeft;
-    const scrollTop = paradeOverlay.scrollTop;
+    // ★★★ 核心优化：使用批量恢复，避免卡顿 ★★★
+    // 先清除任何正在运行的恢复定时器
+    if (_paradeRestoreTimer) {
+      clearTimeout(_paradeRestoreTimer);
+      _paradeRestoreTimer = null;
+    }
 
+    // 如果禁用动画（图片太多），使用分批恢复
+    if (
+      !paradeUseAnimation &&
+      paradeClones.size > PARADE_PERFORMANCE_THRESHOLD
+    ) {
+      console.log(
+        "[nopic] 使用批量恢复模式退出阅兵，共 " + paradeClones.size + " 张图片",
+      );
+
+      // 立即隐藏遮罩（让用户感觉已退出）
+      if (paradeOverlay) {
+        paradeOverlay.style.transition = "opacity 0.15s ease";
+        paradeOverlay.style.opacity = "0";
+        setTimeout(() => {
+          if (paradeOverlay && paradeOverlay.parentNode) {
+            paradeOverlay.remove();
+            paradeOverlay = null;
+          }
+        }, 200);
+      }
+      if (paradeHeader) {
+        paradeHeader.style.transition = "opacity 0.15s ease";
+        paradeHeader.style.opacity = "0";
+        setTimeout(() => {
+          if (paradeHeader && paradeHeader.parentNode) {
+            paradeHeader.remove();
+            paradeHeader = null;
+          }
+        }, 200);
+      }
+
+      // 恢复页面滚动（立即恢复）
+      document.body.style.overflow = paradeSavedBodyOverflow;
+      document.documentElement.style.overflow = paradeSavedHtmlOverflow;
+
+      // ★★★ 分批恢复原图状态，每批处理 20 个，避免卡顿 ★★★
+      const entries = Array.from(paradeClones.entries());
+      const BATCH_SIZE = 20;
+      let index = 0;
+
+      function processBatch() {
+        const batch = entries.slice(index, index + BATCH_SIZE);
+        if (batch.length === 0) {
+          // 所有批次处理完成
+          paradeClones.clear();
+          updateAllUI();
+          console.log("[nopic] 批量恢复完成");
+          return;
+        }
+
+        // 使用 requestAnimationFrame 分批执行，让出主线程
+        requestAnimationFrame(() => {
+          for (const [el, { wrapper }] of batch) {
+            if (el && el.isConnected) {
+              // 恢复可见性
+              el.style.visibility =
+                el._paradeSavedVisibility !== undefined
+                  ? el._paradeSavedVisibility
+                  : "";
+              delete el._paradeSavedVisibility;
+              delete el._isParadeZoomed;
+
+              // 恢复隐藏状态
+              if (el._paradeWasHidden) {
+                el.classList.add("nopic-hidden");
+                el.dataset.isHidden = "true";
+                const outline = imageOutlines.get(el);
+                if (outline) outline.style.display = "";
+                const btn = imageControls.get(el);
+                if (btn) btn.innerText = "显";
+                delete el._paradeWasHidden;
+                syncElementPosition(el);
+              }
+            }
+            // 移除 wrapper
+            if (wrapper && wrapper.parentNode) {
+              wrapper.remove();
+            }
+          }
+
+          index += BATCH_SIZE;
+          // 继续处理下一批
+          processBatch();
+        });
+      }
+
+      // 开始分批处理
+      processBatch();
+
+      // 更新 UI 状态（立即显示已退出）
+      updateAllUI();
+      return;
+    }
+
+    // ★★★ 正常退出（图片数量少，使用动画）★★★
     // 第一步：克隆图飞回原位
     paradeClones.forEach(
       (
@@ -3872,25 +4038,15 @@ window.addEventListener("load", function () {
         clone.style.filter = "none";
         clone.style.boxShadow = "none";
         clone.style.pointerEvents = "none";
-
-        // ★★★ 重置标签 ★★★
-        // if (sizeLabel) {
-        //   sizeLabel.style.transition = "transform 0.55s " + ez;
-        //   sizeLabel.style.transform =
-        //     "translateX(0%) translateY(-100%) scale(1)";
-        //   sizeLabel.style.transformOrigin = "center bottom";
-        //   sizeLabel.textContent =
-        //     Math.round(curRect.width) + "×" + Math.round(curRect.height);
-        // }
       },
     );
 
-    // 第二步：等飞回动画彻底结束后(550ms)，再淡出遮罩
+    // 第二步：等飞回动画结束后，再淡出遮罩
     setTimeout(() => {
       if (paradeOverlay) paradeOverlay.classList.remove("active");
       if (paradeHeader) paradeHeader.classList.remove("active");
 
-      // 第三步：等遮罩淡出后(300ms)，清理DOM并恢复原图状态
+      // 第三步：等遮罩淡出后，清理DOM并恢复原图状态
       setTimeout(() => {
         paradeClones.forEach(({ wrapper }, el) => {
           if (el.isConnected) {
@@ -3924,8 +4080,8 @@ window.addEventListener("load", function () {
         // 恢复页面滚动
         document.body.style.overflow = paradeSavedBodyOverflow;
         document.documentElement.style.overflow = paradeSavedHtmlOverflow;
-      }, 300); // 遮罩淡出时间
-    }, 550); // 飞回动画时间
+      }, 300);
+    }, 550);
     updateAllUI();
   }
 
@@ -6671,6 +6827,38 @@ window.addEventListener("load", function () {
       }
     }
 
+    // ===== 根据隐藏图片数量控制动画 =====
+    // 从 localStorage 读取用户保存的状态
+    const userDisabled = getLocalConfig("disableAnimation");
+
+    // 只有当用户没有手动禁用动画时，才执行自动切换
+    if (!userDisabled) {
+      const currentlyDisabled = document.body.classList.contains(
+        "nopic-animation-disabled",
+      );
+      if (hiddenCount > 50) {
+        if (!currentlyDisabled) {
+          document.body.classList.add("nopic-animation-disabled");
+          disableAnimationConfig = true;
+          // 同步UI开关显示（只是显示状态，不保存）
+          const sw = settingsSubmenu
+            ? settingsSubmenu.querySelector('[data-key="disableAnimation"]')
+            : null;
+          if (sw) sw.classList.add("on");
+        }
+      } else {
+        if (currentlyDisabled) {
+          document.body.classList.remove("nopic-animation-disabled");
+          disableAnimationConfig = false;
+          const sw = settingsSubmenu
+            ? settingsSubmenu.querySelector('[data-key="disableAnimation"]')
+            : null;
+          if (sw) sw.classList.remove("on");
+        }
+      }
+    }
+    // 如果 userDisabled === true，什么都不做，保持用户设置的状态
+
     _nopicBlurThrottle = false;
   }
 
@@ -6726,64 +6914,228 @@ window.addEventListener("load", function () {
       }
     });
 
-    // ============================================================
-    // ★★★ 核心优化：只检测视口内的图片 ★★★
-    // ============================================================
+    // ===== 如果已经存在 Observer，先断开 =====
+    if (window._nopicDomObserver) {
+      window._nopicDomObserver.disconnect();
+      window._nopicDomObserver = null;
+    }
+    if (window._nopicIntersectionObserver) {
+      window._nopicIntersectionObserver.disconnect();
+      window._nopicIntersectionObserver = null;
+    }
 
-    // 1. 获取所有候选图片
-    const allCandidates = document.querySelectorAll(
-      'img:not(.nopic-clone):not(.nopic-parade-clone), svg:not(.nopic-clone):not(.nopic-parade-clone), .nopic-has-bg:not(.nopic-clone):not(.nopic-parade-clone), [style*="background-image"]:not(.nopic-clone):not(.nopic-parade-clone)',
-    );
+    // ===== ★★★ 辅助函数：判断一个元素是否应该被处理（完全复用原有逻辑）★★★ =====
+    function shouldProcessImage(el) {
+      // 1. 跳过赞助二维码和关于弹窗
+      if (
+        el.id === "nopic-about-img" ||
+        (el.closest && el.closest("#nopic-about-modal"))
+      ) {
+        return false;
+      }
 
-    // 2. 获取视口尺寸（含缓冲区，提前处理即将进入视口的图片）
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const BUFFER = 500; // 上下左右各扩展500px，提前处理滚动边缘的图片
+      // 2. 跳过脚本UI元素
+      if (el.closest && el.closest("#nopic-widget")) return false;
+      if (el.closest && el.closest("#nopic-menu")) return false;
+      if (el.closest && el.closest("[id^='nopic-']")) return false;
 
-    // 3. 只处理视口内（含缓冲区）的图片
-    const targetEls = [];
-    for (const el of allCandidates) {
-      // 跳过赞助二维码和关于弹窗内的图片
-      if (el.id === "nopic-about-img" || el.closest("#nopic-about-modal"))
-        continue;
-
-      const bg = window.getComputedStyle(el).backgroundImage;
-      const isTarget =
+      // 3. 检查是否是目标图片（与原有逻辑一致）
+      var bg = window.getComputedStyle(el).backgroundImage;
+      var isTarget =
         el.tagName === "IMG" ||
         el.tagName === "SVG" ||
         (bg && bg !== "none" && bg.includes("url"));
-      if (!isTarget) continue;
+      if (!isTarget) return false;
 
-      const rect = el.getBoundingClientRect();
-      const hasText =
+      // 4. 尺寸过滤（与原有逻辑一致）
+      var rect = el.getBoundingClientRect();
+      if (rect.width <= 15 || rect.height <= 15) return false;
+
+      // 5. 文本过滤（只有 DIV/SPAN 才检查，与原有逻辑一致）
+      if (
         (el.tagName === "DIV" || el.tagName === "SPAN") &&
-        el.innerText.trim().length > 0;
+        el.innerText.trim().length > 0
+      ) {
+        return false;
+      }
 
-      // 尺寸过滤（小于15x15的忽略）
-      if (rect.width <= 15 || rect.height <= 15) continue;
-      if (hasText) continue;
+      return true;
+    }
 
-      // ★★★ 视口检测（含缓冲区）★★★
-      const inViewport =
+    // ===== ★★★ 首次执行：用原选择器获取所有候选，但只处理视口内的 ★★★ =====
+    var allCandidates = document.querySelectorAll(
+      'img:not(.nopic-clone):not(.nopic-parade-clone), svg:not(.nopic-clone):not(.nopic-parade-clone), .nopic-has-bg:not(.nopic-clone):not(.nopic-parade-clone), [style*="background-image"]:not(.nopic-clone):not(.nopic-parade-clone)',
+    );
+
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var BUFFER = 500;
+    var toProcess = [];
+
+    for (var i = 0; i < allCandidates.length; i++) {
+      var el = allCandidates[i];
+
+      // 如果已经在控制中，跳过
+      if (imageControls.has(el)) continue;
+      if (_nopicPendingImages.has(el)) continue;
+
+      // 使用统一的过滤函数
+      if (!shouldProcessImage(el)) continue;
+
+      // 检查是否在视口内（含缓冲区）
+      var rect = el.getBoundingClientRect();
+      var inViewport =
         rect.bottom >= -BUFFER &&
         rect.top <= vh + BUFFER &&
         rect.right >= -BUFFER &&
         rect.left <= vw + BUFFER;
-
-      if (inViewport && !imageControls.has(el)) {
-        targetEls.push(el);
+      if (inViewport) {
+        toProcess.push(el);
+      } else {
+        // 不在视口内的，先存到待处理集合
+        _nopicPendingImages.add(el);
       }
     }
 
-    // 4. 批量创建控制按钮（只针对视口内的图片）
-    for (const el of targetEls) {
-      createControlButton(el);
+    // 批量创建控制按钮（只处理视口内的）
+    for (var i = 0; i < toProcess.length; i++) {
+      createControlButton(toProcess[i]);
     }
 
-    // ===== 启动智能模糊调节（新增） =====
-    _nopicStartBlurAdjustment();
-  }
+    // ===== ★★★ 监听 DOM 变化：新图片出现时处理（带防抖）★★★ =====
+    var _nopicDomTimer = null;
 
+    window._nopicDomObserver = new MutationObserver(function (mutations) {
+      // ★★★ 防抖：短时间内的多次变化合并为一次 ★★★
+      if (_nopicDomTimer) {
+        clearTimeout(_nopicDomTimer);
+      }
+      _nopicDomTimer = setTimeout(function () {
+        _nopicDomTimer = null;
+        processNewElements(mutations);
+      }, 100);
+    });
+
+    // 提取处理新元素的逻辑，方便防抖调用
+    function processNewElements(mutations) {
+      var newElements = [];
+      for (var i = 0; i < mutations.length; i++) {
+        var addedNodes = mutations[i].addedNodes;
+        for (var j = 0; j < addedNodes.length; j++) {
+          var node = addedNodes[j];
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+
+          // 检查这个节点本身是否匹配选择器
+          if (
+            node.matches &&
+            node.matches(
+              'img:not(.nopic-clone):not(.nopic-parade-clone), svg:not(.nopic-clone):not(.nopic-parade-clone), .nopic-has-bg:not(.nopic-clone):not(.nopic-parade-clone), [style*="background-image"]:not(.nopic-clone):not(.nopic-parade-clone)',
+            )
+          ) {
+            newElements.push(node);
+          }
+
+          // 检查子元素
+          if (node.querySelectorAll) {
+            var children = node.querySelectorAll(
+              'img:not(.nopic-clone):not(.nopic-parade-clone), svg:not(.nopic-clone):not(.nopic-parade-clone), .nopic-has-bg:not(.nopic-clone):not(.nopic-parade-clone), [style*="background-image"]:not(.nopic-clone):not(.nopic-parade-clone)',
+            );
+            for (var k = 0; k < children.length; k++) {
+              newElements.push(children[k]);
+            }
+          }
+        }
+      }
+
+      // 去重
+      var unique = [];
+      var seen = new Set();
+      for (var i = 0; i < newElements.length; i++) {
+        var el = newElements[i];
+        if (!seen.has(el)) {
+          seen.add(el);
+          unique.push(el);
+        }
+      }
+
+      // 处理每个新元素
+      for (var i = 0; i < unique.length; i++) {
+        var el = unique[i];
+        // ★★★ 修复：只检查是否已在控制中，不再检查 _nopicPendingImages ★★★
+        if (imageControls.has(el)) continue;
+
+        if (!shouldProcessImage(el)) continue;
+
+        // 检查是否在视口内
+        var rect = el.getBoundingClientRect();
+        var BUFFER = 500;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        var inViewport =
+          rect.bottom >= -BUFFER &&
+          rect.top <= vh + BUFFER &&
+          rect.right >= -BUFFER &&
+          rect.left <= vw + BUFFER;
+
+        if (inViewport) {
+          createControlButton(el);
+        } else {
+          _nopicPendingImages.add(el);
+          if (window._nopicIntersectionObserver) {
+            window._nopicIntersectionObserver.observe(el);
+          }
+        }
+      }
+    }
+
+    window._nopicDomObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+
+    // ===== ★★★ 监听滚动：处理之前不在视口、现在进入视口的图片 ★★★ =====
+    window._nopicIntersectionObserver = new IntersectionObserver(
+      function (entries) {
+        var toProcess = [];
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) {
+            var el = entries[i].target;
+            // ★★★ 修复：只检查是否已在控制中，不再重复检查 _nopicPendingImages ★★★
+            if (!imageControls.has(el) && shouldProcessImage(el)) {
+              toProcess.push(el);
+              // 从待处理集合中移除
+              _nopicPendingImages.delete(el);
+            }
+          }
+        }
+        // ★★★ 批量创建，避免多次回流 ★★★
+        for (var i = 0; i < toProcess.length; i++) {
+          createControlButton(toProcess[i]);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "500px 500px 500px 500px",
+        threshold: 0,
+      },
+    );
+
+    // 把之前不在视口内的图片加入 IntersectionObserver
+    _nopicPendingImages.forEach(function (el) {
+      if (window._nopicIntersectionObserver) {
+        window._nopicIntersectionObserver.observe(el);
+      }
+    });
+
+    // ===== 启动智能模糊调节 =====
+    _nopicStartBlurAdjustment();
+
+    // ===== 启动回收定时器 =====
+    startRecycleTimer();
+
+    // ===== 设置标志表示功能已启动 =====
+    window.imgHidenSet = true;
+  }
   // ===== 独立的离开视口回收机制=====
   // 只在图片隐藏功能开启时运行
   function startRecycleTimer() {
@@ -6820,6 +7172,25 @@ window.addEventListener("load", function () {
       if (svg.parentNode) svg.remove();
     });
     imageTimers.clear();
+
+    // ===== 清理 IntersectionObserver =====
+    if (window._nopicIntersectionObserver) {
+      window._nopicIntersectionObserver.disconnect();
+      window._nopicIntersectionObserver = null;
+    }
+    if (window._nopicDomObserver) {
+      window._nopicDomObserver.disconnect();
+      window._nopicDomObserver = null;
+    }
+    // 清理防抖定时器
+    if (window._nopicDomTimer) {
+      clearTimeout(window._nopicDomTimer);
+      window._nopicDomTimer = null;
+    }
+    // 清空待处理集合
+    if (window._nopicPendingImages) {
+      window._nopicPendingImages.clear();
+    }
 
     // 4. 清理所有图片控制元素
     imageControls.forEach((btn, el) => {
@@ -17478,6 +17849,16 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
         startRecycleTimer();
 
         // 3. 标记为开启状态
+        // ===== 重置所有 Observer =====
+        if (window._nopicDomObserver) {
+          window._nopicDomObserver.disconnect();
+          window._nopicDomObserver = null;
+        }
+        if (window._nopicIntersectionObserver) {
+          window._nopicIntersectionObserver.disconnect();
+          window._nopicIntersectionObserver = null;
+        }
+        _nopicPendingImages.clear();
         window.imgHidenSet = true;
         imgHiden();
 
