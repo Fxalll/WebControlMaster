@@ -3,6 +3,17 @@ var _nopicFeaturesReady = false;
 var _nopicPendingFeatures = [];
 // 添加一个标志，确保启动逻辑只执行一次
 var _nopicStartExecuted = false;
+var _nopicWheelDisabled = false;
+
+function getTranslateValues(el) {
+  if (!el) return { x: 0, y: 0 };
+  const style = el.style.transform || "";
+  const match = style.match(/translate\(([^,]+),\s*([^)]+)\)/);
+  if (match) {
+    return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+  }
+  return { x: 0, y: 0 };
+}
 
 function _nopicRunWhenReady(fn) {
   // 如果功能已就绪，立即执行
@@ -2495,6 +2506,24 @@ window.addEventListener("load", function () {
 
   // --- 2. 样式定义 ---
   let spinnerTimer = null;
+  // 在样式定义区域添加（在 document.documentElement.appendChild(zoomContainer); 之前或之后都可以）
+  const editModeStyle = document.createElement("style");
+  editModeStyle.textContent = `
+    .nopic-edit-mode * {
+        cursor: text !important;
+    }
+    .nopic-edit-mode .nopic-switch,
+    .nopic-edit-mode .nopic-float-btn,
+    .nopic-edit-mode #nopic-widget *,
+    .nopic-edit-mode #nopic-menu *,
+    .nopic-edit-mode .nopic-submenu *,
+    .nopic-edit-mode .nopic-modal-popup *,
+    .nopic-edit-mode #nopic-zoom-container *,
+    .nopic-edit-mode #nopic-parade-overlay * {
+        cursor: default !important;
+    }
+`;
+  document.documentElement.appendChild(editModeStyle);
   const debounceTriggerSpinner = () => {
     clearTimeout(spinnerTimer);
     spinnerTimer = setTimeout(() => {
@@ -2849,7 +2878,7 @@ window.addEventListener("load", function () {
 
       const availH = vh - TOP_PAD - 20;
       const UNI_H = Math.min(
-        280,
+        80,
         Math.max(
           80,
           Math.floor(
@@ -2934,6 +2963,33 @@ window.addEventListener("load", function () {
         e.stopPropagation();
         enterDownloadMode();
       });
+
+      // ★★★ 显示尺寸按钮（和批量下载完全一样的样式）★★★
+      const sizeToggleBtn = document.createElement("div");
+      sizeToggleBtn.className = "nopic-parade-dl-btn";
+      sizeToggleBtn.textContent = "显示尺寸";
+      sizeToggleBtn.style.cssText = `
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  user-select: none;
+      background: #204d2691;
+`;
+
+      let sizeLabelsVisible = false;
+      sizeToggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        sizeLabelsVisible = !sizeLabelsVisible;
+
+        paradeClones.forEach((data) => {
+          if (data.sizeLabel) {
+            data.sizeLabel.style.display = sizeLabelsVisible ? "block" : "none";
+          }
+        });
+
+        sizeToggleBtn.textContent = sizeLabelsVisible ? "隐藏尺寸" : "显示尺寸";
+      });
+      headerRight.appendChild(sizeToggleBtn);
       headerRight.appendChild(dlBtn);
       headerRight.appendChild(closeBtn);
       paradeHeader.appendChild(headerRight);
@@ -2945,13 +3001,13 @@ window.addEventListener("load", function () {
         el.style.visibility = "hidden";
         el._isParadeZoomed = true;
 
-        // 创建包装器，用于承载克隆图和尺寸标签
         const wrapper = document.createElement("div");
         wrapper.style.position = "absolute";
-        wrapper.style.left = rect.left + "px";
-        wrapper.style.top = rect.top + "px";
         wrapper.style.width = rect.width + "px";
         wrapper.style.height = rect.height + "px";
+        wrapper.style.transform = `translate(${rect.left}px, ${rect.top}px) scale(1)`;
+        wrapper.style.transformOrigin = "top left";
+        wrapper.style.willChange = "transform";
         wrapper.style.zIndex = String(++paradeZIndexCounter);
         wrapper.style.transition = "none";
 
@@ -2978,7 +3034,6 @@ window.addEventListener("load", function () {
         clone.style.boxShadow = "none";
         clone.style.setProperty("z-index", "1", "important");
 
-        // 背景图元素补充样式
         if (
           el.tagName !== "IMG" &&
           (el.classList.contains("nopic-has-bg") ||
@@ -2998,17 +3053,34 @@ window.addEventListener("load", function () {
           clone.textContent = "";
         }
 
-        // 尺寸标签 - 显示图片在页面的渲染尺寸
+        // ★★★ 尺寸标签放在 wrapper 内部 ★★★
         const sizeLabel = document.createElement("div");
         sizeLabel.className = "nopic-parade-size-label";
+        sizeLabel.style.display = "none";
         sizeLabel.textContent =
           Math.round(rect.width) + "×" + Math.round(rect.height);
+        sizeLabel.style.position = "absolute";
+        sizeLabel.style.bottom = "-18px";
+        sizeLabel.style.left = "50%";
+        sizeLabel.style.transform = "translateX(-50%)";
+        sizeLabel.style.fontSize = "10px";
+        sizeLabel.style.color = "rgba(255,255,255,0.6)";
+        sizeLabel.style.fontFamily = "monospace";
+        sizeLabel.style.textShadow = "0 2px 8px rgba(0,0,0,0.8)";
+        sizeLabel.style.padding = "0px 0px";
+        sizeLabel.style.borderRadius = "4px";
+        sizeLabel.style.whiteSpace = "nowrap";
+        sizeLabel.style.pointerEvents = "none";
+        sizeLabel.style.textAlign = "center";
+        sizeLabel.style.zIndex = "2";
+        // ★★★ 关键：设置反向缩放，抵消父元素的 scale ★★★
+        sizeLabel._baseScale = 1;
+        wrapper.appendChild(sizeLabel);
 
         wrapper.appendChild(clone);
         wrapper.appendChild(sizeLabel);
         content.appendChild(wrapper);
 
-        // 保存 wrapper 引用，方便后续动画操作
         paradeClones.set(el, {
           clone,
           wrapper,
@@ -3027,25 +3099,36 @@ window.addEventListener("load", function () {
         paradeOverlay.classList.add("active");
         paradeHeader.classList.add("active");
         requestAnimationFrame(() => {
-          // 使用与退出动画一致的平滑标准缓动，时间延长至 0.6s
           const ez = "cubic-bezier(0.4, 0, 0.2, 1)";
+
           paradeClones.forEach(
-            ({ clone, wrapper, targetPos: tp, sizeLabel }) => {
-              wrapper.style.transition =
-                "left 0.6s " +
-                ez +
-                ", top 0.6s " +
-                ez +
-                ", width 0.6s " +
-                ez +
-                ", height 0.6s " +
-                ez;
-              wrapper.style.left = tp.left + "px";
-              wrapper.style.top = tp.top + "px";
-              wrapper.style.width = tp.width + "px";
-              wrapper.style.height = tp.height + "px";
+            ({
+              clone,
+              wrapper,
+              targetPos: tp,
+              sizeLabel,
+              originalRect: rect,
+            }) => {
+              wrapper.style.transition = "transform 0.6s " + ez;
+              const scaleX = tp.width / rect.width;
+              const scaleY = tp.height / rect.height;
+              const scale = Math.min(scaleX, scaleY);
+              wrapper.style.transform = `translate(${tp.left}px, ${tp.top}px) scale(${scale})`;
               clone.style.filter = "drop-shadow(0 8px 24px rgba(0,0,0,0.5))";
               clone.style.boxShadow = "none";
+
+              if (sizeLabel) {
+                const invScale = 1 / scale;
+                const displayedHeight = rect.height * scale;
+                // 基于放大后的高度计算偏移（例如放大后高度的 2-3%）
+                const offset = -(4 + Math.sqrt(displayedHeight) * 0.35);
+                const clampedOffset = Math.min(-15, offset);
+                sizeLabel.style.transform = `translateX(0%)  translateY(${clampedOffset}px)  scale(${invScale})`;
+                sizeLabel.style.transformOrigin = "center bottom";
+                // ★★★ 显示网页渲染尺寸（即布局时计算的尺寸），不是缩放后的尺寸 ★★★
+                sizeLabel.textContent =
+                  Math.round(rect.width) + "×" + Math.round(rect.height);
+              }
             },
           );
         });
@@ -3063,6 +3146,8 @@ window.addEventListener("load", function () {
           var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
           var wrapper = data.wrapper;
           var cloneEl = data.clone;
+
+          var invScale = 1 / 10;
 
           setTimeout(function () {
             if (!isParadeMode) return;
@@ -3083,8 +3168,29 @@ window.addEventListener("load", function () {
               }
 
               var scanLine = document.createElement("div");
-              scanLine.style.cssText =
-                "position:absolute;left:0;right:0;height:2px;top:0%;background:linear-gradient(90deg,transparent 0%,rgba(120,200,255,0.15) 10%,rgba(120,200,255,0.85) 35%,rgba(200,230,255,1) 50%,rgba(120,200,255,0.85) 65%,rgba(120,200,255,0.15) 90%,transparent 100%);box-shadow:0 0 10px 3px rgba(100,180,255,0.4);pointer-events:none;z-index:10;";
+              scanLine.style.cssText = `
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    top: 0%;
+    pointer-events: none;
+    z-index: 10;
+
+    transform-origin: left top;
+
+    transform: scaleX(1) scaleY(${invScale});
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(120,200,255,0.15) 10%,
+        rgba(120,200,255,0.85) 35%,
+        rgba(200,230,255,1) 50%,
+        rgba(120,200,255,0.85) 65%,
+        rgba(120,200,255,0.15) 90%,
+        transparent 100%
+    );
+    box-shadow: 0 0 10px 3px rgba(100,180,255,0.4);
+`;
               wrapper.appendChild(scanLine);
 
               newImg.style.visibility = "visible";
@@ -3187,30 +3293,75 @@ window.addEventListener("load", function () {
           e.preventDefault();
           e.stopPropagation();
 
-          // 找到 clone 所在的 wrapper
           const wrapper = clone.parentElement;
           if (!wrapper) return;
 
+          let sizeLabel = null;
+          for (const [el, info] of paradeClones) {
+            if (info.wrapper === wrapper) {
+              sizeLabel = info.sizeLabel;
+              break;
+            }
+          }
+
           wrapper.style.zIndex = String(++paradeZIndexCounter);
 
-          const rect = clone.getBoundingClientRect();
+          const currentTransform = wrapper.style.transform;
+          let currentScale = 1;
+          const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
+          if (scaleMatch) {
+            currentScale = parseFloat(scaleMatch[1]);
+          }
+
           const step = e.deltaY < 0 ? 1.1 : 0.9;
-          const nw = rect.width * step;
-          const nh = rect.height * step;
+          const newScale = currentScale * step;
+          const clampedScale = Math.max(0.1, newScale);
 
-          const scrollLeft = paradeOverlay.scrollLeft;
-          const scrollTop = paradeOverlay.scrollTop;
-          const centerX = rect.left + rect.width / 2 + scrollLeft;
-          const centerY = rect.top + rect.height / 2 + scrollTop;
+          const translateMatch = currentTransform.match(
+            /translate\(([^,]+),\s*([^)]+)\)/,
+          );
+          let currentX = 0,
+            currentY = 0;
+          if (translateMatch) {
+            currentX = parseFloat(translateMatch[1]);
+            currentY = parseFloat(translateMatch[2]);
+          }
 
-          const newLeft = centerX - nw / 2;
-          const newTop = centerY - nh / 2;
+          const rect = clone.getBoundingClientRect();
+          const centerX = e.clientX;
+          const centerY = e.clientY;
+          const rectCenterX = rect.left + rect.width / 2;
+          const rectCenterY = rect.top + rect.height / 2;
+          const offsetX = centerX - rectCenterX;
+          const offsetY = centerY - rectCenterY;
+
+          const originalWidth = rect.width / currentScale;
+          const originalHeight = rect.height / currentScale;
+          const newWidth = originalWidth * clampedScale;
+          const newHeight = originalHeight * clampedScale;
+
+          const newLeft =
+            centerX - offsetX * (clampedScale / currentScale) - newWidth / 2;
+          const newTop =
+            centerY - offsetY * (clampedScale / currentScale) - newHeight / 2;
 
           wrapper.style.transition = "none";
-          wrapper.style.left = newLeft + "px";
-          wrapper.style.top = newTop + "px";
-          wrapper.style.width = nw + "px";
-          wrapper.style.height = nh + "px";
+          wrapper.style.transform = `translate(${newLeft}px, ${newTop}px) scale(${clampedScale})`;
+
+          // 在滚轮事件中，获取缩放后的实际高度
+          const displayedHeight = rect.height;
+
+          // 根据显示高度计算偏移（显示高度的 1.5%，范围 -4px ~ -14px）
+          const offset = -(4 + Math.sqrt(displayedHeight) * 0.35);
+          const clampedOffset = Math.min(-15, offset);
+
+          // 更新 sizeLabel
+          if (sizeLabel) {
+            const invScale = 1 / clampedScale;
+            sizeLabel.style.transition = "none";
+            sizeLabel.style.transform = `translateX(0%) translateY(${clampedOffset}px) scale(${invScale})`;
+            sizeLabel.style.transformOrigin = "center bottom";
+          }
         },
         { passive: false },
       );
@@ -3228,10 +3379,18 @@ window.addEventListener("load", function () {
         paradeDragState.wasDragged = false;
         paradeDragState.startX = e.clientX;
         paradeDragState.startY = e.clientY;
-        paradeDragState.startScreenLeft =
-          parseFloat(wrapper.style.left) - paradeOverlay.scrollLeft;
-        paradeDragState.startScreenTop =
-          parseFloat(wrapper.style.top) - paradeOverlay.scrollTop;
+        function getTranslateValues(el) {
+          const style = el.style.transform;
+          const match = style.match(/translate\(([^,]+),\s*([^)]+)\)/);
+          if (match) {
+            return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+          }
+          return { x: 0, y: 0 };
+        }
+
+        const pos = getTranslateValues(wrapper);
+        paradeDragState.startScreenLeft = pos.x - paradeOverlay.scrollLeft;
+        paradeDragState.startScreenTop = pos.y - paradeOverlay.scrollTop;
         paradeDragState.currentEl = getParadeElByClone(clone);
         clone.style.setProperty("transition", "none", "important");
         clone.style.cursor = "grabbing";
@@ -3251,13 +3410,22 @@ window.addEventListener("load", function () {
     const dx = e.clientX - paradeDragState.startX;
     const dy = e.clientY - paradeDragState.startY;
 
-    // 拖动时禁用过渡，确保跟手
     wrapper.style.transition = "none";
 
-    wrapper.style.left =
-      paradeDragState.startScreenLeft + dx + paradeOverlay.scrollLeft + "px";
-    wrapper.style.top =
-      paradeDragState.startScreenTop + dy + paradeOverlay.scrollTop + "px";
+    const newLeft =
+      paradeDragState.startScreenLeft + dx + paradeOverlay.scrollLeft;
+    const newTop =
+      paradeDragState.startScreenTop + dy + paradeOverlay.scrollTop;
+
+    // ★★★ 关键：保留当前的 scale，不要重置为 1 ★★★
+    const currentTransform = wrapper.style.transform;
+    let currentScale = 1;
+    const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
+    if (scaleMatch) {
+      currentScale = parseFloat(scaleMatch[1]);
+    }
+    wrapper.style.transform = `translate(${newLeft}px, ${newTop}px) scale(${currentScale})`;
+
     if (Math.hypot(dx, dy) > 3) paradeDragState.wasDragged = true;
   }
 
@@ -3688,26 +3856,32 @@ window.addEventListener("load", function () {
         }
 
         const curRect = el.getBoundingClientRect();
+        const scrollLeft = paradeOverlay.scrollLeft;
+        const scrollTop = paradeOverlay.scrollTop;
         const flyLeft = curRect.left + scrollLeft;
         const flyTop = curRect.top + scrollTop;
 
         const ez = "cubic-bezier(0.25, 0.1, 0.25, 1)";
-        wrapper.style.transition =
-          "left 0.55s " +
-          ez +
-          ", top 0.55s " +
-          ez +
-          ", width 0.55s " +
-          ez +
-          ", height 0.55s " +
-          ez;
-        wrapper.style.left = flyLeft + "px";
-        wrapper.style.top = flyTop + "px";
-        wrapper.style.width = curRect.width + "px";
-        wrapper.style.height = curRect.height + "px";
+        wrapper.style.transition = "transform 0.55s " + ez;
+        const originalWidth = rect.width;
+        const originalHeight = rect.height;
+        const scaleX = curRect.width / originalWidth;
+        const scaleY = curRect.height / originalHeight;
+        const scale = Math.min(scaleX, scaleY);
+        wrapper.style.transform = `translate(${flyLeft}px, ${flyTop}px) scale(${scale})`;
         clone.style.filter = "none";
         clone.style.boxShadow = "none";
         clone.style.pointerEvents = "none";
+
+        // ★★★ 重置标签 ★★★
+        // if (sizeLabel) {
+        //   sizeLabel.style.transition = "transform 0.55s " + ez;
+        //   sizeLabel.style.transform =
+        //     "translateX(0%) translateY(-100%) scale(1)";
+        //   sizeLabel.style.transformOrigin = "center bottom";
+        //   sizeLabel.textContent =
+        //     Math.round(curRect.width) + "×" + Math.round(curRect.height);
+        // }
       },
     );
 
@@ -3759,10 +3933,17 @@ window.addEventListener("load", function () {
   function paradeZoomOutSingle(el) {
     const info = paradeClones.get(el);
     if (!info) return;
-    const { clone, originalRect: rect, targetPos: tp } = info;
+    const {
+      clone,
+      wrapper,
+      originalRect: rect,
+      targetPos: tp,
+      sizeLabel,
+    } = info;
 
     if (!el.isConnected) {
       clone.remove();
+      if (sizeLabel && sizeLabel.parentNode) sizeLabel.remove();
       paradeClones.delete(el);
       delete el._isParadeZoomed;
       if (paradeClones.size === 0) exitParadeMode();
@@ -3770,42 +3951,47 @@ window.addEventListener("load", function () {
     }
 
     const curRect = el.getBoundingClientRect();
-    const scrollLeft = paradeOverlay.scrollLeft;
-    const scrollTop = paradeOverlay.scrollTop;
-    const flyLeft = curRect.left + scrollLeft;
-    const flyTop = curRect.top + scrollTop;
+    const flyLeft = curRect.left;
+    const flyTop = curRect.top;
 
-    const ez = "cubic-bezier(0.25, 0.1, 0.25, 1)"; // 更平滑的减速曲线
+    const ez = "cubic-bezier(0.25, 0.1, 0.25, 1)";
+    const originalWidth = rect.width;
+    const originalHeight = rect.height;
+    const scaleX = curRect.width / originalWidth;
+    const scaleY = curRect.height / originalHeight;
+    const scale = Math.min(scaleX, scaleY);
+
+    // wrapper 飞回（使用视口坐标）
     clone.style.setProperty(
       "transition",
-      "left 0.45s " +
-        ez +
-        ", top 0.45s " +
-        ez +
-        ", width 0.45s " +
-        ez +
-        ", height 0.45s " +
-        ez +
-        ", box-shadow 0.45s " +
-        ez,
+      "transform 0.45s " + ez + ", box-shadow 0.45s " + ez,
       "important",
     );
-
-    clone.style.left = flyLeft + "px";
-    clone.style.top = flyTop + "px";
-    clone.style.width = curRect.width + "px";
-    clone.style.height = curRect.height + "px";
+    clone.style.transform = `translate(${flyLeft}px, ${flyTop}px) scale(${scale})`;
     clone.style.filter = "none";
     clone.style.boxShadow = "none";
     clone.style.pointerEvents = "none";
 
+    // ★★★ 尺寸标签飞回 ★★★
+    // if (sizeLabel) {
+    //   sizeLabel.style.transition = "transform 0.45s " + ez;
+    //   const labelX = curRect.left;
+    //   const labelY = curRect.top + curRect.height + 4;
+    //   sizeLabel.style.transform = `translate(${labelX}px, ${labelY}px)`;
+    //   sizeLabel.textContent =
+    //     Math.round(curRect.width) + "×" + Math.round(curRect.height);
+    // }
+
     setTimeout(() => {
       const info = paradeClones.get(el);
-      if (info && info.wrapper && info.wrapper.parentNode)
+      if (info && info.wrapper && info.wrapper.parentNode) {
         info.wrapper.remove();
+      }
+      if (info && info.sizeLabel && info.sizeLabel.parentNode) {
+        info.sizeLabel.remove();
+      }
       paradeClones.delete(el);
 
-      // 恢复原图可见
       el.style.visibility =
         el._paradeSavedVisibility !== undefined
           ? el._paradeSavedVisibility
@@ -3813,7 +3999,6 @@ window.addEventListener("load", function () {
       delete el._paradeSavedVisibility;
       delete el._isParadeZoomed;
 
-      // 还原原来隐藏的状态
       if (el._paradeWasHidden) {
         el.classList.add("nopic-hidden");
         el.dataset.isHidden = "true";
@@ -3826,7 +4011,7 @@ window.addEventListener("load", function () {
       }
 
       if (paradeClones.size === 0) exitParadeMode();
-    }, 500); // 延长清理时间，确保动画完成
+    }, 500);
   }
 
   // ===== 获取图片信息 =====
@@ -3890,7 +4075,7 @@ window.addEventListener("load", function () {
     }
 
     // 文件格式检测 - 提取扩展名并校验
-    let format = "Unknown";
+    let format = "未知拓展名";
     if (src) {
       try {
         const urlWithoutQuery = src.split("?")[0];
@@ -4987,11 +5172,15 @@ window.addEventListener("load", function () {
       { passive: true },
     );
   }
+  // ===== 完整修改 zoomIn 函数（动画用 scale，完成后转为 width/height）=====
   function zoomIn(el, btn, zoomBtn, fromHover) {
     if (el._isZoomed || zoomCooldown) return;
     if (isParadeMode) return;
     cancelHoverZoomTimer(el, true);
     el._isZoomed = true;
+
+    // ===== 新增：禁用滚轮放大 =====
+    _nopicWheelDisabled = true;
 
     const outline = imageOutlines.get(el);
     if (outline) outline.style.display = "none";
@@ -5005,7 +5194,7 @@ window.addEventListener("load", function () {
     el._savedVisibility = el.style.visibility;
     el.style.visibility = "hidden";
 
-    // ★★★ 先计算动画目标尺寸（放大后的尺寸） ★★★
+    // ★★★ 计算目标尺寸 ★★★
     const vw = window.innerWidth * 0.9;
     const vh = window.innerHeight * 0.9;
     const targetScale = Math.min(vw / rect.width, vh / rect.height, 5);
@@ -5014,13 +5203,11 @@ window.addEventListener("load", function () {
     const targetLeft = (window.innerWidth - targetWidth) / 2;
     const targetTop = (window.innerHeight - targetHeight) / 2;
 
-    // ★★★ 创建翻转容器 ★★★
+    // ★★★ 翻转容器：初始尺寸 = 原始尺寸 ★★★
     const flipContainer = document.createElement("div");
     flipContainer.className = "nopic-flip-container";
     flipContainer.style.cssText = `
         position: fixed !important;
-        left: ${rect.left}px;
-        top: ${rect.top}px;
         width: ${rect.width}px;
         height: ${rect.height}px;
         perspective: 1200px;
@@ -5028,6 +5215,9 @@ window.addEventListener("load", function () {
         pointer-events: auto;
         cursor: default;
         user-select: none;
+        transform: translate(${rect.left}px, ${rect.top}px) scale(1);
+        transform-origin: top left;
+        will-change: transform, width, height;
     `;
 
     // ★★★ 创建翻转卡片 ★★★
@@ -5047,91 +5237,83 @@ window.addEventListener("load", function () {
     const front = document.createElement("div");
     front.className = "nopic-flip-front";
     front.style.cssText = `
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    overflow: hidden;
-    border-radius: 4px;
-    pointer-events: none;
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-`;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        overflow: hidden;
+        pointer-events: none;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
     const clone = el.cloneNode(true);
     clone.id = "";
     clone.classList.remove(
       "nopic-hidden",
       "nopic-outline-box",
       "nopic-float-btn",
-      // ★★★ 关键：不要移除 nopic-has-bg，但后续会根据情况处理 ★★★
     );
     clone.classList.add("nopic-clone");
 
-    // ★★★ 核心修复：针对背景图元素的特殊处理 ★★★
+    // ★★★ 背景图元素特殊处理 ★★★
     const isBgImage =
       el.classList.contains("nopic-has-bg") ||
       window.getComputedStyle(el).backgroundImage !== "none";
 
-    // 基础样式（所有克隆体共用）
     let cloneStyles = `
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    filter: none !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    pointer-events: none;
-    max-width: 100% !important;
-    max-height: 100% !important;
-  `;
+        width: 100% !important;
+        height: 100% !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        filter: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        pointer-events: none;
+        max-width: 100% !important;
+        max-height: 100% !important;
+    `;
 
     if (isBgImage) {
-      // ★★★ 背景图元素：用 position:absolute 避免 fixed 导致溢出父容器 ★★★
       const originalBgImage = window.getComputedStyle(el).backgroundImage;
-
       cloneStyles += `
-      position: absolute !important;
-      background-image: ${originalBgImage} !important;
-      background-size: contain !important;
-      background-position: center !important;
-      background-repeat: no-repeat !important;
-      content: '' !important;
-      display: block !important;
-    `;
-      // 清空内部文本，防止干扰（对于纯背景图元素）
+            position: absolute !important;
+            background-image: ${originalBgImage} !important;
+            background-size: contain !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            content: '' !important;
+            display: block !important;
+        `;
       clone.textContent = "";
     } else {
-      // ★★★ 是普通 <img>：保留原有对象适配逻辑 ★★★
       cloneStyles += `
-      object-fit: contain !important;
-      background-size: contain !important;
-      background-position: center !important;
-      background-repeat: no-repeat !important;
-    `;
+            object-fit: contain !important;
+            background-size: contain !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        `;
     }
 
     clone.style.cssText = cloneStyles;
     front.appendChild(clone);
 
-    // ★★★ 背面：图片信息（根据目标尺寸计算字体大小） ★★★
+    // ★★★ 背面：图片信息 ★★★
     const back = document.createElement("div");
     back.className = "nopic-flip-back";
     const isLight =
       document.documentElement.getAttribute("data-nopic-theme") === "light";
 
-    // 提取图片主题色（同步优先，异步补全）
     var themeRGB = getImageThemeColor(el);
     back._themeRGB = themeRGB;
     back._extraInfo = {};
-    // 获取图片信息（必须在 fetchThemeColorAndInfo 之前，因为回调会用到）
     const imgInfo = getImageInfo(el);
-    // 异步获取更精确的主题色 + 文件信息
+
     var imgSrc = el.src || el.getAttribute("src") || "";
     fetchThemeColorAndInfo(imgSrc, function (newColor, extraInfo) {
       if (newColor) {
@@ -5139,8 +5321,7 @@ window.addEventListener("load", function () {
       }
       if (extraInfo) {
         back._extraInfo = extraInfo;
-        // 用 MIME 类型补充格式
-        if (imgInfo.format === "Unknown" && extraInfo.mimeType) {
+        if (imgInfo.format === "未知拓展名" && extraInfo.mimeType) {
           var mimeMap = {
             "image/jpeg": "JPEG",
             "image/png": "PNG",
@@ -5154,7 +5335,7 @@ window.addEventListener("load", function () {
           if (detected) imgInfo.format = detected;
         }
       }
-      // 用最新主题色更新背面
+      // 使用目标尺寸（放大后的尺寸）渲染背面
       back.innerHTML = buildBackContent(targetWidth, targetHeight);
       var t = back._themeRGB;
       var dB = adjustColor(t, 0.55),
@@ -5163,39 +5344,45 @@ window.addEventListener("load", function () {
       var lB = adjustColor(t, 0, 0.75),
         lT = adjustColor(t, 0.45),
         lS = adjustColor(t, 0.4);
-      back.style.background = isLight ? rgbToStr(lB) : rgbToStr(dB);
+
+      var bgRgb = isLight ? lB : dB;
+      back.style.background = `rgba(${bgRgb.r},${bgRgb.g},${bgRgb.b},0.7)`;
+      back.style.backdropFilter = "blur(4px)";
+      back.style.webkitBackdropFilter = "blur(4px)";
+
       back.style.color = isLight ? rgbToStr(lT) : "#ffffff";
     });
+
     var dB = adjustColor(themeRGB, 0.55),
       lB = adjustColor(themeRGB, 0, 0.75),
       lT = adjustColor(themeRGB, 0.45);
 
     back.style.cssText = `
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      transform: rotateY(180deg);
-      border-radius: 4px;
-      background: ${isLight ? rgbToStr(lB) : rgbToStr(dB)};
-      color: ${isLight ? rgbToStr(lT) : "#ffffff"};
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      box-sizing: border-box;
-      box-shadow: 0 15px 30px rgba(0,0,0,0.6);
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      pointer-events: none;
-      overflow: hidden;
-      text-align: center;
-      min-width: 0 !important;
-      min-height: 0 !important;
-  `;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        transform: rotateY(180deg);
+        background: ${isLight ? "rgba(245,245,250,0.7)" : "rgba(20,20,25,0.7)"} !important;
+        backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+        color: ${isLight ? rgbToStr(lT) : "#ffffff"};
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        box-sizing: border-box;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        pointer-events: none;
+        overflow: hidden;
+        text-align: center;
+        min-width: 0 !important;
+        min-height: 0 !important;
+    `;
 
-    // ★★★ 核心：根据目标尺寸动态计算字体大小的函数 ★★★
     function buildBackContent(width, height) {
       var t = back._themeRGB || { r: 128, g: 128, b: 128 };
       var dT = adjustColor(t, 0, 0.55),
@@ -5233,22 +5420,20 @@ window.addEventListener("load", function () {
       var dimLabel = hiRes ? "高清尺寸" : "图片尺寸";
 
       return `
-      <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 2px; color: ${isLight ? rgbToStr(lT) : rgbToStr(dT)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
-      ${hiRes ? `<div style="font-size: ${tinyFontSize}px; color: ${isLight ? rgbToStr(lS, 0.6) : rgbToStr(dS, 0.45)}; margin-bottom: 1px; padding: 0 8px;">已替换为高清原图</div>` : ""}
-      <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lS, 0.8) : rgbToStr(dS, 0.55)}; line-height: 1.7; white-space: nowrap; padding: 0 8px; ${hiRes ? "margin-top: 6px;" : ""}">
-          <div>${dimLabel}：${dimLine}</div>
-          ${origLine}
-          <div>文件大小：${sizeStr || "未知"}</div>
-          <div>文件格式：${fmt}</div>
-          ${imgInfo.domain ? `<div>图片域名：${imgInfo.domain}</div>` : ""}
-      </div>
-  `;
+            <div style="font-size: ${fontSize}px; font-weight: 600; margin-bottom: 2px; color: ${isLight ? rgbToStr(lT) : rgbToStr(dT)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; padding: 0 8px;">${imgInfo.name}</div>
+            ${hiRes ? `<div style="font-size: ${tinyFontSize}px; color: ${isLight ? rgbToStr(lS, 0.6) : rgbToStr(dS, 0.45)}; margin-bottom: 1px; padding: 0 8px;">已替换为高清原图</div>` : ""}
+            <div style="font-size: ${smallFontSize}px; color: ${isLight ? rgbToStr(lS, 0.8) : rgbToStr(dS, 0.55)}; line-height: 1.7; white-space: nowrap; padding: 0 8px; ${hiRes ? "margin-top: 6px;" : ""}">
+                <div>${dimLabel}：${dimLine}</div>
+                ${origLine}
+                <div>文件大小：${sizeStr || "未知大小"}</div>
+                <div>文件格式：${fmt}</div>
+                ${imgInfo.domain ? `<div>图片域名：${imgInfo.domain}</div>` : ""}
+            </div>
+        `;
     }
 
-    // ★★★ 初始化时直接用目标尺寸渲染背面 ★★★
+    // 先用目标尺寸渲染背面
     back.innerHTML = buildBackContent(targetWidth, targetHeight);
-
-    // ★★★ 存储引用和构建函数，供滚轮缩放时更新 ★★★
     back._buildBackContent = buildBackContent;
 
     flipCard.appendChild(front);
@@ -5265,16 +5450,53 @@ window.addEventListener("load", function () {
     if (!zoomPinModeConfig) {
       zoomContainer.classList.add("active");
     }
+
+    // ★★★ 放大动画：先用 scale 过渡 ★★★
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const easing = "cubic-bezier(0.16, 1, 0.3, 1)";
-        flipContainer.style.transition = `left 0.45s ${easing}, top 0.45s ${easing}, width 0.45s ${easing}, height 0.45s ${easing}`;
-        flipContainer.style.left = targetLeft + "px";
-        flipContainer.style.top = targetTop + "px";
-        flipContainer.style.width = targetWidth + "px";
-        flipContainer.style.height = targetHeight + "px";
+        flipContainer.style.transition = `transform 0.45s ${easing}, width 0s, height 0s`;
+        flipContainer.style.transform = `translate(${targetLeft}px, ${targetTop}px) scale(${targetScale})`;
       });
     });
+
+    // ★★★ 动画完成后，切换为 width/height，重置 scale = 1 ★★★
+    setTimeout(() => {
+      if (!el._isZoomed) return;
+
+      // 获取当前实际位置（因为可能被拖拽过，需要从 transform 中读取）
+      const currentTransform = flipContainer.style.transform;
+      let currentTx = targetLeft,
+        currentTy = targetTop;
+
+      // 尝试解析当前的 translate 值（如果被拖拽过，位置会变化）
+      const translateMatch = currentTransform.match(
+        /translate\(([^,]+),\s*([^)]+)\)/,
+      );
+      if (translateMatch) {
+        currentTx = parseFloat(translateMatch[1]);
+        currentTy = parseFloat(translateMatch[2]);
+      }
+
+      // 切换：宽高变为目标尺寸，位置用 translate 中的值，scale 重置为 1
+      flipContainer.style.transition = "none";
+      flipContainer.style.width = targetWidth + "px";
+      flipContainer.style.height = targetHeight + "px";
+      flipContainer.style.transform = `translate(${currentTx}px, ${currentTy}px) scale(1)`;
+
+      // 强制回流后恢复过渡（为后续操作保留过渡能力）
+      void flipContainer.offsetHeight;
+      flipContainer.style.transition = "";
+
+      // 更新背面文字（尺寸已变，但文字不变）
+      const backEl = flipContainer._back;
+      if (backEl && backEl._buildBackContent) {
+        backEl.innerHTML = backEl._buildBackContent(targetWidth, targetHeight);
+      }
+
+      // ===== 新增：恢复滚轮放大 =====
+      _nopicWheelDisabled = false;
+    }, 500); // 等待动画完成（与动画时长匹配）
 
     zoomedClones.set(el, { clone: flipContainer, closeBtn: null });
 
@@ -5285,8 +5507,156 @@ window.addEventListener("load", function () {
     setTimeout(function () {
       if (!el._isZoomed) return;
       tryReplaceHiRes(el, flipContainer, front, clone);
-    }, 500);
+    }, 550);
   }
+
+  // ===== 修改 zoomOut 函数 =====
+  function zoomOut(el) {
+    if (!el._isZoomed) return;
+    el._isZoomed = false;
+
+    // ===== 新增：恢复滚轮放大 =====
+    _nopicWheelDisabled = false;
+
+    const info = zoomedClones.get(el);
+    const container = info ? info.clone : null;
+
+    let flipCard = null;
+    if (container && container._flipCard) {
+      flipCard = container._flipCard;
+    }
+
+    if (container && el.isConnected) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+        if (flipCard) {
+          flipCard.style.transition = `transform 0.35s ${easing}`;
+          flipCard.style.transform = "rotateX(0deg) rotateY(0deg)";
+          container._isFlipped = false;
+          if (flipCard._flipState) {
+            flipCard._flipState.rotX = 0;
+            flipCard._flipState.rotY = 0;
+          }
+        }
+
+        // ★★★ 收拢：重置为原始尺寸 ★★★
+        container.style.transition = `transform 0.35s ${easing}, width 0.35s ${easing}, height 0.35s ${easing}`;
+        container.style.width = rect.width + "px";
+        container.style.height = rect.height + "px";
+        container.style.transform = `translate(${rect.left}px, ${rect.top}px) scale(1)`;
+      }
+    } else if (container) {
+      const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
+      container.style.transition = `opacity 0.4s ${easing}`;
+      container.style.opacity = "0";
+    }
+
+    if (!zoomPinModeConfig) {
+      zoomContainer.classList.remove("active");
+    }
+    zoomCooldown = true;
+    setTimeout(() => {
+      zoomCooldown = false;
+    }, 300);
+
+    setTimeout(() => {
+      if (el._savedVisibility !== undefined)
+        el.style.visibility = el._savedVisibility;
+      delete el._savedVisibility;
+      const outline = imageOutlines.get(el);
+      if (outline) outline.style.display = "";
+
+      if (container && container.parentNode) container.remove();
+      zoomedClones.delete(el);
+
+      if (!zoomPinModeConfig) {
+        zoomContainer.innerHTML = "";
+      }
+    }, 450);
+  }
+  // ===== 修改滚轮缩放事件 =====
+  // zoomContainer.addEventListener(
+  //   "wheel",
+  //   (e) => {
+  //     // ===== 新增：如果滚轮被禁用，直接返回 =====
+  //     if (_nopicWheelDisabled) {
+  //       e.preventDefault();
+  //       e.stopPropagation();
+  //       return;
+  //     }
+  //     let flipContainer = getFlipContainerAtPoint(e.clientX, e.clientY);
+
+  //     if (!flipContainer && !zoomPinModeConfig) {
+  //       const containers = zoomContainer.querySelectorAll(
+  //         ".nopic-flip-container",
+  //       );
+  //       if (containers.length > 0)
+  //         flipContainer = containers[containers.length - 1];
+  //     }
+
+  //     if (!flipContainer) {
+  //       if (zoomPinModeConfig) return;
+  //       return;
+  //     }
+  //     e.preventDefault();
+  //     e.stopPropagation();
+
+  //     flipContainer.style.zIndex = ++pinZIndexCounter;
+
+  //     // ★★★ 滚轮缩放改为操作 scale ★★★
+  //     const rect = flipContainer.getBoundingClientRect();
+  //     const step = e.deltaY < 0 ? 1.1 : 0.9;
+
+  //     // 获取当前的 transform 矩阵，提取 scale 和 translate
+  //     const currentTransform = flipContainer.style.transform;
+  //     let currentScale = 1;
+  //     let currentTx = 0,
+  //       currentTy = 0;
+
+  //     // 尝试从 transform 中解析 translate 和 scale
+  //     const translateMatch = currentTransform.match(
+  //       /translate\(([^,]+),\s*([^)]+)\)/,
+  //     );
+  //     if (translateMatch) {
+  //       currentTx = parseFloat(translateMatch[1]);
+  //       currentTy = parseFloat(translateMatch[2]);
+  //     }
+  //     const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
+  //     if (scaleMatch) {
+  //       currentScale = parseFloat(scaleMatch[1]);
+  //     }
+
+  //     // 计算新的 scale
+  //     const newScale = Math.max(0.1, currentScale * step);
+
+  //     // 计算新的 translate，保持中心点不变
+  //     const centerX = rect.left + rect.width / 2;
+  //     const centerY = rect.top + rect.height / 2;
+
+  //     // 原始尺寸（不变）
+  //     const origWidth =
+  //       parseFloat(flipContainer.style.width) || rect.width / currentScale;
+  //     const origHeight =
+  //       parseFloat(flipContainer.style.height) || rect.height / currentScale;
+
+  //     const newWidth = origWidth * newScale;
+  //     const newHeight = origHeight * newScale;
+  //     const newLeft = centerX - newWidth / 2;
+  //     const newTop = centerY - newHeight / 2;
+
+  //     flipContainer.style.setProperty("transition", "none", "important");
+  //     flipContainer.style.transform = `translate(${newLeft}px, ${newTop}px) scale(${newScale})`;
+
+  //     // ★★★ 更新背面文字大小（根据新尺寸） ★★★
+  //     const back = flipContainer._back;
+  //     if (back && back._buildBackContent) {
+  //       back.innerHTML = back._buildBackContent(newWidth, newHeight);
+  //     }
+  //   },
+  //   { passive: false },
+  // );
   function zoomOut(el) {
     if (!el._isZoomed) return;
     el._isZoomed = false;
@@ -5305,7 +5675,6 @@ window.addEventListener("load", function () {
       if (rect.width > 0 && rect.height > 0) {
         const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
 
-        // ★★★ 翻转角度恢复为 0（正面朝前） ★★★
         if (flipCard) {
           flipCard.style.transition = `transform 0.35s ${easing}`;
           flipCard.style.transform = "rotateX(0deg) rotateY(0deg)";
@@ -5316,27 +5685,10 @@ window.addEventListener("load", function () {
           }
         }
 
-        // ★★★ 位置保持不变，只飞回原始位置 ★★★
-        container.style.transition = `left 0.35s ${easing}, top 0.35s ${easing}, width 0.35s ${easing}, height 0.35s ${easing}, opacity 0.25s ease`;
-        container.style.left = rect.left + "px";
-        container.style.top = rect.top + "px";
+        container.style.transition = `transform 0.35s ${easing}, width 0.35s ${easing}, height 0.35s ${easing}, opacity 0.25s ease`;
+        container.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
         container.style.width = rect.width + "px";
         container.style.height = rect.height + "px";
-      } else {
-        const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
-
-        if (flipCard) {
-          flipCard.style.transition = `transform 0.35s ${easing}`;
-          flipCard.style.transform = "rotateX(0deg) rotateY(0deg)";
-          container._isFlipped = false;
-          if (flipCard._flipState) {
-            flipCard._flipState.rotX = 0;
-            flipCard._flipState.rotY = 0;
-          }
-        }
-
-        container.style.transition = `opacity 0.4s ${easing}`;
-        container.style.opacity = "0";
       }
     } else if (container) {
       const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
@@ -5372,6 +5724,11 @@ window.addEventListener("load", function () {
   zoomContainer.addEventListener(
     "wheel",
     (e) => {
+      if (_nopicWheelDisabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       // ★★★ 修改：查找 .nopic-flip-container（翻转容器） ★★★
       let flipContainer = getFlipContainerAtPoint(e.clientX, e.clientY);
 
@@ -5407,8 +5764,7 @@ window.addEventListener("load", function () {
 
       // ★★★ 关键：移除 transition，让缩放立即响应，不迟钝 ★★★
       flipContainer.style.setProperty("transition", "none", "important");
-      flipContainer.style.left = newLeft + "px";
-      flipContainer.style.top = newTop + "px";
+      flipContainer.style.transform = `translate(${newLeft}px, ${newTop}px)`;
       flipContainer.style.width = newWidth + "px";
       flipContainer.style.height = newHeight + "px";
 
@@ -5433,9 +5789,13 @@ window.addEventListener("load", function () {
       wasDragged = false;
       dragStartX = e.clientX;
       dragStartY = e.clientY;
-      dragStartLeft = parseFloat(flipContainer.style.left);
-      dragStartTop = parseFloat(flipContainer.style.top);
+
+      const rect = flipContainer.getBoundingClientRect();
+      dragStartLeft = rect.left;
+      dragStartTop = rect.top;
+
       draggedCloneEl = flipContainer._el || getElByFlipContainer(flipContainer);
+
       flipContainer.style.setProperty("transition", "none", "important");
       flipContainer.style.cursor = "grabbing !important";
       zoomContainer.style.cursor = "grabbing";
@@ -5466,8 +5826,7 @@ window.addEventListener("load", function () {
         const newLeft = dragStartLeft + ev.clientX - dragStartX;
         const newTop = dragStartTop + ev.clientY - dragStartY;
         dragContainer.style.transition = "none";
-        dragContainer.style.left = newLeft + "px";
-        dragContainer.style.top = newTop + "px";
+        dragContainer.style.transform = `translate(${newLeft}px, ${newTop}px)`;
 
         if (
           Math.abs(ev.clientX - dragStartX) > 3 ||
@@ -5611,16 +5970,16 @@ window.addEventListener("load", function () {
     draggedCloneEl = null;
   });
 
-  document.addEventListener("mousemove", (e) => {
-    if (!isDraggingClone || !draggedCloneEl) return;
-    const info = zoomedClones.get(draggedCloneEl);
-    if (!info || !info.clone) return;
-    const clone = info.clone;
-    const newLeft = dragStartLeft + e.clientX - dragStartX;
-    const newTop = dragStartTop + e.clientY - dragStartY;
-    clone.style.left = newLeft + "px";
-    clone.style.top = newTop + "px";
-  });
+  // document.addEventListener("mousemove", (e) => {
+  //   if (!isDraggingClone || !draggedCloneEl) return;
+  //   const info = zoomedClones.get(draggedCloneEl);
+  //   if (!info || !info.clone) return;
+  //   const clone = info.clone;
+  //   const newLeft = dragStartLeft + e.clientX - dragStartX;
+  //   const newTop = dragStartTop + e.clientY - dragStartY;
+  //   clone.style.left = newLeft + "px";
+  //   clone.style.top = newTop + "px";
+  // });
 
   // 鼠标移出检测 - 仅聚焦模式且"离开图片"选项时生效
   zoomContainer.addEventListener("mousemove", (e) => {
@@ -5789,6 +6148,12 @@ window.addEventListener("load", function () {
         zoomBtn.style.opacity = showZoomBtn ? "1" : "0";
         zoomBtn.style.pointerEvents = showZoomBtn ? "auto" : "none";
       }
+    }
+
+    // ===== 触发模糊调整（新增） =====
+    if (window.imgHidenSet !== null) {
+      clearTimeout(el._blurAdjustTimer);
+      el._blurAdjustTimer = setTimeout(_nopicAdjustBlur, 50);
     }
   };
 
@@ -6225,6 +6590,13 @@ window.addEventListener("load", function () {
     });
 
     toRecycle.forEach((el) => {
+      // ===== 新增：先将 transform 重置为 0，避免动画 =====
+      el.style.transition = "none";
+      el.style.transform = "none";
+      el.style.opacity = "1";
+      // 强制回流，确保样式立即生效
+      void el.offsetHeight;
+
       el.classList.remove("nopic-hidden");
       el.dataset.isHidden = "false";
 
@@ -6239,8 +6611,92 @@ window.addEventListener("load", function () {
       imageOutlines.delete(el);
       imageZoomControls.delete(el);
       cancelHoverZoomTimer(el, true);
+
+      setTimeout(function () {
+        el.style.transition = "";
+        el.style.transform = "";
+        el.style.opacity = "";
+      }, 50);
     });
   }
+
+  // ============================================================
+  // ===== 智能模糊调节（新增） =====
+  // 搜索关键词：智能模糊调节
+  // ============================================================
+  let _nopicBlurLevel = 10;
+  let _nopicBlurCheckTimer = null;
+  let _nopicBlurThrottle = false;
+
+  function _nopicAdjustBlur() {
+    if (_nopicBlurThrottle) return;
+    _nopicBlurThrottle = true;
+
+    let hiddenCount = 0;
+    if (window.imgHidenSet !== null) {
+      imageControls.forEach(function (btn, el) {
+        if (el.isConnected && el.dataset.isHidden === "true") {
+          hiddenCount++;
+        }
+      });
+    }
+
+    var newBlur = 10;
+    if (hiddenCount === 0) {
+      newBlur = 10;
+    } else if (hiddenCount <= 5) {
+      newBlur = 10;
+    } else if (hiddenCount <= 20) {
+      newBlur = 8;
+    } else if (hiddenCount <= 50) {
+      newBlur = 5;
+    } else if (hiddenCount <= 100) {
+      newBlur = 3;
+    } else if (hiddenCount <= 200) {
+      newBlur = 1;
+    } else {
+      newBlur = 0;
+    }
+
+    if (newBlur !== _nopicBlurLevel) {
+      _nopicBlurLevel = newBlur;
+      var styleEl = document.getElementById("nopic-dynamic-blur-style");
+      if (styleEl) {
+        styleEl.textContent =
+          ".nopic-hidden{filter:blur(" +
+          _nopicBlurLevel +
+          "px)!important;opacity:0!important;pointer-events:none!important;}.nopic-animation-disabled .nopic-hidden{filter:blur(" +
+          _nopicBlurLevel +
+          "px)!important;opacity:0!important;}";
+      }
+    }
+
+    _nopicBlurThrottle = false;
+  }
+
+  function _nopicStartBlurAdjustment() {
+    var styleEl = document.getElementById("nopic-dynamic-blur-style");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "nopic-dynamic-blur-style";
+      document.head.appendChild(styleEl);
+    }
+    _nopicBlurLevel = 10;
+
+    if (_nopicBlurCheckTimer) {
+      clearInterval(_nopicBlurCheckTimer);
+      _nopicBlurCheckTimer = null;
+    }
+    _nopicBlurCheckTimer = setInterval(_nopicAdjustBlur, 500);
+  }
+
+  function _nopicStopBlurAdjustment() {
+    if (_nopicBlurCheckTimer) {
+      clearInterval(_nopicBlurCheckTimer);
+      _nopicBlurCheckTimer = null;
+    }
+  }
+  // ============================================================
 
   function imgHiden() {
     // ===== 新增：如果被手动关闭，直接返回 =====
@@ -6324,11 +6780,26 @@ window.addEventListener("load", function () {
       createControlButton(el);
     }
 
-    // ===== 新增：回收远离视口的图片控件 =====
-    recycleDistantImages();
+    // ===== 启动智能模糊调节（新增） =====
+    _nopicStartBlurAdjustment();
+  }
 
-    // 5. 可选：如果开启调试，输出统计信息
-    // console.log("[nopic] 视口内图片:", targetEls.length, "总数:", allCandidates.length);
+  // ===== 独立的离开视口回收机制=====
+  // 只在图片隐藏功能开启时运行
+  function startRecycleTimer() {
+    if (window._nopicRecycleTimer) return;
+    window._nopicRecycleTimer = setInterval(function () {
+      if (window.imgHidenSet !== null) {
+        recycleDistantImages();
+      }
+    }, 3000);
+  }
+
+  function stopRecycleTimer() {
+    if (window._nopicRecycleTimer) {
+      clearInterval(window._nopicRecycleTimer);
+      window._nopicRecycleTimer = null;
+    }
   }
 
   function imgShown() {
@@ -6379,6 +6850,9 @@ window.addEventListener("load", function () {
     updateContent();
 
     console.log("[nopic] 图片隐藏功能已彻底关闭");
+
+    // ===== 停止智能模糊调节 =====
+    _nopicStopBlurAdjustment();
   }
 
   const triggerImmediateCheck = () => {
@@ -16969,8 +17443,44 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
         // ===== 新增：重置关闭标志，允许重新开启 =====
         window._nopicManuallyClosed = false;
 
+        // ===== 启动图片隐藏（使用 MutationObserver，不再轮询）=====
+        // 1. 启动 MutationObserver（如果尚未创建）
+        if (!window._nopicImageObserver) {
+          window._nopicImageObserver = new MutationObserver(function (
+            mutations,
+          ) {
+            if (window._nopicImageTimer) return;
+            window._nopicImageTimer = setTimeout(function () {
+              window._nopicImageTimer = null;
+              if (window.imgHidenSet !== null) {
+                imgHiden();
+              }
+            }, 150);
+          });
+          window._nopicImageObserver.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["src", "style"],
+          });
+        }
+
+        // 2. 启动兜底定时器（低频轮询，每3秒一次，防止极端情况遗漏）
+        if (!window._nopicFallbackTimer) {
+          window._nopicFallbackTimer = setInterval(function () {
+            if (window.imgHidenSet !== null) {
+              imgHiden();
+            }
+          }, 3000);
+        }
+
+        // ★★★ 启动回收定时器 ★★★
+        startRecycleTimer();
+
+        // 3. 标记为开启状态
+        window.imgHidenSet = true;
         imgHiden();
-        window.imgHidenSet = setInterval(imgHiden, 500);
+
         let list = (localStorage.getItem("nopicValueList") || "")
           .split(",")
           .filter((x) => x);
@@ -16979,9 +17489,32 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
           localStorage.setItem("nopicValueList", list.join(","));
         }
       } else {
-        clearInterval(window.imgHidenSet);
+        // ===== 关闭图片隐藏 =====
+        // 1. 移除兜底定时器
+        if (window._nopicFallbackTimer) {
+          clearInterval(window._nopicFallbackTimer);
+          window._nopicFallbackTimer = null;
+        }
+
+        // 2. 断开 MutationObserver
+        if (window._nopicImageObserver) {
+          window._nopicImageObserver.disconnect();
+          window._nopicImageObserver = null;
+        }
+
+        // 3. 清空任何待执行的定时器
+        if (window._nopicImageTimer) {
+          clearTimeout(window._nopicImageTimer);
+          window._nopicImageTimer = null;
+        }
+
+        // ★★★ 停止回收定时器 ★★★
+        stopRecycleTimer();
+
+        // 4. 标记为关闭
         window.imgHidenSet = null;
         imgShown();
+
         let list = (localStorage.getItem("nopicValueList") || "")
           .split(",")
           .filter((v) => v !== location.host && v);
@@ -17044,10 +17577,44 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
       .includes(location.host)
   ) {
     setTimeout(() => {
+      // ===== 启动图片隐藏（使用 MutationObserver，不再轮询）=====
+      // 1. 启动 MutationObserver（如果尚未创建）
+      if (!window._nopicImageObserver) {
+        window._nopicImageObserver = new MutationObserver(function (mutations) {
+          if (window._nopicImageTimer) return;
+          window._nopicImageTimer = setTimeout(function () {
+            window._nopicImageTimer = null;
+            if (window.imgHidenSet !== null) {
+              imgHiden();
+            }
+          }, 150);
+        });
+        window._nopicImageObserver.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["src", "style"],
+        });
+      }
+
+      // 2. 启动兜底定时器（低频轮询，每3秒一次）
+      if (!window._nopicFallbackTimer) {
+        window._nopicFallbackTimer = setInterval(function () {
+          if (window.imgHidenSet !== null) {
+            imgHiden();
+          }
+        }, 3000);
+      }
+
+      // ★★★ 启动回收定时器 ★★★
+      startRecycleTimer();
+
+      // 3. 标记为开启状态
+      window.imgHidenSet = true;
       imgHiden();
-      window.imgHidenSet = setInterval(imgHiden, 500);
+
       updateLampState();
-      updateAllUI(); // 新增：切换灯状态时刷新UI，动态显隐放大选项
+      updateAllUI();
       updateContent();
     }, 50);
   }
@@ -22283,6 +22850,11 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
       e.stopPropagation();
       pageEditMode = !pageEditMode;
       document.designMode = pageEditMode ? "on" : "off";
+      if (pageEditMode) {
+        document.body.classList.add("nopic-edit-mode");
+      } else {
+        document.body.classList.remove("nopic-edit-mode");
+      }
       updateAllUI();
       triggerTextWaveEffect();
 

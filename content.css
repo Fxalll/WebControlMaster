@@ -416,7 +416,7 @@ svg:not(.nopic-clone),
   visibility: visible !important;
   opacity: 1 !important;
   filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.6)) !important;
-  border-radius: 4px !important;
+  border-radius: 0px !important;
   outline: none !important;
   object-fit: contain !important;
   background-size: contain !important;
@@ -3254,7 +3254,6 @@ html[data-nopic-theme] #nopic-widget {
   visibility: visible !important;
   opacity: 1 !important;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5)) !important;
-  border-radius: 6px !important;
   outline: none !important;
   border: none !important;
   object-fit: contain !important;
@@ -3272,7 +3271,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: none !important;
   min-width: 0 !important;
   min-height: 0 !important;
-  transform: none !important;
+  border-radius: 0px !important;
 }
 
 #nopic-parade-header {
@@ -7193,9 +7192,9 @@ html[data-nopic-theme] #nopic-widget {
 }
 
 /* 5. 阅兵模式 - 图片尺寸标签 */
-[data-nopic-theme="light"] .nopic-parade-size-label {
+/* [data-nopic-theme="light"] .nopic-parade-size-label {
   color: rgba(0, 0, 0, 0.45) !important;
-}
+} */
 
 /* 6. 阅兵模式 - 克隆图阴影（浅色模式用更柔和的阴影） */
 [data-nopic-theme="light"] .nopic-parade-clone {
@@ -8499,4 +8498,11 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-randomqa-continue-btn:hover {
   background: rgba(0, 0, 0, 0.1) !important;
   color: rgba(0, 0, 0, 0.7) !important;
+}
+/* transform 定位优化 - 启用 GPU 加速 */
+.nopic-flip-container,
+.nopic-clone,
+.nopic-parade-clone {
+  will-change: transform;
+  backface-visibility: hidden;
 }
