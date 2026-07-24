@@ -4,6 +4,7 @@ var _nopicPendingFeatures = [];
 // 添加一个标志，确保启动逻辑只执行一次
 var _nopicStartExecuted = false;
 var _nopicWheelDisabled = false;
+var _nopicAutoDisabledAnimation = false;
 
 function getTranslateValues(el) {
   if (!el) return { x: 0, y: 0 };
@@ -6836,26 +6837,29 @@ window.addEventListener("load", function () {
       const currentlyDisabled = document.body.classList.contains(
         "nopic-animation-disabled",
       );
-      if (hiddenCount > 50) {
-        if (!currentlyDisabled) {
-          document.body.classList.add("nopic-animation-disabled");
-          disableAnimationConfig = true;
-          // 同步UI开关显示（只是显示状态，不保存）
-          const sw = settingsSubmenu
+      if (hiddenCount > 80) {
+    if (!currentlyDisabled) {
+        document.body.classList.add("nopic-animation-disabled");
+        disableAnimationConfig = true;
+        _nopicAutoDisabledAnimation = true;
+        const sw = settingsSubmenu
             ? settingsSubmenu.querySelector('[data-key="disableAnimation"]')
             : null;
-          if (sw) sw.classList.add("on");
-        }
-      } else {
-        if (currentlyDisabled) {
-          document.body.classList.remove("nopic-animation-disabled");
-          disableAnimationConfig = false;
-          const sw = settingsSubmenu
+        if (sw) sw.classList.add("on");
+        updateLampState();
+    }
+} else {
+    if (currentlyDisabled && _nopicAutoDisabledAnimation) {
+        document.body.classList.remove("nopic-animation-disabled");
+        disableAnimationConfig = false;
+        _nopicAutoDisabledAnimation = false;
+        const sw = settingsSubmenu
             ? settingsSubmenu.querySelector('[data-key="disableAnimation"]')
             : null;
-          if (sw) sw.classList.remove("on");
-        }
-      }
+        if (sw) sw.classList.remove("on");
+        updateLampState();
+    }
+}
     }
     // 如果 userDisabled === true，什么都不做，保持用户设置的状态
 
@@ -7155,6 +7159,7 @@ window.addEventListener("load", function () {
   }
 
   function imgShown() {
+    _nopicAutoDisabledAnimation = false;
     // ===== 新增：彻底停止图片隐藏功能 =====
     // 1. 清除所有定时器
     if (window.imgHidenSet) {
@@ -10210,9 +10215,16 @@ window.addEventListener("load", function () {
 
   updateAllUI();
 
-  function updateLampState() {
-    lamp.className = window.imgHidenSet !== null ? "on" : "off";
-  }
+function updateLampState() {
+    if (window.imgHidenSet === null) {
+        lamp.className = "off";
+    } else if (_nopicAutoDisabledAnimation || disableAnimationConfig) {
+        // 只要自动禁用 或 手动禁用，指示灯都变黄
+        lamp.className = "on yellow";
+    } else {
+        lamp.className = "on";
+    }
+}
   updateLampState();
 
   function triggerSpinner() {
@@ -10220,14 +10232,15 @@ window.addEventListener("load", function () {
     lamp.classList.add("spinning");
     clearTimeout(glowTimer);
     glowTimer = setTimeout(() => {
-      lamp.classList.remove("spinning");
-      if (widget.classList.contains("sleeping")) {
-        lamp.style.animation = "none";
-        lamp.offsetHeight;
-        lamp.style.animation = "";
-      }
+        lamp.classList.remove("spinning");
+        if (widget.classList.contains("sleeping")) {
+            lamp.style.animation = "none";
+            lamp.offsetHeight;
+            lamp.style.animation = "";
+        }
+        updateLampState();
     }, 500);
-  }
+}
 
   const formatDist = (px) => {
     const m = px / PX_TO_METER;
@@ -10393,39 +10406,51 @@ window.addEventListener("load", function () {
 `;
 
   welcomeModal.innerHTML = `
-  <div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #60a5fa;">欢迎使用</div>
-  <div class="nopic-welcome-sub" style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px;">网页控制大师 · 快速上手指南</div>
-  
-  <div style="display: flex; flex-direction: column; gap: 12px;">
-    <div style="display: flex; align-items: flex-start; gap: 10px;">
-      <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">1</span>
-      <div>
-        <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">隐藏图片</div>
-        <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击页面左侧的 <span style="color: #ea4c3d; background: rgba(225, 83, 67,0.1); padding: 0 6px; border-radius: 3px;">●</span> 指示灯，变绿后自动隐藏图片</div>
-      </div>
-    </div>
-    
-    <div style="display: flex; align-items: flex-start; gap: 10px;">
-      <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
-      <div>
-        <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与翻转图片</div>
-        <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片可放大查看；在空白处拖动可翻转图片，查看图片信息</div>
-      </div>
-    </div>
-    
-    <div style="display: flex; align-items: flex-start; gap: 10px;">
-      <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
-      <div>
-        <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更多功能</div>
-        <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标放在指示灯上可展开菜单，包含图片阅兵、隐私锁、自动点击器等工具</div>
-      </div>
+<div style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #60a5fa;">欢迎使用</div>
+<div class="nopic-welcome-sub" style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px;">网页控制大师 · 快速上手指南</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px;">
+  <div style="display: flex; align-items: flex-start; gap: 10px;">
+    <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">1</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">隐藏图片</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击页面左侧的 <span style="color: #ea4c3d; background: rgba(225, 83, 67,0.1); padding: 0 6px; border-radius: 3px;">●</span> 指示灯，变绿后自动隐藏图片</div>
     </div>
   </div>
   
-  <div class="nopic-welcome-divider" style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
-   
-    <button id="nopic-welcome-start" style="flex: 1; padding: 8px 0; background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; color: #60a5fa; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">开始使用</button>
+  <div style="display: flex; align-items: flex-start; gap: 10px;">
+    <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与翻转图片</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片可放大查看；在空白处拖动可翻转图片，查看图片信息</div>
+    </div>
   </div>
+  
+  <div style="display: flex; align-items: flex-start; gap: 10px;">
+    <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更多功能</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标放在指示灯上可展开菜单，包含图片阅兵、隐私锁、自动点击器等工具</div>
+    </div>
+  </div>
+
+  <!-- ===== 新增：指示灯状态说明 ===== -->
+  <div style="display: flex; align-items: flex-start; gap: 10px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.04);">
+    <span style="background: rgba(251,191,36,0.15); color: #fbbf24; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">●</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">指示灯颜色含义</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.7;">
+        <span style="color: #ef4444;">●</span> 红色：图片隐藏功能已关闭<br>
+        <span style="color: #4ade80;">●</span> 绿色：图片隐藏已开启，动画正常<br>
+        <span style="color: #fbbf24;">●</span> 黄色：动画已被禁用（手动开启 或 隐藏图片超过 <strong style="color: #fbbf24;">80</strong> 张自动禁用）
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nopic-welcome-divider" style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+  <button id="nopic-welcome-start" style="flex: 1; padding: 8px 0; background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; color: #60a5fa; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">开始使用</button>
+</div>
 `;
 
   document.documentElement.appendChild(welcomeModal);
@@ -11168,6 +11193,7 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
         } else {
           document.body.classList.remove("nopic-animation-disabled");
         }
+        updateLampState();
       } else if (key === "loadAnimation") {
         loadAnimationConfig = !loadAnimationConfig;
         setGlobalConfig("loadAnimation", loadAnimationConfig);

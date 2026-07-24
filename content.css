@@ -709,6 +709,22 @@ html[data-nopic-theme] #nopic-widget {
   border: 3.8px solid #f44336;
   background: #f44336;
 }
+#nopic-lamp.yellow {
+  border: 3.8px solid #fbbf24;
+  background: #fbbf24;
+}
+#nopic-lamp.yellow.spinning {
+  border-width: 1.5px;
+  border-style: solid;
+  border-color: rgba(251, 191, 36, 0.2);
+  border-top-color: #fbbf24;
+  opacity: 1 !important;
+  animation: nopic-spinner-rotate 0.5s linear infinite;
+}
+#nopic-lamp.yellow.glowing {
+  box-shadow: 0 0 8px 1px rgba(251, 191, 36, 0.6);
+  transition: box-shadow 0.8s ease-out;
+}
 #nopic-lamp.spinning {
   border-width: 1.5px;
   border-style: solid;
