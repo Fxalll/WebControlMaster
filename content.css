@@ -8522,3 +8522,36 @@ html[data-nopic-theme] #nopic-widget {
   will-change: transform;
   backface-visibility: hidden;
 }
+[data-nopic-theme="light"] #nopic-animation-threshold {
+    background: rgba(255,255,255,0.7) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #1a1a1e !important;
+}
+
+/* 浅色模式 */
+[data-nopic-theme="light"] #nopic-settings-submenu .nopic-menu-item:has(#nopic-animation-threshold) span {
+    color: rgba(0, 0, 0, 0.3) !important;
+}
+/* 阈值输入框 - 严格限制尺寸，防止被网站样式撑变形 */
+#nopic-animation-threshold {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    line-height: 1 !important;
+    padding: 2px 4px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    font-size: 11px !important;
+    text-align: center !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 4px !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    -moz-appearance: textfield !important;
+}

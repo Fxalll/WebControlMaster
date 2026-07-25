@@ -6782,6 +6782,23 @@ window.addEventListener("load", function () {
   // 搜索关键词：智能模糊调节
   // ============================================================
   let _nopicBlurLevel = 10;
+  // ===== 新增：动画阈值 =====
+let _nopicThresholdCache = null;
+function _nopicGetThreshold() {
+    if (_nopicThresholdCache !== null) return _nopicThresholdCache;
+    try {
+        const saved = localStorage.getItem('nopic_animation_threshold');
+        if (saved !== null) {
+            const val = parseInt(saved);
+            if (val > 0) {
+                _nopicThresholdCache = val;
+                return val;
+            }
+        }
+    } catch (e) {}
+    _nopicThresholdCache = 80;
+    return 80;
+}
   let _nopicBlurCheckTimer = null;
   let _nopicBlurThrottle = false;
 
@@ -6837,7 +6854,8 @@ window.addEventListener("load", function () {
       const currentlyDisabled = document.body.classList.contains(
         "nopic-animation-disabled",
       );
-      if (hiddenCount > 80) {
+      var threshold = _nopicGetThreshold();
+if (hiddenCount > threshold) {
     if (!currentlyDisabled) {
         document.body.classList.add("nopic-animation-disabled");
         disableAnimationConfig = true;
@@ -8022,7 +8040,7 @@ window.addEventListener("load", function () {
         <div class="nopic-menu-separator">主题模式</div>
    <div class="nopic-menu-item" style="flex-direction: column; align-items: stretch; padding: 4px 10px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-        <span style="font-size: 11px; color: rgba(255,255,255,0.7);">智能切换</span>
+        <span style="font-size: 11px; ">智能切换</span>
         <div class="nopic-switch" id="nopic-theme-auto-switch"></div>
     </div>
     <div id="nopic-theme-manual-row" style="display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end;">
@@ -8041,6 +8059,11 @@ window.addEventListener("load", function () {
     <div class="nopic-menu-item"><span>仅悬停显示</span><div class="nopic-switch" data-key="hoverOnly"></div></div>
     <div class="nopic-menu-item"><span>悬停显图</span><div class="nopic-switch" data-key="hoverShowImg"></div></div>
     <div class="nopic-menu-item"><span>禁用动画</span><div class="nopic-switch" data-key="disableAnimation"></div></div>
+    <div class="nopic-menu-item" style="flex-direction: column; align-items: stretch; padding: 4px 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; color: rgba(255,255,255,0.7);">超过 <input type="number" id="nopic-animation-threshold" value="80" min="1" max="999" style="width:50px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-size:11px;padding:2px 4px;text-align:center;"> 张图片自动禁用动画</span>
+    </div>
+</div>
     <div class="nopic-menu-separator">图片放大</div>
     <div class="nopic-menu-item" style="flex-direction: column; align-items: stretch;">
         <span style="margin-bottom: 4px;">放大图片方式</span>
@@ -8066,7 +8089,7 @@ window.addEventListener("load", function () {
     <div class="nopic-menu-separator">图片阅兵</div>
     <div class="nopic-menu-item" id="nopic-parade-filter-row" style="flex-direction:column;align-items:stretch;padding:8px 10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:11px;color:rgba(255,255,255,0.7);">过滤尺寸</span>
+        <span style="font-size:11px;">过滤尺寸</span>
         <div class="nopic-switch" id="nopic-parade-filter-toggle"></div>
       </div>
       <div id="nopic-parade-filter-inputs" style="display:none;gap:6px;flex-direction:column;">
@@ -25044,6 +25067,31 @@ https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagll
       updateContent();
     }
     // 如果状态一致，什么都不做
+
+    // 阈值输入框事件绑定
+setTimeout(function() {
+    var input = document.getElementById('nopic-animation-threshold');
+    if (input) {
+        // 加载保存的值
+        var saved = localStorage.getItem('nopic_animation_threshold');
+        if (saved !== null) input.value = saved;
+        else input.value = 80;
+        
+        input.addEventListener('change', function() {
+            var val = parseInt(this.value);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > 99999) val = 99999;
+            this.value = val;
+            localStorage.setItem('nopic_animation_threshold', String(val));
+            _nopicThresholdCache = val; // 更新缓存
+            // 重新检查
+            if (window.imgHidenSet !== null) _nopicAdjustBlur();
+        });
+        // 阻止事件冒泡到菜单
+        input.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        input.addEventListener('click', function(e) { e.stopPropagation(); });
+    }
+}, 500);
 
     console.log("[nopic] 主体功能已就绪");
   });
