@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>网页控制大师</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <!-- 头部 -->
+    <div class="header">
+      <img src="icon128.png" class="logo" alt="">
+      <div class="titles">
+        <div class="name">网页控制大师</div>
+        <div class="sub">WebControlMaster</div>
+      </div>
+      <span class="ver" id="version"></span>
+    </div>
+
+    <!-- 总开关卡片 -->
+    <div class="switch-card">
+      <div class="switch-main">
+        <div class="switch-info">
+          <div class="switch-title">总开关</div>
+          <div class="switch-status" id="status-text">已开启</div>
+        </div>
+        <label class="toggle" id="toggle-wrap">
+          <input type="checkbox" id="master-toggle">
+          <span class="track"></span>
+        </label>
+      </div>
+      <div class="switch-desc" id="status-desc">所有功能正常生效</div>
+    </div>
+
+    <!-- 修改总开关后出现的刷新提示（平时不显示，用户自己刷新即可） -->
+    <div class="off-hint" id="off-hint" hidden>
+      <div class="hint-text" id="hint-text">已关闭 · 刷新当前页让残留效果彻底消失。</div>
+      <button class="btn" id="reload-btn">刷新当前页</button>
+    </div>
+
+    <!-- 底部操作 -->
+    <div class="footer">
+      <button class="btn ghost" id="show-panel-btn">显示控制面板</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

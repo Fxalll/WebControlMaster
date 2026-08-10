@@ -35,6 +35,8 @@
 #nopic-autoclicker-submenu,
 #nopic-pageedit-submenu,
 #nopic-pagemonitor-submenu,
+#nopic-elemkill-submenu,
+#nopic-keymap-submenu,
 #nopic-quicktext-submenu,
 .nopic-modal-popup,
 #nopic-about-modal,
@@ -335,6 +337,8 @@
 #nopic-pageedit-submenu,
 #nopic-quicktext-submenu,
 #nopic-pagemonitor-submenu,
+#nopic-elemkill-submenu,
+#nopic-keymap-submenu,
 #nopic-about-modal,
 #nopic-confirm-modal,
 #nopic-privacy-lock-overlay,
@@ -360,6 +364,7 @@
 #nopic-pageedit-submenu input,
 #nopic-pagemonitor-submenu input,
 #nopic-pagemonitor-submenu select,
+#nopic-keymap-submenu input,
 #nopic-privacy-unlock-password {
   user-select: text !important;
   -webkit-user-select: text !important;
@@ -871,17 +876,19 @@ html[data-nopic-theme] #nopic-widget {
 .nopic-switch::after {
   content: "";
   position: absolute;
-  top: 2px;
+  top: 50%;
   left: 2px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   background: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  /* translateY(-50%) 保证白球在任何尺寸下都垂直居中，不会往下坠 */
+  transform: translateY(-50%);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.28);
   transition: transform 0.2s ease;
 }
 .nopic-switch.on::after {
-  transform: translateX(12px);
+  transform: translate(12px, -50%);
 }
 .nopic-submenu-trigger::after {
   content: "›";
@@ -2327,8 +2334,8 @@ html[data-nopic-theme] #nopic-widget {
   color: rgba(255, 255, 255, 0.9);
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 12px;
-  width: 360px;
-  max-height: 450px;
+  width: 380px;
+  max-height: 600px;
   opacity: 0;
   pointer-events: none;
   transform: translateY(-8px);
@@ -2390,26 +2397,223 @@ html[data-nopic-theme] #nopic-widget {
   color: #60a5fa;
 }
 .nopic-privacy-log-list {
-  max-height: 280px;
+  max-height: 300px;
   overflow-y: auto;
 }
 .nopic-privacy-log-item {
   display: flex;
   align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 9px;
+  padding: 7px 8px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 11px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+.nopic-privacy-log-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 .nopic-privacy-log-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 .nopic-privacy-log-time {
   color: rgba(255, 255, 255, 0.5);
   width: 100px;
   flex-shrink: 0;
 }
+
+/* --- 新版日志：分组 / 图标 / 主体 / 时间 --- */
+.nopic-privacy-log-daygroup {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.35);
+  padding: 8px 2px 5px;
+}
+.nopic-privacy-log-daygroup:first-child {
+  padding-top: 2px;
+}
+/* 日志图标：不用实心色块托底，否则描边式的锁图标压在色块上
+   只剩一圈看不清的轮廓。改为透明底 + 细描边圈，线条本身着色加粗。 */
+.nopic-privacy-log-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+}
+.nopic-privacy-log-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+.nopic-privacy-log-icon.unlock {
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+}
+.nopic-privacy-log-icon.lock {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #f87171;
+}
+.nopic-privacy-log-icon.error {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+.nopic-privacy-log-icon.reset {
+  border-color: rgba(167, 139, 250, 0.4);
+  color: #a78bfa;
+}
+.nopic-privacy-log-main {
+  flex: 1;
+  min-width: 0;
+}
+.nopic-privacy-log-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nopic-privacy-log-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nopic-privacy-log-timebox {
+  flex-shrink: 0;
+  text-align: right;
+}
+.nopic-privacy-log-clock {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.72);
+}
+.nopic-privacy-log-rel {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 1px;
+}
+.nopic-privacy-log-empty {
+  padding: 46px 10px;
+  text-align: center;
+}
+.nopic-privacy-log-empty-icon {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+}
+.nopic-privacy-log-empty-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.nopic-privacy-log-empty-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.nopic-privacy-log-empty-sub {
+  font-size: 10px;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+/* --- 新版日志：头部与统计条 --- */
+.nopic-privacy-log-head-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.nopic-privacy-log-host {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nopic-privacy-log-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.nopic-privacy-log-clear {
+  height: 24px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.07);
+  transition: all 0.18s ease;
+}
+.nopic-privacy-log-clear:hover {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+}
+.nopic-privacy-log-stats {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.nopic-privacy-log-stat {
+  flex: 1;
+  padding: 7px 4px;
+  border-radius: 8px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.nopic-privacy-log-stat-num {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.nopic-privacy-log-stat-label {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+}
+.nopic-privacy-log-stat[data-kind="lock"] .nopic-privacy-log-stat-num {
+  color: #f87171;
+}
+.nopic-privacy-log-stat[data-kind="unlock"] .nopic-privacy-log-stat-num {
+  color: #4ade80;
+}
+.nopic-privacy-log-stat[data-kind="error"] .nopic-privacy-log-stat-num {
+  color: #fbbf24;
+}
+.nopic-privacy-log-stat[data-kind="risk"] .nopic-privacy-log-stat-num {
+  color: #a78bfa;
+}
+
 .nopic-privacy-log-action {
   flex: 1;
+  font-size: 11.5px;
 }
 .nopic-privacy-log-action.unlock {
   color: #4ade80;
@@ -3068,10 +3272,6 @@ html[data-nopic-theme] #nopic-widget {
 /* 过滤面板 */
 .nopic-parade-size-label {
   position: absolute !important;
-  bottom: -20px !important; /* 从-18改成-20，再往下一点 */
-  left: 0 !important;
-  right: 0 !important;
-  text-align: center !important;
   font-size: 10px !important;
   color: rgba(255, 255, 255, 0.55) !important; /* 稍微亮一点 */
   font-family:
@@ -3366,6 +3566,15 @@ html[data-nopic-theme] #nopic-widget {
   background: rgba(96, 165, 250, 0.45);
   color: #fff;
 }
+/* 批量下载模式激活态（再点一次退出） */
+.nopic-parade-dl-btn.nopic-parade-dl-btn-active {
+  background: rgba(248, 113, 113, 0.35);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.55);
+}
+.nopic-parade-dl-btn.nopic-parade-dl-btn-active:hover {
+  background: rgba(248, 113, 113, 0.5);
+}
 /* 选择模式覆盖层 */
 .nopic-dl-select-overlay {
   position: absolute !important;
@@ -3379,16 +3588,25 @@ html[data-nopic-theme] #nopic-widget {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  padding: 6px;
+  padding: 0;
 }
+/* 选择框反向缩放：--nopic-inv 由 JS 写在 wrapper 上（= 1 / 当前缩放），
+   抵消阅兵模式给每张图的不同缩放，保证所有圆形选择框在屏幕上一样大、
+   离右上角的距离也一样。translate 写在 scale 之内，位移同样恒定为 9px。 */
 .nopic-dl-checkbox {
   width: 22px;
   height: 22px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.6);
   background: rgba(0, 0, 0, 0.3);
-  transition: all 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
   flex-shrink: 0;
+  box-sizing: border-box;
+  transform-origin: 100% 0;
+  transform: scale(var(--nopic-inv, 1)) translate(-9px, 9px);
 }
 .nopic-dl-select-overlay.selected .nopic-dl-checkbox {
   border-color: #60a5fa;
@@ -3669,6 +3887,8 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-autoclicker-submenu,
 #nopic-pageedit-submenu,
 #nopic-pagemonitor-submenu,
+#nopic-elemkill-submenu,
+#nopic-keymap-submenu,
 #nopic-quicktext-submenu {
   opacity: 0;
   transform: scale(0.92) translateY(-10px);
@@ -3687,6 +3907,8 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-autoclicker-submenu.active,
 #nopic-pageedit-submenu.active,
 #nopic-pagemonitor-submenu.active,
+#nopic-elemkill-submenu.active,
+#nopic-keymap-submenu.active,
 #nopic-quicktext-submenu.active {
   opacity: 1;
   transform: scale(1) translateY(0);
@@ -3790,6 +4012,148 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-about-modal .btn-edge:hover {
   background: #1557b0 !important;
   border-color: #1557b0 !important;
+}
+
+/* ===== Firefox 按钮 - 橙色实心 ===== */
+#nopic-about-modal .btn-edge.btn-firefox {
+  background: #e66000 !important;
+  border-color: #e66000 !important;
+}
+#nopic-about-modal .btn-edge.btn-firefox:hover {
+  background: #c14e00 !important;
+  border-color: #c14e00 !important;
+}
+
+/* ===== 浏览器分行列表：一眼看清「谁能一键装、谁要离线包」 ===== */
+#nopic-about-modal .about-browser-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  margin-top: 8px !important;
+}
+
+#nopic-about-modal .about-browser-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 5px 8px !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+#nopic-about-modal .about-browser-row .browser-name {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  width: 52px !important;
+  flex-shrink: 0 !important;
+}
+
+#nopic-about-modal .about-browser-row .browser-tag {
+  font-size: 9px !important;
+  padding: 1px 6px !important;
+  border-radius: 3px !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+#nopic-about-modal .about-browser-row .browser-tag.ok {
+  background: rgba(74, 222, 128, 0.15) !important;
+  color: #4ade80 !important;
+}
+#nopic-about-modal .about-browser-row .browser-tag.warn {
+  background: rgba(251, 191, 36, 0.15) !important;
+  color: #fbbf24 !important;
+}
+
+#nopic-about-modal .about-browser-row .btn-edge {
+  margin-left: auto !important;
+  padding: 4px 12px !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+}
+
+#nopic-about-modal .about-browser-row .browser-hint {
+  margin-left: auto !important;
+  font-size: 10.5px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  white-space: nowrap !important;
+}
+
+#nopic-about-modal .about-pkg-title {
+  margin-top: 10px !important;
+  font-size: 10.5px !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+  letter-spacing: 0.2px !important;
+}
+
+#nopic-about-modal .about-guide-steps b {
+  color: rgba(255, 255, 255, 0.72) !important;
+  font-weight: 600 !important;
+}
+
+/* ===== 商店按钮行（替代原「方式一/方式二」标签） ===== */
+#nopic-about-modal .about-store-row {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  margin-top: 8px !important;
+}
+
+#nopic-about-modal .about-store-row .btn-edge {
+  flex: 1 1 0 !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.2px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+#nopic-about-modal .about-store-row .btn-edge:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.32) !important;
+}
+
+/* 次级渠道行（Gitee / GitHub）：描边风格，与上方实心商店按钮形成层级 */
+#nopic-about-modal .about-store-row-alt {
+  margin-top: 6px !important;
+}
+
+#nopic-about-modal .btn-store-alt {
+  flex: 1 1 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 5px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.2px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    color 0.18s,
+    transform 0.18s !important;
+}
+
+#nopic-about-modal .btn-store-alt:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+/* 只有一个安装方式的板块：按钮不再有 method-label，微调上间距 */
+#nopic-about-modal .about-section-compact .about-method {
+  padding-top: 4px !important;
 }
 
 /* ===== 下载 ZIP 按钮 - 保持原样（边框样式） ===== */
@@ -3966,6 +4330,8 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-autoclicker-submenu,
 #nopic-pageedit-submenu,
 #nopic-pagemonitor-submenu,
+#nopic-elemkill-submenu,
+#nopic-keymap-submenu,
 #nopic-quicktext-submenu,
 .nopic-modal-popup,
 #nopic-about-modal,
@@ -3993,45 +4359,35 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-parade-overlay {
   background: rgba(0, 0, 0, 0.8) !important;
 }
-/* 修复：文字替换+快捷文本 两个按钮挤在一起 */
-.nopic-col-1 > div[style*="display:flex"] .nopic-ext-btn {
+/* ===== 并排按钮对（如 换词+快捷、遮罩+剔除、监控+键控） ===== */
+.nopic-btn-pair .nopic-ext-btn {
   aspect-ratio: auto !important;
   height: 44px !important;
   padding: 2px 2px !important;
 }
-.nopic-col-1 > div[style*="display:flex"] .nopic-app-icon {
+.nopic-btn-pair .nopic-app-icon {
   width: 18px !important;
   height: 18px !important;
 }
-.nopic-col-1 > div[style*="display:flex"] .nopic-app-icon svg {
+.nopic-btn-pair .nopic-app-icon svg {
   width: 14px !important;
   height: 14px !important;
 }
 
-/* 当只剩一个按钮时，恢复和其他按钮一样大 */
-.nopic-col-1
-  > div[style*="display:flex"]:has(.nopic-ext-btn[style*="display: none"])
-  .nopic-app-icon,
-.nopic-col-1
-  > div[style*="display:flex"]:has(.nopic-ext-btn[style*="display: none"])
-  .nopic-app-icon
-  svg {
+/* 只剩一个按钮时独占整行，图标恢复到和其他按钮一样大，文字换回全称 */
+.nopic-btn-pair .nopic-ext-btn.nopic-pair-solo .nopic-app-icon {
   width: 28px !important;
   height: 28px !important;
 }
-.nopic-col-1
-  > div[style*="display:flex"]:has(.nopic-ext-btn[style*="display: none"])
-  .nopic-app-icon
-  svg {
+.nopic-btn-pair .nopic-ext-btn.nopic-pair-solo .nopic-app-icon svg {
   width: 22px !important;
   height: 22px !important;
 }
-/* 两个按钮都隐藏时，容器也隐藏 */
-.nopic-col-1
-  > div[style*="display:flex"]:not(
-    :has(.nopic-ext-btn:not([style*="display: none"]))
-  ) {
-  display: none !important;
+.nopic-btn-pair .nopic-app-label {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
 }
 
 /* ===== 数据采集样式 ===== */
@@ -4158,6 +4514,8 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-autoclicker-submenu,
 #nopic-pageedit-submenu,
 #nopic-pagemonitor-submenu,
+#nopic-elemkill-submenu,
+#nopic-keymap-submenu,
 #nopic-quicktext-submenu,
 #nopic-datacollect-submenu,
 .nopic-modal-popup,
@@ -5963,6 +6321,90 @@ html[data-nopic-theme] #nopic-widget {
   border-color: rgba(59, 130, 246, 0.25) !important;
   color: #2563eb !important;
 }
+/* --- 新版日志：浅色适配 --- */
+[data-nopic-theme="light"] .nopic-privacy-log-item {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-item:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(0, 0, 0, 0.09) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-daygroup,
+[data-nopic-theme="light"] .nopic-privacy-log-host,
+[data-nopic-theme="light"] .nopic-privacy-log-sub,
+[data-nopic-theme="light"] .nopic-privacy-log-rel,
+[data-nopic-theme="light"] .nopic-privacy-log-stat-label,
+[data-nopic-theme="light"] .nopic-privacy-log-empty-sub {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-clock {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-icon {
+  background: transparent !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-icon.unlock {
+  background: transparent !important;
+  border-color: rgba(22, 163, 74, 0.4) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-icon.lock {
+  background: transparent !important;
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-icon.error {
+  background: transparent !important;
+  border-color: rgba(217, 119, 6, 0.4) !important;
+  color: #d97706 !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-icon.reset {
+  background: transparent !important;
+  border-color: rgba(124, 58, 237, 0.4) !important;
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-stat {
+  background: rgba(0, 0, 0, 0.035) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+[data-nopic-theme="light"]
+  .nopic-privacy-log-stat[data-kind="lock"]
+  .nopic-privacy-log-stat-num {
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"]
+  .nopic-privacy-log-stat[data-kind="unlock"]
+  .nopic-privacy-log-stat-num {
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"]
+  .nopic-privacy-log-stat[data-kind="error"]
+  .nopic-privacy-log-stat-num {
+  color: #d97706 !important;
+}
+[data-nopic-theme="light"]
+  .nopic-privacy-log-stat[data-kind="risk"]
+  .nopic-privacy-log-stat-num {
+  color: #7c3aed !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-clear {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-clear:hover {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-empty-icon {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+[data-nopic-theme="light"] .nopic-privacy-log-empty-text {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
 
 /* ===== 确认弹窗 ===== */
 [data-nopic-theme="light"] #nopic-confirm-modal .nopic-confirm-box {
@@ -6073,6 +6515,58 @@ html[data-nopic-theme] #nopic-widget {
 [data-nopic-theme="light"] #nopic-about-modal .btn-edge:hover {
   background: #1557b0 !important;
   border-color: #1557b0 !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-edge.btn-firefox {
+  background: #e66000 !important;
+  border-color: #e66000 !important;
+  color: #ffffff !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-edge.btn-firefox:hover {
+  background: #c14e00 !important;
+  border-color: #c14e00 !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-store-row .btn-edge {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-store-row .btn-edge:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-store-alt {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .btn-store-alt:hover {
+  background: rgba(0, 0, 0, 0.07) !important;
+  border-color: rgba(0, 0, 0, 0.28) !important;
+  color: #1a1a1e !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-browser-row {
+  background: rgba(0, 0, 0, 0.025) !important;
+  border-color: rgba(0, 0, 0, 0.07) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-browser-row .browser-name {
+  color: rgba(0, 0, 0, 0.82) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-browser-row .browser-hint {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-browser-row .browser-tag.ok {
+  background: rgba(22, 163, 74, 0.13) !important;
+  color: #16a34a !important;
+}
+[data-nopic-theme="light"]
+  #nopic-about-modal
+  .about-browser-row
+  .browser-tag.warn {
+  background: rgba(217, 119, 6, 0.13) !important;
+  color: #d97706 !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-pkg-title {
+  color: rgba(0, 0, 0, 0.42) !important;
+}
+[data-nopic-theme="light"] #nopic-about-modal .about-guide-steps b {
+  color: rgba(0, 0, 0, 0.75) !important;
 }
 [data-nopic-theme="light"] #nopic-about-modal .btn-zip {
   background: rgba(0, 0, 0, 0.04) !important;
@@ -8402,15 +8896,6 @@ html[data-nopic-theme] #nopic-widget {
   color: rgba(0, 0, 0, 0.5);
 }
 
-.nopic-ext-buttons-row.nopic-four-cols-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-.nopic-ext-buttons-row.nopic-four-cols-row .nopic-col {
-  flex: 1;
-  min-width: 0;
-}
 /* 随心一问弹窗样式 */
 #nopic-randomqa-submenu .nopic-randomqa-mode-btn.active {
   background: rgba(167, 139, 250, 0.15) !important;
@@ -8431,22 +8916,6 @@ html[data-nopic-theme] #nopic-widget {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* 扩展菜单四列布局 */
-.nopic-ext-buttons-row.nopic-four-cols-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: nowrap;
-}
-.nopic-ext-buttons-row.nopic-four-cols-row .nopic-col {
-  flex: 1;
-  min-width: 0;
-}
-.nopic-col-4 {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 @keyframes nopic-fadeIn {
@@ -8554,4 +9023,674 @@ html[data-nopic-theme] #nopic-widget {
     -webkit-appearance: none !important;
     appearance: none !important;
     -moz-appearance: textfield !important;
+}
+
+/* ======================================================================
+ *  剔除元素 · 键鼠映射 · 页面信息密度
+ * ====================================================================== */
+
+/* ---------- 两个新弹窗的基础形态 ---------- */
+#nopic-elemkill-submenu,
+#nopic-keymap-submenu {
+  position: fixed;
+  display: none;
+  background: rgba(30, 30, 35, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 18px 18px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  min-width: 300px;
+  max-width: 360px;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2147483647;
+  max-height: 82vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  cursor: move;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+}
+#nopic-elemkill-submenu::-webkit-scrollbar,
+#nopic-keymap-submenu::-webkit-scrollbar {
+  display: none;
+}
+#nopic-elemkill-submenu button,
+#nopic-keymap-submenu button,
+#nopic-elemkill-submenu input,
+#nopic-keymap-submenu input {
+  cursor: pointer;
+}
+
+.nopic-ek-hint,
+.nopic-km-hint {
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- 列表（仅当前页 / 当前网站 两栏） ---------- */
+.nopic-ek-lists {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: stretch;
+}
+.nopic-ek-col {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 8px 8px 6px 8px;
+  display: flex;
+  flex-direction: column;
+}
+.nopic-ek-col-title {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.nopic-ek-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.nopic-ek-list::-webkit-scrollbar {
+  width: 5px;
+}
+.nopic-ek-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+}
+.nopic-ek-empty {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.22);
+  padding: 6px 2px;
+}
+.nopic-ek-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.18s;
+}
+.nopic-ek-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.nopic-ek-item-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nopic-ek-item-del {
+  flex: none;
+  font-size: 10px;
+  color: #f87171;
+  cursor: pointer;
+  padding: 1px 5px;
+  border-radius: 4px;
+  transition: background 0.18s;
+}
+.nopic-ek-item-del:hover {
+  background: rgba(248, 113, 113, 0.14);
+}
+.nopic-km-edit {
+  color: #60a5fa;
+}
+.nopic-km-edit:hover {
+  background: rgba(96, 165, 250, 0.14);
+}
+
+/* ---------- 键鼠映射条目 ---------- */
+.nopic-km-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.nopic-km-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nopic-km-combo {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nopic-km-target {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nopic-km-item-ops {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+/* ---------- 键鼠映射：分区 / 瞬切手势 ---------- */
+.nopic-km-section {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 10px 12px 12px 12px;
+  margin-top: 8px;
+}
+.nopic-km-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.nopic-km-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+/* 标题旁的绿色「推荐」标签：靠 margin-right:auto 把右侧开关顶到最右 */
+.nopic-km-badge {
+  margin-left: 6px;
+  margin-right: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+}
+.nopic-km-howto {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+.nopic-km-howto-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 5px;
+}
+.nopic-km-howto-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+.nopic-km-howto-row b {
+  flex: none;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+}
+.nopic-km-howto-tip {
+  margin-top: 5px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- 拾取模式：包围盒 + 顶部提示条 ---------- */
+.nopic-pick-box {
+  position: fixed;
+  display: none;
+  pointer-events: none;
+  z-index: 2147483646;
+  border: 2px solid var(--pick-color, #60a5fa);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pick-color, #60a5fa) 14%, transparent);
+  transition:
+    left 0.06s linear,
+    top 0.06s linear,
+    width 0.06s linear,
+    height 0.06s linear;
+}
+.nopic-pick-tip {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: rgba(20, 20, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.nopic-pick-tip-main {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+}
+.nopic-pick-tip-sub {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 拾取后的确认弹窗 ---------- */
+.nopic-pick-dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2147483647;
+  width: 290px;
+  padding: 16px 18px 16px 18px;
+  border-radius: 16px;
+  background: rgba(30, 30, 35, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  user-select: none;
+}
+.nopic-pick-dialog.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.nopic-pick-dialog-wide {
+  width: 320px;
+}
+.nopic-pick-dialog-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.nopic-pick-dialog-target {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 7px;
+  padding: 6px 8px;
+  word-break: break-all;
+  line-height: 1.5;
+}
+.nopic-pick-dialog-meta {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.33);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.nopic-pick-dialog-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 10px 0 5px 0;
+}
+.nopic-pick-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.nopic-pick-dialog-actions .nopic-mask-btn {
+  flex: 1;
+  padding: 7px 0;
+  text-align: center;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* ---------- 分段选择器 ---------- */
+.nopic-seg {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 3px;
+}
+.nopic-seg-btn {
+  flex: 1;
+  text-align: center;
+  padding: 5px 4px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.nopic-seg-btn:hover {
+  color: rgba(255, 255, 255, 0.75);
+}
+.nopic-seg-btn.active {
+  background: rgba(96, 165, 250, 0.22);
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+/* ---------- 快捷键录制行 ---------- */
+.nopic-km-shortcut-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.nopic-km-shortcut-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 7px !important;
+  color: #fff !important;
+  font-size: 11.5px !important;
+  padding: 6px 8px !important;
+  outline: none !important;
+}
+.nopic-km-shortcut-row .nopic-mask-btn {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+.nopic-km-shortcut-row .nopic-mask-btn.recording {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  color: #fca5a5 !important;
+}
+@keyframes nopicKmShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+.nopic-km-shake {
+  animation: nopicKmShake 0.4s ease;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+/* ---------- 剔除元素：隐藏 / 消失动画 ---------- */
+.nopic-elemkill-hidden {
+  display: none !important;
+}
+.nopic-elemkill-vanish {
+  filter: blur(12px) !important;
+  opacity: 0 !important;
+  transition:
+    filter 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.45s ease !important;
+  pointer-events: none !important;
+}
+.nopic-elemkill-peek {
+  outline: 2px dashed rgba(248, 113, 113, 0.9) !important;
+  outline-offset: 2px !important;
+}
+
+/* ---------- 点击反馈 ---------- */
+.nopic-click-flash {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2147483646;
+  border: 2px solid #4ade80;
+  border-radius: 4px;
+  transition: opacity 0.3s;
+}
+.nopic-click-flash-dot {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2147483646;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid #4ade80;
+  opacity: 0.9;
+  transition:
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.3, 1),
+    opacity 0.5s ease;
+}
+.nopic-click-flash-dot.go {
+  transform: scale(3.2);
+  opacity: 0;
+}
+
+/* ---------- 信息密度滑块 ---------- */
+#nopic-density-row input[type="range"] {
+  width: 100%;
+}
+
+/* ========== 浅色模式适配 ========== */
+[data-nopic-theme="light"] #nopic-elemkill-submenu,
+[data-nopic-theme="light"] #nopic-keymap-submenu {
+  color: rgba(0, 0, 0, 0.82) !important;
+  background: rgb(232 235 241 / 85%) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-dialog {
+  color: rgba(0, 0, 0, 0.82) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-dialog {
+  background: rgba(252, 252, 253, 0.97) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-dialog-title,
+[data-nopic-theme="light"] .nopic-km-section-title {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+/* 浅色模式下绿色「推荐」标签加深，保证可读 */
+[data-nopic-theme="light"] .nopic-km-badge {
+  color: #15803d !important;
+  background: rgba(22, 163, 74, 0.14) !important;
+  border-color: rgba(22, 163, 74, 0.3) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-hint,
+[data-nopic-theme="light"] .nopic-km-hint,
+[data-nopic-theme="light"] .nopic-km-howto-tip,
+[data-nopic-theme="light"] .nopic-pick-dialog-meta,
+[data-nopic-theme="light"] .nopic-pick-dialog-label,
+[data-nopic-theme="light"] .nopic-ek-col-title,
+[data-nopic-theme="light"] .nopic-km-target {
+  color: rgba(0, 0, 0, 0.42) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-empty {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-col,
+[data-nopic-theme="light"] .nopic-km-section {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.07) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-col-title {
+  border-bottom-color: rgba(0, 0, 0, 0.07) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-item {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-item:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-item-label {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-dialog-target {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: rgba(0, 0, 0, 0.62) !important;
+}
+[data-nopic-theme="light"] .nopic-km-howto {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+[data-nopic-theme="light"] .nopic-km-howto-title,
+[data-nopic-theme="light"] .nopic-km-combo {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+[data-nopic-theme="light"] .nopic-km-howto-row {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+[data-nopic-theme="light"] .nopic-km-howto-row b {
+  color: rgba(0, 0, 0, 0.82) !important;
+}
+[data-nopic-theme="light"] .nopic-seg {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+[data-nopic-theme="light"] .nopic-seg-btn {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+[data-nopic-theme="light"] .nopic-seg-btn.active {
+  background: rgba(37, 99, 235, 0.14) !important;
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-km-shortcut-input {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-tip {
+  background: rgba(252, 252, 253, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-tip-main {
+  color: rgba(0, 0, 0, 0.88) !important;
+}
+[data-nopic-theme="light"] .nopic-pick-tip-sub {
+  color: rgba(0, 0, 0, 0.42) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22) !important;
+}
+[data-nopic-theme="light"] .nopic-seg-btn:hover {
+  color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* 剔除元素 / 键鼠映射 浅色模式补充（白字元素改为深色，保证可读） */
+[data-nopic-theme="light"] .nopic-ek-col-title {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+[data-nopic-theme="light"] .nopic-ek-item-del {
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] .nopic-ek-item-del:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+[data-nopic-theme="light"] .nopic-km-edit {
+  color: #2563eb !important;
+}
+[data-nopic-theme="light"] .nopic-km-edit:hover {
+  background: rgba(37, 99, 235, 0.12) !important;
+}
+[data-nopic-theme="light"] .nopic-km-shortcut-row .nopic-mask-btn.recording {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #dc2626 !important;
+}
+/* 浅色模式下关闭按钮：原来是白底白字，在浅色弹窗里看不见，改为深色 */
+[data-nopic-theme="light"] .nopic-modal-close {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+[data-nopic-theme="light"] .nopic-modal-close:hover {
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #dc2626 !important;
+}
+/* 键控 / 剔除 动作弹窗的确认按钮统一改红色，与主面板的蓝色按钮区分开 */
+#nopic-keymap-dialog .nopic-mask-btn.primary,
+#nopic-elemkill-dialog .nopic-mask-btn.primary {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+#nopic-keymap-dialog .nopic-mask-btn.primary:hover,
+#nopic-elemkill-dialog .nopic-mask-btn.primary:hover {
+  background: rgba(239, 68, 68, 0.32);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #fff;
+}
+[data-nopic-theme="light"] #nopic-keymap-dialog .nopic-mask-btn.primary,
+[data-nopic-theme="light"] #nopic-elemkill-dialog .nopic-mask-btn.primary {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(239, 68, 68, 0.32) !important;
+  color: #dc2626 !important;
+}
+[data-nopic-theme="light"] #nopic-keymap-dialog .nopic-mask-btn.primary:hover,
+[data-nopic-theme="light"] #nopic-elemkill-dialog .nopic-mask-btn.primary:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+}
+
+/* ===== 信息密度滑块：中心刻度（1.00× 的磁吸位） ===== */
+#nopic-density-track {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+#nopic-density-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 11px;
+  margin-left: -1px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 1px;
+  pointer-events: none;
+}
+/* 圆形滑块按钮压在中心刻度线之上，不被竖线遮挡 */
+#nopic-density-track input {
+  position: relative !important;
+  z-index: 1 !important;
+}
+#nopic-density-val:hover {
+  color: #60a5fa !important;
+}
+[data-nopic-theme="light"] #nopic-density-track::before {
+  background: rgba(0, 0, 0, 0.25);
+}
+[data-nopic-theme="light"] #nopic-density-val:hover {
+  color: #2563eb !important;
 }

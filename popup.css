@@ -1,0 +1,254 @@
+/* ===== 网页控制大师 · popup 样式 =====
+   与脚本本体同一套设计语言：深色玻璃拟态 + #60a5fa 蓝主色 */
+:root {
+  --bg: rgba(30, 30, 35, 0.97);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #ffffff;
+  --text-2: rgba(255, 255, 255, 0.62);
+  --text-3: rgba(255, 255, 255, 0.38);
+  --accent: #60a5fa;
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.16);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 300px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  font-size: 12px;
+  user-select: none;
+  overflow-x: hidden;
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+}
+
+/* ---------- 头部 ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.sub {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.4px;
+  margin-top: 1px;
+}
+
+.ver {
+  font-size: 10px;
+  color: var(--text-3);
+  font-family: Consolas, monospace;
+  align-self: flex-start;
+  margin-top: 3px;
+}
+
+/* ---------- 总开关卡片 ---------- */
+.switch-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.switch-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.switch-status {
+  font-size: 10.5px;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+}
+
+body.off .switch-status {
+  color: var(--text-3);
+}
+
+.switch-desc {
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  line-height: 1.5;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+
+/* 开关本体（与面板 .nopic-switch 一致的比例：28×16，白球 12px） */
+.toggle {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.toggle .track {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.3s;
+}
+
+.toggle .track::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s ease;
+}
+
+.toggle input:checked + .track {
+  background: #3b82f6;
+}
+
+.toggle input:checked + .track::after {
+  transform: translate(12px, -50%);
+}
+
+.toggle input:focus-visible + .track {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.4);
+}
+
+/* ---------- 刷新提示（仅拨动总开关后出现） ---------- */
+.off-hint {
+  background: var(--danger-bg);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* hidden 属性优先：JS 用 hint.hidden 控制显隐，不被上面的 display:flex 覆盖 */
+.off-hint[hidden] {
+  display: none !important;
+}
+
+/* 拨到「开启」时的提示配色：蓝色系 */
+.off-hint.mode-on {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.hint-text {
+  font-size: 10.5px;
+  color: rgba(248, 113, 113, 0.92);
+  line-height: 1.55;
+}
+
+.off-hint.mode-on .hint-text {
+  color: #93c5fd;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--danger);
+  color: #fff;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.off-hint.mode-on .btn {
+  background: #3b82f6;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  width: 100%;
+  padding: 8px 0;
+}
+
+.btn.ghost:hover {
+  background: rgba(96, 165, 250, 0.14);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: var(--accent);
+}
+
+.btn.ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- 底部 ---------- */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
