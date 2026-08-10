@@ -1300,7 +1300,7 @@ html[data-nopic-theme] #nopic-widget {
   max-width: 320px;
   flex-direction: column;
   gap: 8px;
-  z-index: 2147483647;
+  z-index: 2147483680;
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
@@ -1960,7 +1960,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483638;
+  z-index: 2147483680;
   cursor: crosshair;
   background: rgba(0, 0, 0, 0.1);
 }
@@ -2207,7 +2207,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483645;
+  z-index: 2147483680;
   pointer-events: none;
   display: flex;
   align-items: flex-start;
@@ -2326,7 +2326,7 @@ html[data-nopic-theme] #nopic-widget {
   position: fixed;
   right: 20px;
   top: 80px;
-  z-index: 2147483636;
+  z-index: 2147483680;
   background: rgba(10, 10, 12, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
@@ -3017,13 +3017,13 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483646;
+  z-index: 2147483680;
   cursor: crosshair;
   background: rgba(0, 0, 0, 0.3);
 }
 .nopic-pm-pick-highlight {
   position: absolute;
-  z-index: 2147483647;
+  z-index: 2147483680;
   background: rgba(96, 165, 250, 0.2);
   border: 2px solid #60a5fa;
   border-radius: 4px;
@@ -3716,7 +3716,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483651 !important;
+  z-index: 2147483680 !important;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.25s ease;
@@ -4767,7 +4767,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483648;
+  z-index: 2147483680;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
@@ -5323,7 +5323,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483648;
+  z-index: 2147483680;
   background: rgba(0, 0, 0, 0);
   display: flex;
   align-items: center;
@@ -5532,7 +5532,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483648;
+  z-index: 2147483680;
   background: rgba(0, 0, 0, 0);
   display: flex;
   align-items: center;
@@ -5725,7 +5725,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  z-index: 2147483651 !important;
+  z-index: 2147483680 !important;
   pointer-events: none !important;
   opacity: 0 !important;
   transition: opacity 0.25s ease !important;
@@ -8579,7 +8579,7 @@ html[data-nopic-theme] #nopic-widget {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2147483650;
+  z-index: 2147483680;
   background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
@@ -9276,7 +9276,7 @@ html[data-nopic-theme] #nopic-widget {
   top: 18px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 2147483647;
+  z-index: 2147483680;
   pointer-events: none;
   display: flex;
   flex-direction: column;
@@ -9314,7 +9314,7 @@ html[data-nopic-theme] #nopic-widget {
   transition:
     opacity 0.2s ease,
     transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 2147483647;
+  z-index: 2147483680;
   width: 290px;
   padding: 16px 18px 16px 18px;
   border-radius: 16px;

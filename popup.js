@@ -1,6 +1,4 @@
-// ===== 网页控制大师 · popup 总开关 =====
-const KEY = "nopic_master_switch";
-// 预览/调试环境没有 chrome API 时，退化为纯展示（默认开启）
+// ===== 网页控制大师 · popup 总开关（按当前网站生效） =====
 const HAS_CHROME =
   typeof chrome !== "undefined" &&
   chrome.storage &&
@@ -12,11 +10,18 @@ function $(id) {
   return document.getElementById(id);
 }
 
-// 本次 popup 会话中是否拨动过总开关（只有拨动过才显示「刷新当前页」提示）
-let touched = false;
+let currentHost = null; // 当前标签页的域名
+let touched = false; // 本次会话是否拨动过开关
 let currentOn = true;
 let activeTabId = null;
 let hintTimer = null;
+
+function masterKey() {
+  return "nopic_master_switch_domain_" + encodeURIComponent(currentHost);
+}
+function wakeKey() {
+  return "nopic_master_wake_ts_domain_" + encodeURIComponent(currentHost);
+}
 
 function render(on) {
   currentOn = on;
@@ -24,10 +29,14 @@ function render(on) {
   if (toggle.checked !== on) toggle.checked = on;
   $("status-text").textContent = on ? "已开启" : "已关闭";
   $("status-desc").textContent = on
-    ? "所有功能正常生效"
-    : "所有功能已停用，残留效果刷新页面后彻底消失";
+    ? "所有功能正常生效（仅当前网站）"
+    : "所有功能已停用（仅当前网站），残留效果刷新页面后彻底消失";
+  $("host-label").textContent = currentHost
+    ? "当前网站 · " + currentHost
+    : "";
   document.body.classList.toggle("off", !on);
-  $("show-panel-btn").disabled = !on;
+  $("show-panel-btn").disabled = !on || !currentHost;
+  toggle.disabled = !currentHost;
   // 刷新提示：仅在本次会话拨动过开关时出现；平时让用户自己刷新
   const hint = $("off-hint");
   if (touched) {
@@ -51,11 +60,10 @@ function getActiveTab(cb) {
   }
 }
 
-// 总开关
+// 总开关（只影响当前网站）
 $("master-toggle").addEventListener("change", (e) => {
-  if (!HAS_CHROME) return;
+  if (!HAS_CHROME || !currentHost) return;
   touched = true; // 本次会话拨动过开关 → 显示刷新提示
-  // 刷新当前活动标签页的 id，供「页面刷新完成 → 提示自动消失」判断
   getActiveTab((tab) => {
     if (tab && tab.id != null) activeTabId = tab.id;
   });
@@ -66,21 +74,15 @@ $("master-toggle").addEventListener("change", (e) => {
     render(currentOn);
   }, 30000);
   const on = e.target.checked;
-  if (on) {
-    // 记下「刚打开总开关」的时间戳：60 秒内打开的页面自动唤出悬浮面板
-    chrome.storage.local.set(
-      { [KEY]: true, nopic_master_wake_ts: Date.now() },
-      () => render(on),
-    );
-  } else {
-    chrome.storage.local.set({ [KEY]: false }, () => render(on));
-  }
+  const set = on
+    ? { [masterKey()]: true, [wakeKey()]: Date.now() }
+    : { [masterKey()]: false };
+  chrome.storage.local.set(set, () => render(on));
 });
 
-// 关闭状态下刷新当前页，让所有残留效果彻底消失
+// 刷新当前页，让残留效果彻底消失
 $("reload-btn").addEventListener("click", () => {
   if (!HAS_CHROME) return;
-  // 点过刷新后提示不再需要，立即隐藏
   touched = false;
   render(currentOn);
   getActiveTab((tab) => {
@@ -93,7 +95,7 @@ $("reload-btn").addEventListener("click", () => {
   });
 });
 
-// 一键呼出悬浮控制面板（需页面已开启总开关且已注入脚本）
+// 一键呼出悬浮控制面板（需当前网站已开启且已注入脚本）
 $("show-panel-btn").addEventListener("click", () => {
   if (!HAS_CHROME) return;
   getActiveTab((tab) => {
@@ -109,16 +111,15 @@ $("show-panel-btn").addEventListener("click", () => {
   });
 });
 
-// 其它标签页改动了总开关时同步刷新
 if (HAS_CHROME) {
+  // 其它标签页改动了当前网站的总开关时同步刷新
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes[KEY]) {
-      const v = changes[KEY].newValue;
-      render(v === undefined ? true : !!v);
-    }
+    if (area !== "local" || !currentHost || !changes[masterKey()]) return;
+    const v = changes[masterKey()].newValue;
+    render(v === undefined ? true : !!v);
   });
 
-  // 记录当前活动标签页；页面刷新完成后「刷新当前页」提示自动消失（已不需要）
+  // 当前活动标签页刷新完成后「刷新当前页」提示自动消失
   getActiveTab((tab) => {
     if (tab && tab.id != null) activeTabId = tab.id;
   });
@@ -138,15 +139,34 @@ if (HAS_CHROME) {
 
 // 版本号
 try {
-  if (HAS_CHROME) $("version").textContent = "v" + chrome.runtime.getManifest().version;
+  if (HAS_CHROME)
+    $("version").textContent = "v" + chrome.runtime.getManifest().version;
 } catch (e) {}
 
-// 初始化
-if (HAS_CHROME) {
-  chrome.storage.local.get([KEY], (items) => {
-    const v = items[KEY];
-    render(v === undefined ? true : !!v);
+// 初始化：先取当前标签页域名，再读该网站的开关状态
+function init() {
+  if (!HAS_CHROME) {
+    render(true);
+    return;
+  }
+  getActiveTab((tab) => {
+    if (!tab || !tab.url) {
+      render(true);
+      return;
+    }
+    try {
+      currentHost = new URL(tab.url).host;
+    } catch (e) {
+      currentHost = null;
+    }
+    if (!currentHost) {
+      render(true);
+      return;
+    }
+    chrome.storage.local.get([masterKey()], (items) => {
+      const v = items[masterKey()];
+      render(v === undefined ? true : !!v);
+    });
   });
-} else {
-  render(true);
 }
+init();

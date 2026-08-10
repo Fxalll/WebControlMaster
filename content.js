@@ -77,6 +77,17 @@ function _tryStartFeatures() {
   }
 }
 
+// 总开关按「当前网站（域名）」存储：每个网站一个开关，互不影响
+function _nopicMasterKey() {
+  return "nopic_master_switch_domain_" + encodeURIComponent(location.host);
+}
+function _nopicMasterMirrorKey() {
+  return "_nopic_ext_" + _nopicMasterKey();
+}
+function _nopicMasterWakeKey() {
+  return "nopic_master_wake_ts_domain_" + encodeURIComponent(location.host);
+}
+
 // 以 chrome.storage 为准做一次确认；与本地镜像不一致时纠正并重新决策。
 // 解决「切开关后立即刷新」的竞态：刷新瞬间镜像可能还是旧值，但 storage 才是权威。
 function _nopicMasterConfirmFromStorage(onDone) {
@@ -86,15 +97,15 @@ function _nopicMasterConfirmFromStorage(onDone) {
     chrome.storage.local
   ) {
     try {
-      chrome.storage.local.get(["nopic_master_switch"], function (items) {
-        const v = items && items.nopic_master_switch;
+      chrome.storage.local.get([_nopicMasterKey()], function (items) {
+        const v = items && items[_nopicMasterKey()];
         const on = v === undefined ? true : !!v;
         const changed = on !== _nopicMasterOn;
         _nopicMasterOn = on;
         if (!on) _nopicMasterWasOff = true;
         try {
           localStorage.setItem(
-            "_nopic_ext_nopic_master_switch",
+            _nopicMasterMirrorKey(),
             JSON.stringify(on),
           );
         } catch (e) {}
@@ -119,7 +130,7 @@ function _nopicMasterConfirmFromStorage(onDone) {
 // 总开关就绪判定：优先读 localStorage 镜像（同步、快），同时异步向 chrome.storage 确认
 function _nopicMasterProbe(onReady) {
   try {
-    const lv = localStorage.getItem("_nopic_ext_nopic_master_switch");
+    const lv = localStorage.getItem(_nopicMasterMirrorKey());
     if (lv !== null) {
       let v = true;
       try {
@@ -155,14 +166,14 @@ function _nopicSetupMasterWatch() {
   ) {
     try {
       chrome.storage.onChanged.addListener(function (changes, area) {
-        if (area !== "local" || !changes || !changes.nopic_master_switch)
+        if (area !== "local" || !changes || !changes[_nopicMasterKey()])
           return;
-        const on = changes.nopic_master_switch.newValue !== false;
+        const on = changes[_nopicMasterKey()].newValue !== false;
         _nopicMasterOn = on;
         if (!on) _nopicMasterWasOff = true;
         try {
           localStorage.setItem(
-            "_nopic_ext_nopic_master_switch",
+            _nopicMasterMirrorKey(),
             JSON.stringify(on),
           );
         } catch (e) {}
@@ -196,8 +207,8 @@ function _nopicMasterConsumeWake() {
   )
     return;
   try {
-    chrome.storage.local.get(["nopic_master_wake_ts"], function (items) {
-      const ts = items && items.nopic_master_wake_ts;
+    chrome.storage.local.get([_nopicMasterWakeKey()], function (items) {
+      const ts = items && items[_nopicMasterWakeKey()];
       if (typeof ts !== "number" || Date.now() - ts > 60000) return;
       try {
         if (typeof window.__nopicShowPanel === "function")
@@ -1282,7 +1293,7 @@ function _nopicBootMain() {
     pickHighlight.className = "nopic-pm-pick-highlight";
     pickHighlight.style.cssText = `
     position: fixed !important;
-    z-index: 2147483647;
+    z-index: 2147483680;
     background: rgba(96,165,250,0.25);
     border: 2px solid #60a5fa;
     border-radius: 4px;
@@ -1294,7 +1305,7 @@ function _nopicBootMain() {
 
     pickPreviewEl = document.createElement("div");
     pickPreviewEl.style.cssText =
-      "position:fixed;z-index:2147483647;background:rgba(0,0,0,0.85);color:#fff;font-size:11px;padding:4px 8px;border-radius:4px;pointer-events:none;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;";
+      "position:fixed;z-index:2147483680;background:rgba(0,0,0,0.85);color:#fff;font-size:11px;padding:4px 8px;border-radius:4px;pointer-events:none;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;";
     document.body.appendChild(pickPreviewEl);
 
     document.addEventListener("mousemove", onPickMouseMove);
@@ -2127,7 +2138,7 @@ function _nopicBootMain() {
     toast.className = "nopic-notification-toast";
     toast.style.cssText = `
     position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-20px);
-    z-index:2147483647;
+    z-index:2147483680;
     background: ${isLight ? "rgba(245,245,250,0.92)" : "rgba(20,20,25,0.92)"};
     backdrop-filter:blur(20px);
     border:1px solid ${isLight ? "rgba(60,100,180,0.2)" : "rgba(96,165,250,0.3)"};
@@ -2239,7 +2250,7 @@ function _nopicBootMain() {
     tip.id = "nopic-permission-request-tip";
     tip.style.cssText = `
     position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
-    z-index:2147483647; background:rgba(30,30,35,0.95);
+    z-index:2147483680; background:rgba(30,30,35,0.95);
     backdrop-filter:blur(20px); border:1px solid rgba(96,165,250,0.3);
     border-radius:12px; padding:16px 24px;
     color:#fff; font-size:13px; font-family:-apple-system,sans-serif;
@@ -2272,7 +2283,7 @@ function _nopicBootMain() {
     const tip = document.createElement("div");
     tip.style.cssText = `
     position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
-    z-index:2147483647; background:rgba(30,30,35,0.95);
+    z-index:2147483680; background:rgba(30,30,35,0.95);
     backdrop-filter:blur(20px); border:1px solid rgba(248,113,113,0.3);
     border-radius:12px; padding:16px 24px;
     color:#fff; font-size:13px; font-family:-apple-system,sans-serif;
@@ -11245,7 +11256,7 @@ function updateLampState() {
   welcomeModal.style.cssText = `
   display: none !important;
   position: fixed;
-  z-index: 2147483647;
+  z-index: 2147483680;
   pointer-events: none;
   opacity: 0;
   transform: scale(0.95) translateY(20px);
@@ -11446,7 +11457,7 @@ function updateLampState() {
   </div>
 `;
   aboutModal.style.cssText =
-    "display:none !important;position:fixed;z-index:2147483647;pointer-events:none;opacity:0;transform:scale(0.95);transition:opacity 0.3s ease,transform 0.3s ease;background:rgba(20,20,25,0.95);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,0.5);color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;text-align:center;";
+    "display:none !important;position:fixed;z-index:2147483680;pointer-events:none;opacity:0;transform:scale(0.95);transition:opacity 0.3s ease,transform 0.3s ease;background:rgba(20,20,25,0.95);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,0.5);color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;text-align:center;";
   document.documentElement.appendChild(aboutModal);
 
   const PAY_IMG =
@@ -11551,7 +11562,7 @@ function updateLampState() {
     top:0;
     left:0;
     right:0;
-    z-index:2147483647;
+    z-index:2147483680;
     background:#1a1a2e;
     border-bottom:2px solid #f87171;
     color:#fff;
@@ -11643,6 +11654,9 @@ function updateLampState() {
 
   // 专门用于安全警告的弹窗 - 点击"我知道了"仅关闭弹窗，不清除标志
   function showConfirmModalWithAck(title, text) {
+    // 弹窗打开：临时收起子面板，避免确认弹窗被面板遮挡
+    _nopicHidePanelsForModal();
+
     var titleEl = confirmModal.querySelector(".nopic-confirm-title");
     var textEl = confirmModal.querySelector(".nopic-confirm-text");
     var confirmBtn = confirmModal.querySelector(".nopic-confirm-btn.danger");
@@ -11677,6 +11691,9 @@ function updateLampState() {
   // ===== 单元格删除选项弹窗 =====
   // ===== 单元格删除选项弹窗（带动画和模糊背景） =====
   function showDeleteCellModal(colName, rowNum, onShiftUp, onClear) {
+    // 弹窗打开：临时收起子面板，避免被数据采集面板遮挡
+    _nopicHidePanelsForModal();
+
     // 移除已存在的弹窗
     var existing = document.getElementById("nopic-cell-del-overlay");
     if (existing) {
@@ -11785,6 +11802,8 @@ function updateLampState() {
       // 等动画结束后移除 DOM
       setTimeout(function () {
         if (el.parentNode) el.remove();
+        // 弹窗关闭：恢复之前收起的子面板
+        _nopicRestorePanelsAfterModal();
         if (typeof callback === "function") callback();
       }, 300);
     }
@@ -11834,7 +11853,43 @@ function updateLampState() {
     dcSaveCache();
   }
 
+  // ===== 模态弹窗临时收起面板（防遮挡） =====
+  // 弹窗打开时把当前展开的子面板/二级菜单暂时隐藏，弹窗关闭后再恢复原状
+  let _nopicModalPanelSnapshot = null;
+  function _nopicHidePanelsForModal() {
+    if (_nopicModalPanelSnapshot) return; // 已在隐藏中，避免重复快照
+    _nopicModalPanelSnapshot = [];
+    document
+      .querySelectorAll(".nopic-submenu, .nopic-modal-popup")
+      .forEach((el) => {
+        const isActive = el.classList.contains("active");
+        const hasDisp = el.style.display && el.style.display !== "none";
+        if (!isActive && !hasDisp) return;
+        _nopicModalPanelSnapshot.push({
+          el,
+          cls: isActive,
+          disp: el.style.display || "",
+        });
+        if (isActive) el.classList.remove("active");
+        else el.style.display = "none";
+      });
+    // 二级菜单主面板也收起，避免遮挡
+    if (menu) menu.classList.remove("active");
+  }
+  function _nopicRestorePanelsAfterModal() {
+    const snap = _nopicModalPanelSnapshot || [];
+    _nopicModalPanelSnapshot = null;
+    snap.forEach((s) => {
+      if (!s.el.isConnected) return;
+      if (s.cls) s.el.classList.add("active");
+      else s.el.style.display = s.disp || "flex";
+    });
+  }
+
   function showConfirmModal(title, text, onConfirm, onCancel, confirmText) {
+    // 弹窗打开：临时收起子面板，避免确认弹窗被面板遮挡
+    _nopicHidePanelsForModal();
+
     // 确保 confirmModal 在 body 最顶层
     if (confirmModal.parentNode !== document.body) {
       document.body.appendChild(confirmModal);
@@ -11903,6 +11958,8 @@ function updateLampState() {
   function hideConfirmModal() {
     confirmModal.classList.remove("active");
     confirmCallback = null;
+    // 弹窗关闭：恢复之前收起的子面板
+    _nopicRestorePanelsAfterModal();
   }
 
   // 绑定按钮事件
@@ -17260,7 +17317,7 @@ function updateLampState() {
   exportMenu.style.cssText = `
   display:none;
   position:fixed;
-  z-index:2147483648;
+  z-index:2147483680;
   background:rgba(30,30,35,0.95);
   backdrop-filter:blur(20px);
   border:1px solid rgba(255,255,255,0.1);
@@ -17470,6 +17527,9 @@ function updateLampState() {
   // ===== 导出选项弹窗 =====
   // ===== 导出选项弹窗（带动画和模糊背景） =====
   function showExportOptionsModal() {
+    // 弹窗打开：临时收起子面板，避免被数据采集面板遮挡
+    _nopicHidePanelsForModal();
+
     if (dcState.columns.length === 0) {
       showConfirmModal("提示", "没有数据可导出", function () {
         hideConfirmModal();
@@ -17550,6 +17610,8 @@ function updateLampState() {
       el.classList.remove("active");
       setTimeout(function () {
         if (el.parentNode) el.remove();
+        // 弹窗关闭：恢复之前收起的子面板
+        _nopicRestorePanelsAfterModal();
         if (typeof callback === "function") callback();
       }, 300);
     }
@@ -19996,7 +20058,7 @@ function updateLampState() {
       const tip = document.createElement("div");
       tip.id = "nopic-autoclicker-record-tip";
       tip.style.cssText =
-        "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(239,68,68,0.9);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:2147483647;pointer-events:none;";
+        "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(239,68,68,0.9);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:2147483680;pointer-events:none;";
       tip.textContent = "请在 3 秒内点击页面上的目标元素...";
       document.body.appendChild(tip);
     }
@@ -20211,7 +20273,7 @@ function updateLampState() {
     const tip = document.createElement("div");
     tip.id = "nopic-autoclicker-record-position-tip";
     tip.style.cssText =
-      "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(96,165,250,0.9);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:2147483647;pointer-events:none;";
+      "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(96,165,250,0.9);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:2147483680;pointer-events:none;";
     tip.textContent = "请在 3 秒内点击页面上的目标位置...";
     document.body.appendChild(tip);
 
@@ -21813,7 +21875,7 @@ function updateLampState() {
     var bar = document.createElement("div");
     bar.className = "nopic-auto-record-bar";
     bar.style.cssText =
-      "position:fixed;top:16px;right:16px;height:40px;min-width:160px;background:rgba(30,30,35,0.95);backdrop-filter:blur(16px);border:1px solid rgba(239,68,68,0.4);border-radius:20px;z-index:2147483647;display:flex;align-items:center;justify-content:center;gap:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;font-size:12px;box-shadow:0 4px 20px rgba(239,68,68,0.2);pointer-events:auto;user-select:none;transition:top 0.4s cubic-bezier(0.4,0,0.2,1), left 0.4s cubic-bezier(0.4,0,0.2,1), right 0.4s cubic-bezier(0.4,0,0.2,1);padding:0 6px 0 14px;";
+      "position:fixed;top:16px;right:16px;height:40px;min-width:160px;background:rgba(30,30,35,0.95);backdrop-filter:blur(16px);border:1px solid rgba(239,68,68,0.4);border-radius:20px;z-index:2147483680;display:flex;align-items:center;justify-content:center;gap:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;font-size:12px;box-shadow:0 4px 20px rgba(239,68,68,0.2);pointer-events:auto;user-select:none;transition:top 0.4s cubic-bezier(0.4,0,0.2,1), left 0.4s cubic-bezier(0.4,0,0.2,1), right 0.4s cubic-bezier(0.4,0,0.2,1);padding:0 6px 0 14px;";
     bar.innerHTML =
       '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;animation:nopic-blink 1s infinite;"></span>录制中</span><span style="opacity:0.5;font-size:11px;">已录 <span class="nopic-auto-record-count">0</span></span><div class="nopic-auto-record-stop" style="padding:5px 12px;border-radius:14px;background:rgba(239,68,68,0.8);color:#fff;font-size:11px;cursor:pointer;font-weight:500;transition:background 0.2s;white-space:nowrap;">结束录制</div>';
     document.body.appendChild(bar);
