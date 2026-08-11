@@ -16715,148 +16715,109 @@ function _nopicBootMain() {
   }
 
   // ===== 结构相似度匹配（核心算法） =====
-  // 老问题：签名里一旦掺入 id（元素自身或祖先），或用错 class，同类元素就匹配不上。
-  // 新方案：生成一组「从精确到宽松」的候选签名（CSS 选择器），匹配时按序收集并去重，
-  // 大幅提升"同一类元素"的召回率。
-  function dcGetMeaningfulClasses(el) {
-    var out = [];
-    try {
-      var cls = el.className;
-      var str =
-        typeof cls === "string" ? cls : cls && cls.baseVal ? cls.baseVal : "";
-      str.split(/\s+/).forEach(function (c) {
-        if (
-          c &&
-          !c.startsWith("nopic-") &&
-          !c.startsWith("dc_") &&
-          !c.startsWith("pm_") &&
-          !/^[a-f0-9]{8,}/.test(c) &&
-          !/^\d/.test(c)
-        ) {
-          out.push(c);
-        }
-      });
-    } catch (e) {}
-    return out;
-  }
-  function dcGetMeaningfulId(el) {
-    try {
-      if (
-        el.id &&
-        !el.id.startsWith("nopic-") &&
-        !el.id.startsWith("dc_") &&
-        !el.id.startsWith("pm_")
-      ) {
-        return el.id;
-      }
-    } catch (e) {}
-    return "";
-  }
-  function dcGetSignatureVariants(el) {
-    if (!el || !el.tagName) return [];
-    var chain = [];
-    var cur = el;
-    for (var i = 0; i < 4 && cur && cur !== document.body; i++) {
-      chain.push(cur);
-      cur = cur.parentElement;
-    }
-    function seg(node, useId) {
-      var tag = (node.tagName || "").toLowerCase();
-      if (!tag) return "";
-      var id = dcGetMeaningfulId(node);
-      if (useId && id) {
-        try {
-          return "#" + CSS.escape(id);
-        } catch (e) {
-          return "#" + id;
-        }
-      }
-      var cls = dcGetMeaningfulClasses(node);
-      if (cls.length) return tag + "." + cls[0];
-      return tag;
-    }
-    var variants = [];
-    var v1 = [];
-    for (var i1 = 0; i1 < chain.length; i1++) v1.push(seg(chain[i1], i1 > 0));
-    variants.push(v1.join(" > "));
-    var v2 = [];
-    for (var i2 = 0; i2 < chain.length; i2++) v2.push(seg(chain[i2], false));
-    variants.push(v2.join(" > "));
-    // 只留最近 2 层（去掉最外层容器约束）
-    if (chain.length >= 2) {
-      var v3 = [];
-      for (var i3 = chain.length - 2; i3 < chain.length; i3++)
-        v3.push(seg(chain[i3], false));
-      variants.push(v3.join(" > "));
-      // 父级 + 元素自身
-      variants.push(seg(chain[1], false) + " > " + seg(chain[0], false));
-    }
-    // 元素自身 tag + 全部 class（要求同时具备全部 class）
-    var elCls = dcGetMeaningfulClasses(el);
-    var selfTag = (el.tagName || "").toLowerCase();
-    if (elCls.length) {
-      variants.push(selfTag + "." + elCls.join("."));
-      // 元素自身 tag + 任一单个 class（逗号合并成多选器，覆盖 class 名不同的同类元素）
-      var singleSel = [];
-      elCls.forEach(function (c) {
-        singleSel.push(selfTag + "." + c);
-      });
-      variants.push(singleSel.join(","));
-    }
-    // 父级签名（带 id/class）+ 元素 tag
-    if (chain.length >= 2) {
-      variants.push(seg(chain[1], true) + " " + selfTag);
-      // 最宽松兜底：父级 tag + 元素 tag
-      var pTag = (chain[1].tagName || "").toLowerCase();
-      variants.push(pTag + " > " + selfTag);
-    }
-    // 去重
-    var seen = {},
-      out = [];
-    variants.forEach(function (v) {
-      if (!v || seen[v]) return;
-      seen[v] = true;
-      out.push(v);
-    });
-    return out;
-  }
-
-  // 兼容旧调用方：返回第一个（最精确）签名
+  // 严格版：只生成「一条」结构签名（自身 → 祖先，最多 4 层），
+  // 用该签名匹配同类元素；结果太少时才降级到"最近两层"再试一次。
+  // 不做多级宽松候选签名，避免把不属于同一类的元素也抓进来。
   function dcGetStructureSignature(el) {
-    var vs = dcGetSignatureVariants(el);
-    return vs.length ? vs[0] : "";
+    if (!el) return "";
+    var parts = [];
+    var cur = el;
+    var depth = 0;
+    var maxDepth = 4;
+
+    while (
+      cur &&
+      cur !== document.body &&
+      cur !== document.documentElement &&
+      depth < maxDepth
+    ) {
+      var tag = cur.tagName.toLowerCase();
+      var cls = "";
+      var id = "";
+
+      // 获取id（如果有意义）
+      if (
+        cur.id &&
+        !cur.id.startsWith("nopic-") &&
+        !cur.id.startsWith("dc_") &&
+        !cur.id.startsWith("pm_")
+      ) {
+        id = "#" + cur.id;
+      }
+
+      // 获取class（过滤无意义的）
+      if (cur.className && typeof cur.className === "string") {
+        var classList = cur.className.split(" ").filter(function (c) {
+          return (
+            c &&
+            !c.startsWith("nopic-") &&
+            !c.startsWith("dc_") &&
+            !c.startsWith("pm_") &&
+            !/^[a-f0-9]{8,}/.test(c)
+          );
+        });
+        if (classList.length > 0) {
+          cls = "." + classList[0];
+        }
+      }
+
+      var sig = tag;
+      if (id) {
+        sig = id;
+      } else if (cls) {
+        sig = tag + cls;
+      }
+
+      // ===== 关键：不加 nth-child，让匹配更宽松 =====
+      parts.unshift(sig);
+      cur = cur.parentElement;
+      depth++;
+    }
+
+    return parts.join(" > ");
   }
 
   function dcFindSimilarElements(sampleEl) {
     if (!sampleEl) return [];
-    var variants = dcGetSignatureVariants(sampleEl);
-    var results = [];
-    var seenEls = new Set();
-    var total = 0;
-    for (var vi = 0; vi < variants.length; vi++) {
-      var sel = variants[vi];
-      // 最后两个是"父级+tag"级别的宽松兜底：前面变体已找到足够匹配就不扩大范围，避免误抓整页
-      if (variants.length >= 6 && vi >= variants.length - 2 && total >= 2)
-        break;
-      try {
-        document.querySelectorAll(sel).forEach(function (el) {
-          if (el === sampleEl) return;
-          if (seenEls.has(el)) return;
-          if (
-            el.closest &&
-            (el.closest("#nopic-datacollect-submenu") ||
-              el.closest("#nopic-widget") ||
-              el.closest("#nopic-menu") ||
-              el.closest("#nopic-zoom-container"))
-          ) {
-            return;
-          }
-          seenEls.add(el);
+    let signature = dcGetStructureSignature(sampleEl);
+    if (!signature) return [];
+    let results = [];
+    try {
+      let candidates = document.querySelectorAll(signature);
+      candidates.forEach((el) => {
+        if (
+          el !== sampleEl &&
+          el.closest &&
+          !el.closest("#nopic-datacollect-submenu") &&
+          !el.closest("#nopic-widget") &&
+          !el.closest("#nopic-menu") &&
+          !el.closest("#nopic-zoom-container")
+        ) {
           results.push(el);
-          total++;
-        });
-      } catch (e) {}
-      if (total >= 300) break; // 安全上限，防误抓整页
+        }
+      });
+    } catch (e) {}
+    // 如果结果太少，降级匹配
+    if (results.length < 2) {
+      let parts = signature.split(" > ");
+      if (parts.length >= 2) {
+        let lastTwo = parts.slice(-2).join(" > ");
+        try {
+          let candidates = document.querySelectorAll(lastTwo);
+          candidates.forEach((el) => {
+            if (
+              el !== sampleEl &&
+              el.closest &&
+              !el.closest("#nopic-datacollect-submenu") &&
+              !el.closest("#nopic-widget") &&
+              !el.closest("#nopic-menu") &&
+              !el.closest("#nopic-zoom-container")
+            ) {
+              if (!results.includes(el)) results.push(el);
+            }
+          });
+        } catch (e) {}
+      }
     }
     return results;
   }
@@ -17076,8 +17037,6 @@ function _nopicBootMain() {
       type: colType,
       sampleSelector: dcGetSelector(el),
       sampleSignature: dcGetStructureSignature(el),
-      // ★ 新增：保存完整的多级候选签名，翻页/监听时按同一套变体匹配，提升同类召回率
-      sampleSignatures: dcGetSignatureVariants(el),
       hasLink: hasLink,
       hasImage: hasImage,
     };
@@ -18984,42 +18943,25 @@ function _nopicBootMain() {
     var animSeen = new Set();
 
     dcState.columns.forEach(function (col) {
-      // ★ 优先使用多级候选签名（新采集的列），旧数据回退到单个签名
-      var variants =
-        col.sampleSignatures && col.sampleSignatures.length
-          ? col.sampleSignatures
-          : col.sampleSignature
-            ? [col.sampleSignature]
-            : [];
-      if (!variants.length) return;
+      // 严格版：只用单条结构签名匹配（与选取时一致）
+      if (!col.sampleSignature) return;
 
       var matchedElements = [];
-      var seenE = new Set();
-      var totalM = 0;
-      for (var vi = 0; vi < variants.length; vi++) {
-        // 与选取时一致：宽松兜底变体在已有足够匹配时不再扩大范围
-        if (variants.length >= 6 && vi >= variants.length - 2 && totalM >= 2)
-          break;
-        try {
-          var candidates = document.querySelectorAll(variants[vi]);
-          candidates.forEach(function (el) {
-            if (seenE.has(el)) return;
-            if (
-              !el.closest("#nopic-datacollect-submenu") &&
-              !el.closest("#nopic-widget") &&
-              !el.closest("#nopic-menu") &&
-              !el.closest("#nopic-zoom-container")
-            ) {
-              seenE.add(el);
-              matchedElements.push(el);
-              totalM++;
-            }
-          });
-        } catch (e) {
-          console.log("[数据采集] 列 '" + col.name + "' 匹配出错:", e);
-          break;
-        }
-        if (totalM >= 300) break; // 安全上限
+      try {
+        var candidates = document.querySelectorAll(col.sampleSignature);
+        candidates.forEach(function (el) {
+          if (
+            !el.closest("#nopic-datacollect-submenu") &&
+            !el.closest("#nopic-widget") &&
+            !el.closest("#nopic-menu") &&
+            !el.closest("#nopic-zoom-container")
+          ) {
+            matchedElements.push(el);
+          }
+        });
+      } catch (e) {
+        console.log("[数据采集] 列 '" + col.name + "' 匹配出错:", e);
+        return;
       }
 
       // 按垂直位置排序
