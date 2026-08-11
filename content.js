@@ -26805,10 +26805,39 @@ function _nopicBootMain() {
     autoClickerConfig = getAutoClickerConfig();
     autoClickerSafetyConfig = getAutoClickerSafetyConfig();
     privacyLockConfig.enabled = nopicGetToggleState("nopic_privacylock", true);
-    // 键鼠映射 / 瞬切手势开关：存储（chrome.storage）就绪后重新读取，
-    // 避免初始化时默认值覆盖真实开关（否则其它标签页开启后本页仍按默认值运行）
-    nopicKMEnabled = nopicGetToggleState("nopic_keymap", true);
-    nopicKMGestureOn = nopicGetToggleState("nopic_km_gesture", false);
+    // 键鼠映射 / 瞬切手势开关：以 chrome.storage 权威值为准重新读取，
+    // 避免初始化时默认值覆盖真实开关（否则其它标签页开启后本页仍按默认值运行）。
+    // 注意必须异步读 chrome.storage：此刻本地缓存可能尚未就绪，而 localStorage
+    // 是按站点隔离的，跨网站读不到其它页面写入的开关状态，直接读会误覆盖成默认值，
+    // 导致「在 A 站开启后，其它已打开页面要刷新才生效」。
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
+        chrome.storage.local.get(
+          ["nopic_toggle_nopic_keymap", "nopic_toggle_nopic_km_gesture"],
+          function (items) {
+            if (!items) return;
+            if (items["nopic_toggle_nopic_keymap"] !== undefined) {
+              nopicKMEnabled = items["nopic_toggle_nopic_keymap"] !== false;
+            }
+            if (items["nopic_toggle_nopic_km_gesture"] !== undefined) {
+              nopicKMGestureOn =
+                items["nopic_toggle_nopic_km_gesture"] === true;
+              try {
+                var gs = document.getElementById("nopic-km-gesture-switch");
+                if (gs) gs.classList.toggle("on", nopicKMGestureOn);
+              } catch (e) {}
+            }
+            try {
+              updateAllUI();
+            } catch (e) {}
+          },
+        );
+      }
+    } catch (e) {}
 
     // 3. 更新UI（只刷新显示，不重新扫描图片）
     updateAllUI();
