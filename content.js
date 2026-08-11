@@ -9267,10 +9267,10 @@ function _nopicBootMain() {
         <input type="range" class="nopic-mask-opacity-slider" id="nopic-density-slider" min="-500" max="500" step="1" value="0">
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;">
-        <span>0.001×</span><span id="nopic-density-scope-tip">当前网站生效</span><span>100×</span>
+        <span>0.001×</span><span id="nopic-density-scope-tip"></span><span>100×</span>
       </div>
     </div>
-    <div class="nopic-menu-item" id="nopic-fontopacity-row" style="flex-direction:column;align-items:stretch;padding:6px 10px;border-top:1px dashed rgba(255,255,255,0.08);">
+    <div class="nopic-menu-item" id="nopic-fontopacity-row" style="flex-direction:column;align-items:stretch;padding:6px 10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span style="font-size:11px;">全页字体透明度</span>
         <span id="nopic-fontopacity-val" title="点击复位到 100%" style="font-size:11px;color:rgba(255,255,255,0.5);cursor:pointer;">100%</span>
@@ -9279,7 +9279,7 @@ function _nopicBootMain() {
         <input type="range" class="nopic-mask-opacity-slider" id="nopic-fontopacity-slider" min="0" max="100" step="1" value="100">
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;">
-        <span>0%</span><span id="nopic-fontopacity-scope-tip">当前网站生效 · 相对缩放</span><span>100%</span>
+        <span>0%</span><span id="nopic-fontopacity-scope-tip"></span><span>100%</span>
       </div>
     </div>
     <div class="nopic-menu-separator">加载动画</div>
@@ -10158,7 +10158,7 @@ function _nopicBootMain() {
       </div>
 <div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;margin-top:6px;padding-top:8px;border-top:1px solid var(--nopic-border, rgba(255,255,255,0.05));">
         <div>开启后可直接在页面上编辑文字内容</div>
-        <div style="margin-top:4px;color:rgba(255,255,255,0.3);">关闭页面后自动重置，不记忆状态</div>
+        <div style="margin-top:4px;color:rgba(255,255,255,0.3);">刷新页面后自动重置，不记忆状态</div>
       </div>
     </div>
   `;
@@ -11815,7 +11815,7 @@ function _nopicBootMain() {
   <!-- 网页控制大师 -->
     <div class="about-section">
       <div class="about-section-title">网页控制大师 <span class="badge-recommend">当前版本</span></div>
-      <div class="about-section-desc">先看你用的是哪个浏览器，再选安装方式</div>
+      <div class="about-section-desc">根据浏览器选择安装方式</div>
 
       <div class="about-browser-list">
         <div class="about-browser-row">
@@ -11843,7 +11843,7 @@ function _nopicBootMain() {
     <!-- 网页图片大师 -->
     <div class="about-section about-section-compact">
       <div class="about-section-title">网页图片大师</div>
-      <div class="about-section-desc">仅包含基础图片控制能力的精简版本 · 可从 Edge 商店获取</div>
+      <div class="about-section-desc">仅包含基础图片控制能力的精简版本(未做性能优化)</div>
 
       <div class="about-store-row">
         <a class="btn-edge" href="https://microsoftedge.microsoft.com/addons/detail/pmgpklpfinapegpcnoigkllhbgnnphdg" target="_blank">Edge 商店安装</a>
@@ -11855,7 +11855,7 @@ function _nopicBootMain() {
       <div class="about-guide-title">关于「手动加载扩展」</div>
       <div class="about-guide-steps">
         <span>即通过 Gitee / GitHub 获取离线安装包，并手动加载至浏览器</span>
-        <span><b>Chrome 用户</b>：请通过此方式安装</span>
+        <span><b>Chrome 用户</b>：请通过此方式安装，可能需要手动更新</span>
         <span><b>Edge / Firefox 用户</b>：如需抢先体验新版本，亦可选用此方式</span>
       </div>
       <div class="about-guide-note">详细安装步骤请参考 Gitee / GitHub 的发布页说明，按页面指引操作即可</div>
@@ -29164,7 +29164,7 @@ function _nopicBootMain() {
       <span class="nopic-modal-title">剔除元素</span>
       <div class="nopic-modal-close" id="nopic-elemkill-close">×</div>
     </div>
-    <div class="nopic-ek-hint">像广告拦截器一样，把页面上碍事的元素直接剔除掉。规则会在每次打开该页面时自动生效。</div>
+    <div class="nopic-ek-hint">像广告拦截器一样，把页面上碍事的元素直接剔除掉。</div>
     <button class="nopic-mask-btn primary" id="nopic-elemkill-add" style="width:100%;padding:8px 0;margin-top:8px;">＋ 新增剔除元素</button>
     <div class="nopic-ek-lists">
       <div class="nopic-ek-col">
@@ -29708,14 +29708,14 @@ function _nopicBootMain() {
     <div class="nopic-km-section">
       <div class="nopic-km-section-head">
         <span class="nopic-km-section-title">瞬切手势</span>
-        <span class="nopic-km-badge">推荐</span>
+        <span class="nopic-km-badge">推荐开启</span>
         <div class="nopic-switch" id="nopic-km-gesture-switch"></div>
       </div>
       <div class="nopic-km-howto">
         <div class="nopic-km-howto-title">如何使用</div>
         <div class="nopic-km-howto-row"><b>按住右键 + 滚轮</b><span>上下滚 = 切换上一个 / 下一个标签页</span></div>
         <div class="nopic-km-howto-row"><b>按住右键 + 中键</b><span>关闭当前标签页</span></div>
-        <div class="nopic-km-howto-tip">瞬间换页，提升效率必备。一处开启，所有标签页即时生效（无需刷新）。</div>
+        <div class="nopic-km-howto-tip">瞬间换页，提升效率必备。开启后，可能需要刷新其他旧标签页才可正常使用。</div>
       </div>
     </div>
 
