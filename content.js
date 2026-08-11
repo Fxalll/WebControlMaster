@@ -91,11 +91,7 @@ function _nopicMasterWakeKey() {
 // 以 chrome.storage 为准做一次确认；与本地镜像不一致时纠正并重新决策。
 // 解决「切开关后立即刷新」的竞态：刷新瞬间镜像可能还是旧值，但 storage 才是权威。
 function _nopicMasterConfirmFromStorage(onDone) {
-  if (
-    typeof chrome !== "undefined" &&
-    chrome.storage &&
-    chrome.storage.local
-  ) {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     try {
       chrome.storage.local.get([_nopicMasterKey()], function (items) {
         const v = items && items[_nopicMasterKey()];
@@ -104,10 +100,7 @@ function _nopicMasterConfirmFromStorage(onDone) {
         _nopicMasterOn = on;
         if (!on) _nopicMasterWasOff = true;
         try {
-          localStorage.setItem(
-            _nopicMasterMirrorKey(),
-            JSON.stringify(on),
-          );
+          localStorage.setItem(_nopicMasterMirrorKey(), JSON.stringify(on));
         } catch (e) {}
         if (changed) {
           if (on) {
@@ -166,16 +159,12 @@ function _nopicSetupMasterWatch() {
   ) {
     try {
       chrome.storage.onChanged.addListener(function (changes, area) {
-        if (area !== "local" || !changes || !changes[_nopicMasterKey()])
-          return;
+        if (area !== "local" || !changes || !changes[_nopicMasterKey()]) return;
         const on = changes[_nopicMasterKey()].newValue !== false;
         _nopicMasterOn = on;
         if (!on) _nopicMasterWasOff = true;
         try {
-          localStorage.setItem(
-            _nopicMasterMirrorKey(),
-            JSON.stringify(on),
-          );
+          localStorage.setItem(_nopicMasterMirrorKey(), JSON.stringify(on));
         } catch (e) {}
         if (on) {
           if (_nopicMasterBooted) {
@@ -200,11 +189,7 @@ function _nopicSetupMasterWatch() {
 
 // 读取 popup 留下的「刚打开总开关」标记：60 秒内（重新）加载的页面自动唤出面板
 function _nopicMasterConsumeWake() {
-  if (
-    typeof chrome === "undefined" ||
-    !chrome.storage ||
-    !chrome.storage.local
-  )
+  if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local)
     return;
   try {
     chrome.storage.local.get([_nopicMasterWakeKey()], function (items) {
@@ -1129,7 +1114,7 @@ function _nopicBootMain() {
   // 否则在脚本自上而下执行到 updateAllUI（位于本行之前）时会触发 TDZ 报错。
   let quickTextEnabled = nopicGetToggleState("nopic_quicktext", true);
   let nopicEKEnabled = nopicGetToggleState("nopic_elemkill", true);
-  let nopicKMEnabled = nopicGetToggleState("nopic_keymap", false);
+  let nopicKMEnabled = nopicGetToggleState("nopic_keymap", true);
   let isRecordingShortcut = false;
   let recordingTarget = null;
 
@@ -2671,7 +2656,10 @@ function _nopicBootMain() {
     const saved = localStorage.getItem(key);
     const cfg = saved ? JSON.parse(saved) : { ...defaultParadeConfig };
     // 开关走全局存储：一处开关，所有网站/标签页都生效（与剔除/键控等一致）
-    cfg.enabled = nopicGetToggleState("nopic_parade", defaultParadeConfig.enabled);
+    cfg.enabled = nopicGetToggleState(
+      "nopic_parade",
+      defaultParadeConfig.enabled,
+    );
     return cfg;
   }
   function setParadeConfig(cfg) {
@@ -2802,6 +2790,192 @@ function _nopicBootMain() {
   let zoomedClones = new Map(); // el -> { clone, controls, wrapper }
   let pinZIndexCounter = 10;
 
+  // ── 拖入以钉图：非钉图模式下放大图片时，视口右上角出现"拖入以钉图"按钮 ──
+  // 把放大的图片拖到按钮上 → 按钮变形为一个虚线框罩住图片 → 松手后该图片进入
+  // "钉住"状态：页面遮罩消失、可以自由操作，图片只有单击 / 中键点在图上才归位，
+  // 点击页面空白不会让它回去。注意：这不是打开钉图模式，后续放大其他图仍是普通行为。
+  let nopicPinDock = null; // 钉图按钮元素
+  let nopicPinDockRemoving = false; // 正在移除中（防止动画期间重复创建）
+
+  // 是否存在"未钉住"的放大图
+  function nopicHasUnpinnedZoom() {
+    try {
+      const cs = zoomContainer.querySelectorAll(".nopic-flip-container");
+      for (let i = 0; i < cs.length; i++) {
+        if (!cs[i]._pinned) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  // 钉图按钮的 DOM（元素固定挂在 documentElement 上）
+  function nopicEnsurePinDock() {
+    if (nopicPinDock && nopicPinDock.parentNode) return nopicPinDock;
+    if (nopicPinDockRemoving) return null;
+    const dock = document.createElement("div");
+    dock.className = "nopic-pin-dock";
+    dock.title = "把放大的图片拖到这里，松手即可钉住";
+    dock.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M7 4h10v3l-2.5 4H9.5L7 7V4z"/><path d="M12 4v3"/></svg>' +
+      '<span class="nopic-pin-dock-label">拖入以钉图</span>';
+    document.documentElement.appendChild(dock);
+    nopicPinDock = dock;
+    nopicPinDockRemoving = false;
+    // 入场：下一帧再显示，确保 transition 生效
+    requestAnimationFrame(() => {
+      if (dock.parentNode) dock.classList.add("shown");
+    });
+    return dock;
+  }
+
+  // 根据当前状态显示 / 隐藏钉图按钮（仅非钉图模式、且有未钉住放大图时显示）
+  function nopicUpdatePinDock() {
+    if (zoomPinModeConfig) {
+      if (nopicPinDock) {
+        nopicPinDock.classList.remove("shown", "wrapping");
+        nopicPinDock.classList.add("hidden");
+      }
+      return;
+    }
+    if (nopicHasUnpinnedZoom()) {
+      const dock = nopicEnsurePinDock();
+      if (dock) {
+        dock.classList.remove("hidden");
+        requestAnimationFrame(() => {
+          if (dock.parentNode) dock.classList.add("shown");
+        });
+      }
+    } else if (nopicPinDock) {
+      nopicPinDock.classList.remove("shown", "wrapping");
+      nopicPinDock.classList.add("hidden");
+    }
+  }
+
+  // 拖动图片过程中：鼠标进入按钮 → 按钮变成虚线框罩住图片
+  function nopicPinDockHover(clientX, clientY, flipContainer) {
+    const dock = nopicPinDock;
+    if (
+      !dock ||
+      !dock.parentNode ||
+      dock.classList.contains("hidden") ||
+      !flipContainer ||
+      flipContainer._pinned
+    ) {
+      if (dock && dock._expanding) nopicPinDockReset(dock);
+      return;
+    }
+    const r = dock.getBoundingClientRect();
+    // ★ 命中区外扩 40px：图片拖到按钮附近即触发，不用精确对准小按钮
+    const enterPad = 40;
+    const inside =
+      clientX >= r.left - enterPad &&
+      clientX <= r.right + enterPad &&
+      clientY >= r.top - enterPad &&
+      clientY <= r.bottom + enterPad;
+    if (inside && !dock._expanding) {
+      const img = flipContainer.getBoundingClientRect();
+      if (img.width <= 0 || img.height <= 0) return;
+      dock._expanding = true;
+      dock._wrapTarget = flipContainer;
+      // ★★★ 虚线框位置固定：右上角 right/top 各 5px，不随图片拖动位置变化。
+      // 用 right 定位（而非手算 left）：浏览器保证右边缘精确距视口右 5px，
+      // 不受页面滚动条 / 缩放影响（之前手算 left 在有滚动条时会贴边甚至超出）。
+      // 尺寸形状由图片决定（四周各留 pad 露出虚线）。
+      const pad = 6;
+      const w = img.width + pad * 2;
+      const h = img.height + pad * 2;
+      dock.style.transition =
+        "right .3s cubic-bezier(.22,1,.36,1), top .3s cubic-bezier(.22,1,.36,1), " +
+        "width .3s cubic-bezier(.22,1,.36,1), height .3s cubic-bezier(.22,1,.36,1), " +
+        "border-radius .3s ease";
+      dock.classList.add("wrapping");
+      dock.style.left = "auto";
+      dock.style.right = "5px";
+      dock.style.top = "5px";
+      dock.style.width = w + "px";
+      dock.style.height = h + "px";
+      // 强制回流后读取虚线框实际位置，作为图片飞行落点（图片左上角 = 虚线框左上角 + pad）
+      void dock.offsetWidth;
+      const finalRect = dock.getBoundingClientRect();
+      dock._flyTo = {
+        left: finalRect.left + pad,
+        top: finalRect.top + pad,
+      };
+    } else if (!inside && dock._expanding) {
+      // ★ 展开后退出阈值 120px：图片必须拖离虚线框很远才收起，
+      // 避免鼠标在边缘抖动导致虚线框反复展开/收起（鬼畜）
+      const exitPad = 120;
+      const outside =
+        clientX < r.left - exitPad ||
+        clientX > r.right + exitPad ||
+        clientY < r.top - exitPad ||
+        clientY > r.bottom + exitPad;
+      if (outside) nopicPinDockReset(dock);
+    }
+  }
+
+  // 把按钮打回右上角胶囊
+  function nopicPinDockReset(dock) {
+    if (!dock) return;
+    dock._expanding = false;
+    dock._wrapTarget = null;
+    dock._flyTo = null;
+    dock.classList.remove("wrapping");
+    dock.style.transition =
+      "left .3s ease, top .3s ease, width .3s ease, height .3s ease";
+    dock.style.left = "";
+    dock.style.top = "";
+    dock.style.right = "";
+    dock.style.width = "";
+    dock.style.height = "";
+  }
+
+  // 钉住一张图片：图片飞向虚线框位置 → 标记 _pinned → 去掉页面遮罩、按钮消失
+  function nopicPinImage(el) {
+    const info = zoomedClones.get(el);
+    if (!info || !info.clone) return;
+    if (el._pinned) return;
+    const container = info.clone;
+    // ★★★ 松手飞行动画：图片从当前位置飞到虚线框位置（虚线框位置不越界） ★★★
+    const flyTo = nopicPinDock && nopicPinDock._flyTo;
+    if (flyTo && container) {
+      const rot = container._rotation || 0;
+      container.style.setProperty(
+        "transition",
+        "transform 0.42s cubic-bezier(0.22, 1, 0.36, 1)",
+        "important",
+      );
+      nopicApplyRotTransform(container, flyTo.left, flyTo.top, 1, rot);
+      container._posLeft = flyTo.left;
+      container._posTop = flyTo.top;
+    }
+    el._pinned = true;
+    info.clone._pinned = true;
+    const dock = nopicPinDock;
+    if (dock && dock.parentNode) {
+      nopicPinDockRemoving = true;
+      // 图片飞行到位(0.42s)后虚线框才开始淡出，再整体移除
+      const d = dock;
+      setTimeout(() => {
+        if (!d.parentNode) return;
+        d.classList.remove("wrapping");
+        d.classList.add("pinned");
+      }, 430);
+      setTimeout(() => {
+        if (d.parentNode) d.parentNode.removeChild(d);
+        if (nopicPinDock === d) nopicPinDock = null;
+        nopicPinDockRemoving = false;
+      }, 800);
+    }
+    // 图片飞到虚线框位置后，若已无非钉住放大图 → 去掉全局遮罩，页面恢复自由操作
+    if (!nopicHasUnpinnedZoom()) {
+      setTimeout(() => {
+        zoomContainer.classList.remove("active");
+      }, 460);
+    }
+    nopicUpdatePinDock();
+  }
+
   // --- 2. 样式定义 ---
   let spinnerTimer = null;
   // 在样式定义区域添加（在 document.documentElement.appendChild(zoomContainer); 之前或之后都可以）
@@ -2886,7 +3060,9 @@ function _nopicBootMain() {
   }
 
   function startHoverZoomTimer(el) {
-    if (document.querySelector(".nopic-clone") && !zoomPinModeConfig) return;
+    // ★★★ 存在"未钉住"的放大图时暂停 hover 放大；
+    // 钉住的图不算（它常驻容器，不阻塞悬停放大新图） ★★★
+    if (nopicHasUnpinnedZoom()) return;
     cancelHoverZoomTimer(el, true);
     if (zoomCooldown || el._isZoomed) return;
     const isHidden = el.dataset.isHidden === "true";
@@ -2910,7 +3086,8 @@ function _nopicBootMain() {
   }
 
   function restartHoverZoomTimer(el) {
-    if (document.querySelector(".nopic-clone") && !zoomPinModeConfig) return;
+    // 钉住的图不阻塞悬停放大新图
+    if (nopicHasUnpinnedZoom()) return;
     if (zoomCooldown || el._isZoomed) return;
     const isHidden = el.dataset.isHidden === "true";
     const shouldZoom = hoverShowImgConfig || (!hoverShowImgConfig && !isHidden);
@@ -2971,7 +3148,7 @@ function _nopicBootMain() {
     return null;
   }
 
-  function getCloneAtPoint(x, y) {
+  function getCloneAtPoint(x, y, skipPinned) {
     const containers = Array.from(
       zoomContainer.querySelectorAll(".nopic-flip-container"),
     );
@@ -2982,6 +3159,9 @@ function _nopicBootMain() {
       return zb - za;
     });
     for (const container of containers) {
+      // skipPinned=true 时（用于悬停检测）跳过钉住的图，
+      // 否则钉住的克隆图会一直挡在页面上，其他图片无法再 hover 放大
+      if (skipPinned && container._pinned) continue;
       const rect = container.getBoundingClientRect();
       if (
         x >= rect.left &&
@@ -3027,7 +3207,7 @@ function _nopicBootMain() {
     const sh = h * scale;
     const cx = baseLeft + sw / 2;
     const cy = baseTop + sh / 2;
-    const rad = (rot || 0) * Math.PI / 180;
+    const rad = ((rot || 0) * Math.PI) / 180;
     const rx = (sw / 2) * Math.cos(rad) - (sh / 2) * Math.sin(rad);
     const ry = (sw / 2) * Math.sin(rad) + (sh / 2) * Math.cos(rad);
     const tx = cx - rx;
@@ -3143,7 +3323,7 @@ function _nopicBootMain() {
     const cx = L + sw / 2;
     const cy = T + sh / 2;
     const rot = el._rotation || 0;
-    const rad = rot * Math.PI / 180;
+    const rad = (rot * Math.PI) / 180;
     const pts = [
       [-sw / 2, -sh / 2],
       [sw / 2, -sh / 2],
@@ -3164,7 +3344,10 @@ function _nopicBootMain() {
   // 放大图片时一次性提示「拖动四角可旋转」
   function nopicShowRotateTipOnce() {
     try {
-      if (typeof GM_getValue === "function" && GM_getValue("nopic_rotate_tip_shown"))
+      if (
+        typeof GM_getValue === "function" &&
+        GM_getValue("nopic_rotate_tip_shown")
+      )
         return;
     } catch (e) {}
     try {
@@ -3248,7 +3431,7 @@ function _nopicBootMain() {
 
     // 先关闭所有已有的钉图/放大
     imageControls.forEach((btn, el) => {
-      if (el._isZoomed) zoomOut(el);
+      if (el._isZoomed) zoomOut(el, true);
     });
 
     const imageData = [];
@@ -3638,10 +3821,10 @@ function _nopicBootMain() {
                 const scaleY = tp.height / rect.height;
                 const scale = Math.min(scaleX, scaleY);
                 wrapper.style.transform = `translate(${tp.left}px, ${tp.top}px) scale(${scale})`;
-              wrapper._posLeft = tp.left;
-              wrapper._posTop = tp.top;
-              wrapper._scale = scale;
-              wrapper._rotation = 0;
+                wrapper._posLeft = tp.left;
+                wrapper._posTop = tp.top;
+                wrapper._scale = scale;
+                wrapper._rotation = 0;
                 clone.style.filter = "drop-shadow(0 8px 24px rgba(0,0,0,0.5))";
                 clone.style.boxShadow = "none";
                 nopicSyncParadeOverlayScale(wrapper, scale);
@@ -3684,8 +3867,10 @@ function _nopicBootMain() {
           var stepDelay = paradeUseAnimation ? 200 : 50;
 
           paradeClones.forEach(function (data, el) {
-            var hiResUrl = getHighResUrl(el);
-            if (!hiResUrl) return;
+            var hiResInfo = getHighResUrlEx(el);
+            if (!hiResInfo) return;
+            var hiResUrl = hiResInfo.url;
+            var hiResPriority = hiResInfo.priority || 0;
 
             var isBg = el.tagName !== "IMG";
             var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
@@ -3706,7 +3891,8 @@ function _nopicBootMain() {
                 if (!isParadeMode) return;
                 var newArea =
                   (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
-                if (!isBg && newArea <= origArea) {
+                // 与单图替换一致：站点显式标注的高清来源（priority>=6）不受尺寸限制
+                if (!isBg && newArea <= origArea && hiResPriority < 6) {
                   if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
                   return;
                 }
@@ -3817,7 +4003,8 @@ function _nopicBootMain() {
           clone.parentElement &&
           nopicIsNearCorner(clone.parentElement, e.clientX, e.clientY, 32)
         ) {
-          if (clone.style.cursor !== "crosshair") clone.style.cursor = "crosshair";
+          if (clone.style.cursor !== "crosshair")
+            clone.style.cursor = "crosshair";
         } else if (clone && clone.style.cursor === "crosshair") {
           clone.style.cursor = "";
         }
@@ -3927,7 +4114,13 @@ function _nopicBootMain() {
 
           // 滚轮缩放完全跟手：不加过渡
           wrapper.style.transition = "none";
-          nopicApplyRotTransform(wrapper, newLeft, newTop, newScale, wrapper._rotation || 0);
+          nopicApplyRotTransform(
+            wrapper,
+            newLeft,
+            newTop,
+            newScale,
+            wrapper._rotation || 0,
+          );
           wrapper._posLeft = newLeft;
           wrapper._posTop = newTop;
           wrapper._scale = newScale;
@@ -3935,7 +4128,11 @@ function _nopicBootMain() {
           nopicSyncParadeOverlayScale(wrapper, newScale);
           if (sizeLabel) {
             sizeLabel.style.transition = "none";
-            nopicLayoutParadeSizeLabel(sizeLabel, newScale, wrapper._rotation || 0);
+            nopicLayoutParadeSizeLabel(
+              sizeLabel,
+              newScale,
+              wrapper._rotation || 0,
+            );
           }
         },
         { passive: false },
@@ -3954,11 +4151,13 @@ function _nopicBootMain() {
         if (wrapper && nopicIsNearCorner(wrapper, e.clientX, e.clientY, 32)) {
           e.preventDefault();
           const w = parseFloat(wrapper.style.width) || wrapper.clientWidth || 0;
-          const h = parseFloat(wrapper.style.height) || wrapper.clientHeight || 0;
+          const h =
+            parseFloat(wrapper.style.height) || wrapper.clientHeight || 0;
           const s = wrapper._scale || 1;
           const cx = wrapper._posLeft + (w * s) / 2;
           const cy = wrapper._posTop + (h * s) / 2;
-          let lastAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+          let lastAngle =
+            (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI;
           let rot = wrapper._rotation || 0;
           let rotMoved = false;
           wrapper.style.transition = "none";
@@ -3972,24 +4171,25 @@ function _nopicBootMain() {
             if (rotMoved) paradeDragState.wasDragged = true;
           };
           const onPRotMove = function (ev) {
-            const a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+            const a =
+              (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI;
             let d = a - lastAngle;
             if (d > 180) d -= 360;
             if (d < -180) d += 360;
             rot += d;
             lastAngle = a;
-          nopicApplyRotTransform(
-            wrapper,
-            wrapper._posLeft,
-            wrapper._posTop,
-            wrapper._scale,
-            rot,
-          );
-          const _pInfo = paradeClones.get(paradeDragState.currentEl);
-          if (_pInfo && _pInfo.sizeLabel) {
-            nopicLayoutParadeSizeLabel(_pInfo.sizeLabel, wrapper._scale, rot);
-          }
-          rotMoved = true;
+            nopicApplyRotTransform(
+              wrapper,
+              wrapper._posLeft,
+              wrapper._posTop,
+              wrapper._scale,
+              rot,
+            );
+            const _pInfo = paradeClones.get(paradeDragState.currentEl);
+            if (_pInfo && _pInfo.sizeLabel) {
+              nopicLayoutParadeSizeLabel(_pInfo.sizeLabel, wrapper._scale, rot);
+            }
+            rotMoved = true;
           };
           document.addEventListener("mousemove", onPRotMove);
           document.addEventListener("mouseup", onPRotUp);
@@ -4043,7 +4243,13 @@ function _nopicBootMain() {
     if (scaleMatch) {
       currentScale = parseFloat(scaleMatch[1]);
     }
-    nopicApplyRotTransform(wrapper, newLeft, newTop, currentScale, wrapper._rotation || 0);
+    nopicApplyRotTransform(
+      wrapper,
+      newLeft,
+      newTop,
+      currentScale,
+      wrapper._rotation || 0,
+    );
     wrapper._posLeft = newLeft;
     wrapper._posTop = newTop;
 
@@ -4833,7 +5039,14 @@ function _nopicBootMain() {
   }
 
   // ===== 纯JS提取高清原图URL =====
+  // 返回字符串形式（兼容原有调用方）
   function getHighResUrl(el) {
+    const r = getHighResUrlEx(el);
+    return r ? r.url : null;
+  }
+  // 返回 { url, priority }，priority 用于放宽"必须比原图更大"的安全检查：
+  // 站点显式标注的高清来源（data-* / <a> 原图 / srcset 最大档）即使尺寸相同也算数。
+  function getHighResUrlEx(el) {
     var src = "";
     if (el.tagName === "IMG") {
       src = el.src || el.getAttribute("src") || "";
@@ -4921,6 +5134,45 @@ function _nopicBootMain() {
       "data-high-res",
       "data-zoom-image",
       "data-zoom-src",
+      // ★ 新增：更多站点常见的"原图"属性名
+      "data-original-image",
+      "data-big-image",
+      "data-large-image",
+      "data-full-image",
+      "data-max-src",
+      "data-max-image",
+      "data-ori",
+      "data-ori-src",
+      "data-src-large",
+      "data-large-src",
+      "data-lg-src",
+      "data-xl-src",
+      "data-hi",
+      "data-hd-src",
+      "data-full-url",
+      "data-raw",
+      "data-actual",
+      "data-real",
+      "data-true",
+      "data-src-full",
+      "data-full-size",
+      "data-echo",
+      "data-echo-attr",
+      "data-lazyload",
+      "data-lazy",
+      "data-image-src",
+      "data-img",
+      "data-bg-src",
+      "data-background",
+      "data-background-image",
+      "data-url",
+      "data-srcset",
+      "data-source-src",
+      "data-origin-src",
+      "data-4k",
+      "data-original2",
+      "data-zoom",
+      "data-big-src",
     ];
     for (var i = 0; i < dataAttrs.length; i++) {
       var val = el.getAttribute(dataAttrs[i]);
@@ -4933,6 +5185,19 @@ function _nopicBootMain() {
           candidates.push({ url: val, priority: 10 });
         }
       }
+    }
+
+    // 1a. data-srcset（逗号分隔的响应式图片语法，类似 srcset）
+    var dataSrcsetVal = el.getAttribute("data-srcset");
+    if (dataSrcsetVal) {
+      var bestDataSrcset = parseSrcsetBest(dataSrcsetVal);
+      if (bestDataSrcset && isRelated(bestDataSrcset))
+        candidates.push({ url: bestDataSrcset, priority: 9 });
+    }
+    // 1c. currentSrc：浏览器已按 srcset/尺寸档实际加载的最大档（可能比 src 更大）
+    if (el.tagName === "IMG" && el.currentSrc && el.currentSrc !== src) {
+      if (isRelated(el.currentSrc))
+        candidates.push({ url: el.currentSrc, priority: 5 });
     }
 
     // 1b. 知乎 data-original-token
@@ -5000,11 +5265,12 @@ function _nopicBootMain() {
         if (normalized === origNorm) continue;
         if (seen[normalized]) continue;
         seen[normalized] = true;
-        return normalized;
+        return { url: normalized, priority: candidates[m].priority || 0 };
       } catch (e) {
         if (seen[cUrl]) continue;
         seen[cUrl] = true;
-        if (cUrl !== src) return cUrl;
+        if (cUrl !== src)
+          return { url: cUrl, priority: candidates[m].priority || 0 };
       }
     }
     return null;
@@ -5507,14 +5773,88 @@ function _nopicBootMain() {
         url.searchParams.delete("format");
         results.push(url.href);
       }
+
+      // ★ 新增：七牛/又拍云/腾讯云 COS 等常见图片处理参数（imageView2 / imageMogr2 / imageView）
+      // 例：?imageView2/0/w/800/h/600、?imageMogr2/thumbnail/750x、?imageView/2/w/200
+      // （x-oss-process 参数由上方已有的规则整体删除以取原图，这里不再重复处理）
+      if (url.search && /image(View2?|Mogr2|View)\//.test(url.search)) {
+        var cleanedSearch = url.search
+          .replace(/[?&]image(View2?|Mogr2|View)\/[^&#]*/g, "")
+          .replace(/^[?&]+/, "?");
+        if (cleanedSearch !== url.search) {
+          var qUrl = new URL(src, location.href);
+          qUrl.search = cleanedSearch;
+          results.push(qUrl.href);
+        }
+      }
+
+      // ★ 新增：通用尺寸/质量类查询参数（?size= / ?imgwidth= / ?scale= / ?width= 等已覆盖，补充一批）
+      var extraSizeParams = [
+        "size",
+        "scale",
+        "imgwidth",
+        "imgheight",
+        "maxw",
+        "maxh",
+        "w_max",
+        "h_max",
+        "ow",
+        "oh",
+        "widths",
+        "heights",
+      ];
+      var extraModified = false;
+      for (var ei = 0; ei < extraSizeParams.length; ei++) {
+        if (url.searchParams.has(extraSizeParams[ei])) {
+          url.searchParams.delete(extraSizeParams[ei]);
+          extraModified = true;
+        }
+      }
+      if (extraModified) results.push(url.href);
+
+      // ★ 新增：文件名后缀缩略图标记（_sq / _mini / .thumb. / _thum / -preview / _preview / _s）
+      var thumbCleaned = path
+        .replace(/[-_]sq\./g, ".")
+        .replace(/[-_]mini\./g, ".")
+        .replace(/[-_]thum(?:nail)?\./g, ".")
+        .replace(/[-_]preview\./g, ".")
+        .replace(/[-_]s\./g, ".")
+        .replace(/\.thumb\./g, ".")
+        .replace(/\.preview\./g, ".")
+        .replace(/\/thumb\//g, "/original/")
+        .replace(/\/preview\//g, "/original/")
+        .replace(/\/thumbnail\//g, "/original/")
+        .replace(/\/small\//g, "/original/")
+        .replace(/\/medium\//g, "/original/");
+      if (thumbCleaned !== path) {
+        var thumbUrl = new URL(src, location.href);
+        thumbUrl.pathname = thumbCleaned;
+        results.push(thumbUrl.href);
+      }
+
+      // ★ 新增：sinaimg.cn 的 /thumb150/ /orj360/ 等更多档位 → /large/（补充原逻辑未覆盖的档位）
+      if (host.includes("sinaimg.cn")) {
+        var sinaMore = path
+          .replace(/\/orj\d+\//g, "/large/")
+          .replace(/\/mw\d+\//g, "/large/")
+          .replace(/\/w\d+\//g, "/large/")
+          .replace(/\/bmiddle\//g, "/large/");
+        if (sinaMore !== path) {
+          var sinaUrl = new URL(src, location.href);
+          sinaUrl.pathname = sinaMore;
+          results.push(sinaUrl.href);
+        }
+      }
     } catch (e) {}
     return results;
   }
 
   // ===== 高清图替换动画（扫描线入场） =====
   function tryReplaceHiRes(el, flipContainer, front, clone) {
-    var hiResUrl = getHighResUrl(el);
-    if (!hiResUrl) return;
+    var hiResInfo = getHighResUrlEx(el);
+    if (!hiResInfo) return;
+    var hiResUrl = hiResInfo.url;
+    var hiResPriority = hiResInfo.priority || 0;
 
     var isBg = el.tagName !== "IMG";
 
@@ -5536,10 +5876,12 @@ function _nopicBootMain() {
     newImg.onload = function () {
       if (!el._isZoomed) return;
 
-      // 安全检查：新图必须比原图大才算高清替换
+      // 安全检查：新图必须比原图大才算高清替换。
+      // 但站点显式标注的高清来源（data-* / <a> 原图 / srcset 最大档，priority>=6）
+      // 即使尺寸相同也算数（可能是同尺寸更高画质），不再一刀切拒绝。
       var origArea = (el.naturalWidth || 1) * (el.naturalHeight || 1);
       var newArea = (newImg.naturalWidth || 1) * (newImg.naturalHeight || 1);
-      if (!isBg && newArea <= origArea) {
+      if (!isBg && newArea <= origArea && hiResPriority < 6) {
         if (newImg.parentNode) newImg.parentNode.removeChild(newImg);
         return;
       }
@@ -5710,10 +6052,12 @@ function _nopicBootMain() {
     }
 
     // ★★★ 判断是否点击在图片上（图片区域不触发翻转，让图片拖动逻辑处理） ★★★
+    // 注意必须用容器矩形而不是 .nopic-clone 矩形：
+    // clone 在 3D 翻转后 getBoundingClientRect 会退化（宽高塌缩），
+    // 若用 clone 判断，翻转中的图片会被误判成"点在空白上"→ 翻转拖拽抢走图片拖动，
+    // 松手时还把翻转角强制归零（这就是"钉图自动回正"的根因）。
     function isClickOnImage(clientX, clientY) {
-      const clone = container.querySelector(".nopic-clone");
-      if (!clone) return false;
-      const rect = clone.getBoundingClientRect();
+      const rect = container.getBoundingClientRect();
       const margin = 5;
       return (
         clientX >= rect.left - margin &&
@@ -5774,6 +6118,9 @@ function _nopicBootMain() {
       if (!isDragging) return;
       isDragging = false;
       container.style.cursor = "default";
+
+      // ★★★ 拖入以钉图：这张图刚被拖去钉住（已打 _pinned），不再做任何回正/惯性 ★★★
+      if (container._pinned) return;
 
       if (!hasDragged) {
         flipCard.style.transition = "";
@@ -6171,6 +6518,8 @@ function _nopicBootMain() {
     flipContainer._posTop = targetTop;
     flipContainer._scale = 1;
     flipContainer._rotation = 0;
+    flipContainer._pinned = false; // 拖入以钉图：初始未钉住
+    el._pinned = false;
 
     if (!zoomPinModeConfig) {
       zoomContainer.classList.add("active");
@@ -6229,6 +6578,9 @@ function _nopicBootMain() {
 
     zoomedClones.set(el, { clone: flipContainer, closeBtn: null });
 
+    // ★★★ 非钉图模式放大：显示"拖入以钉图"按钮 ★★★
+    if (!zoomPinModeConfig) nopicUpdatePinDock();
+
     // ★★★ 放大时一次性提示：拖动四角可旋转 ★★★
     nopicShowRotateTipOnce();
 
@@ -6243,8 +6595,10 @@ function _nopicBootMain() {
   }
 
   // ===== 修改 zoomOut 函数 =====
-  function zoomOut(el) {
+  function zoomOut(el, force) {
     if (!el._isZoomed) return;
+    // ★★★ 拖入以钉图：钉住的图不因用户交互自动关闭（force=true 用于显式关闭 / 强制清理） ★★★
+    if (el._pinned && !force) return;
     el._isZoomed = false;
 
     // ===== 新增：恢复滚轮放大 =====
@@ -6299,13 +6653,21 @@ function _nopicBootMain() {
       delete el._savedVisibility;
       const outline = imageOutlines.get(el);
       if (outline) outline.style.display = "";
+      // 关闭后清掉钉住标记（下一次放大是全新状态）
+      el._pinned = false;
+      if (container) container._pinned = false;
 
       if (container && container.parentNode) container.remove();
       zoomedClones.delete(el);
 
       if (!zoomPinModeConfig) {
-        zoomContainer.innerHTML = "";
+        // ★★★ 只移除未钉住的翻转容器，钉住的图保留 ★★★
+        zoomContainer.querySelectorAll(".nopic-flip-container").forEach((c) => {
+          if (!c._pinned && c.parentNode) c.parentNode.removeChild(c);
+        });
       }
+      // 同步钉图按钮状态
+      nopicUpdatePinDock();
     }, 450);
   }
   // ===== 修改滚轮缩放事件 =====
@@ -6389,9 +6751,14 @@ function _nopicBootMain() {
   //   },
   //   { passive: false },
   // );
-  function zoomOut(el) {
+  function zoomOut(el, force) {
     if (!el._isZoomed) return;
+    // ★★★ 拖入以钉图：钉住的图不因用户交互自动关闭（force=true 用于显式关闭 / 强制清理） ★★★
+    if (el._pinned && !force) return;
     el._isZoomed = false;
+
+    // ===== 新增：恢复滚轮放大 =====
+    _nopicWheelDisabled = false;
 
     const info = zoomedClones.get(el);
     const container = info ? info.clone : null;
@@ -6415,7 +6782,6 @@ function _nopicBootMain() {
       const rect = el.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         const easing = NOPIC_EASE.inOut;
-
         if (flipCard) {
           flipCard.style.transition = `transform 0.4s ${easing}`;
           flipCard.style.transform = "rotateX(0deg) rotateY(0deg)";
@@ -6459,13 +6825,21 @@ function _nopicBootMain() {
       delete el._savedVisibility;
       const outline = imageOutlines.get(el);
       if (outline) outline.style.display = "";
+      // 关闭后清掉钉住标记（下一次放大是全新状态）
+      el._pinned = false;
+      if (container) container._pinned = false;
 
       if (container && container.parentNode) container.remove();
       zoomedClones.delete(el);
 
       if (!zoomPinModeConfig) {
-        zoomContainer.innerHTML = "";
+        // ★★★ 只移除未钉住的翻转容器，钉住的图保留 ★★★
+        zoomContainer.querySelectorAll(".nopic-flip-container").forEach((c) => {
+          if (!c._pinned && c.parentNode) c.parentNode.removeChild(c);
+        });
       }
+      // 同步钉图按钮状态
+      nopicUpdatePinDock();
     }, 450);
   }
 
@@ -6503,8 +6877,12 @@ function _nopicBootMain() {
 
       // 必须使用「未旋转」的基准宽高与中心，否则旋转后 getBoundingClientRect 返回的是
       // 旋转后的包围盒，会导致缩放只放大、且定位偏离中心
-      const baseW = parseFloat(flipContainer.style.width) || flipContainer.clientWidth || 0;
-      const baseH = parseFloat(flipContainer.style.height) || flipContainer.clientHeight || 0;
+      const baseW =
+        parseFloat(flipContainer.style.width) || flipContainer.clientWidth || 0;
+      const baseH =
+        parseFloat(flipContainer.style.height) ||
+        flipContainer.clientHeight ||
+        0;
       const cx = flipContainer._posLeft + baseW / 2;
       const cy = flipContainer._posTop + baseH / 2;
       const scaleStep = e.deltaY < 0 ? 1.1 : 0.9;
@@ -6522,7 +6900,13 @@ function _nopicBootMain() {
       // 所以摆正后看不出来）
       flipContainer.style.width = newWidth + "px";
       flipContainer.style.height = newHeight + "px";
-      nopicApplyRotTransform(flipContainer, newLeft, newTop, 1, flipContainer._rotation || 0);
+      nopicApplyRotTransform(
+        flipContainer,
+        newLeft,
+        newTop,
+        1,
+        flipContainer._rotation || 0,
+      );
       flipContainer._posLeft = newLeft;
       flipContainer._posTop = newTop;
 
@@ -6545,12 +6929,19 @@ function _nopicBootMain() {
       if (nopicIsNearCorner(flipContainer, e.clientX, e.clientY, 32)) {
         e.preventDefault();
         flipContainer.style.zIndex = ++pinZIndexCounter;
-        const w = parseFloat(flipContainer.style.width) || flipContainer.clientWidth || 0;
-        const h = parseFloat(flipContainer.style.height) || flipContainer.clientHeight || 0;
+        const w =
+          parseFloat(flipContainer.style.width) ||
+          flipContainer.clientWidth ||
+          0;
+        const h =
+          parseFloat(flipContainer.style.height) ||
+          flipContainer.clientHeight ||
+          0;
         const s = flipContainer._scale || 1;
         const cx = flipContainer._posLeft + (w * s) / 2;
         const cy = flipContainer._posTop + (h * s) / 2;
-        let lastAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+        let lastAngle =
+          (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI;
         let rot = flipContainer._rotation || 0;
         let rotMoved = false;
         flipContainer.style.setProperty("transition", "none", "important");
@@ -6561,7 +6952,8 @@ function _nopicBootMain() {
           if (rotMoved) wasDragged = true;
         };
         const onRotMove = function (ev) {
-          const a = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+          const a =
+            (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI;
           let d = a - lastAngle;
           if (d > 180) d -= 360;
           if (d < -180) d += 360;
@@ -6616,7 +7008,11 @@ function _nopicBootMain() {
           flipContainer.style.cursor = "";
         }
         // 移动位置要完全跟手：松手即定住，不做惯性滑行
-        flipContainer.style.removeProperty("transition");
+        // ★★★ 钉图松手：document mouseup（先执行）已给图片设了飞行动画 transition，
+        // 这里若移除 transition 会让图片瞬移；钉图状态下保留它，让飞行动画播完 ★★★
+        if (!(nopicPinDock && nopicPinDock._expanding)) {
+          flipContainer.style.removeProperty("transition");
+        }
       };
 
       const onDragMouseMove = function (ev) {
@@ -6635,9 +7031,17 @@ function _nopicBootMain() {
         const newLeft = dragStartLeft + ev.clientX - dragStartX;
         const newTop = dragStartTop + ev.clientY - dragStartY;
         dragContainer.style.setProperty("transition", "none", "important");
-        nopicApplyRotTransform(dragContainer, newLeft, newTop, 1, dragContainer._rotation || 0);
+        nopicApplyRotTransform(
+          dragContainer,
+          newLeft,
+          newTop,
+          1,
+          dragContainer._rotation || 0,
+        );
         dragContainer._posLeft = newLeft;
         dragContainer._posTop = newTop;
+        // ★★★ 拖入以钉图：检测鼠标是否进入钉图按钮 → 按钮变形包裹图片 ★★★
+        nopicPinDockHover(ev.clientX, ev.clientY, dragContainer);
 
         if (
           Math.abs(ev.clientX - dragStartX) > 3 ||
@@ -6672,9 +7076,9 @@ function _nopicBootMain() {
         if (!flipCard) return;
 
         // ★★★ 关键：检查点击是否在图片上，如果是则跳过翻转（图片拖动已在上方处理） ★★★
-        const clone = currentContainer.querySelector(".nopic-clone");
-        if (clone) {
-          const rect = clone.getBoundingClientRect();
+        // 用容器矩形判断（clone 在 3D 翻转后 rect 会退化，会造成"翻转中的图片被二次翻转"）
+        {
+          const rect = currentContainer.getBoundingClientRect();
           const margin = 5;
           const isOnImage =
             e.clientX >= rect.left - margin &&
@@ -6787,7 +7191,8 @@ function _nopicBootMain() {
             st.rotX = st.rotX + spinVX;
             flipCard.style.transition = "none";
             nopicApplyFlip(currentContainer, st.rotX, st.rotY);
-            const nf = Math.abs(((((st.rotY + 180) % 360) + 360) % 360) - 180) > 90;
+            const nf =
+              Math.abs(((((st.rotY + 180) % 360) + 360) % 360) - 180) > 90;
             if (nf !== currentContainer._isFlipped)
               currentContainer._isFlipped = nf;
 
@@ -6821,7 +7226,8 @@ function _nopicBootMain() {
             setTimeout(function () {
               if (!zoomPinModeConfig) {
                 zoomedClones.forEach(function (info, el) {
-                  if (el._isZoomed) {
+                  // 钉住的图不因"空白处点一下"被收走
+                  if (el._isZoomed && !el._pinned) {
                     zoomOut(el);
                   }
                 });
@@ -6850,6 +7256,17 @@ function _nopicBootMain() {
     zoomContainer.style.cursor = "";
     if (Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > 3)
       wasDragged = true;
+    // ★★★ 拖入以钉图：松手时若按钮正处于"包裹"状态 → 钉住这张图 ★★★
+    // 必须在这里（清空 draggedCloneEl 之前）处理，onDragMouseUp 里做会被
+    // 本监听器抢先置空 draggedCloneEl，导致钉图分支永远走不到。
+    if (
+      nopicPinDock &&
+      nopicPinDock._expanding &&
+      draggedCloneEl &&
+      !draggedCloneEl._pinned
+    ) {
+      nopicPinImage(draggedCloneEl);
+    }
     draggedCloneEl = null;
   });
 
@@ -6885,7 +7302,8 @@ function _nopicBootMain() {
           e.clientY > rect.bottom + margin;
         if (isOutside) {
           imageControls.forEach((btn, el) => {
-            if (el._isZoomed) zoomOut(el);
+            // 钉住的图不因"鼠标离开图片"自动关闭
+            if (el._isZoomed && !el._pinned) zoomOut(el);
           });
         }
       }
@@ -6898,7 +7316,8 @@ function _nopicBootMain() {
     function (e) {
       if (
         e.target.closest(".nopic-zoom-controls") ||
-        e.target.closest(".nopic-float-btn")
+        e.target.closest(".nopic-float-btn") ||
+        e.target.closest(".nopic-pin-dock") // 点钉图按钮不算"点空白关闭"
       ) {
         e.stopPropagation();
         return;
@@ -6920,7 +7339,7 @@ function _nopicBootMain() {
 
         const el = getElByFlipContainer(clickedContainer);
         if (el && el._isZoomed) {
-          zoomOut(el);
+          zoomOut(el, true); // 单击图片本身 = 显式关闭（钉住的图也归位）
           e.stopPropagation();
           return;
         }
@@ -6934,7 +7353,8 @@ function _nopicBootMain() {
         }
 
         zoomedClones.forEach(function (info, el) {
-          if (el._isZoomed) {
+          // 钉住的图不因"点击页面空白"被收走
+          if (el._isZoomed && !el._pinned) {
             zoomOut(el);
           }
         });
@@ -7058,8 +7478,10 @@ function _nopicBootMain() {
     // ★【修改1】阅兵模式下屏蔽原页面hover逻辑
     if (isParadeMode) return;
     // 钉图模式下，鼠标在克隆图上时不触发原图hover逻辑
-    if (getCloneAtPoint(e.clientX, e.clientY)) return;
-    if (document.querySelector(".nopic-clone") && !zoomPinModeConfig) return;
+    // （跳过钉住的图，否则钉住的图会一直挡住其他图片的悬停放大）
+    if (getCloneAtPoint(e.clientX, e.clientY, true)) return;
+    // 存在"未钉住"的放大图时暂停原图hover逻辑（钉住的图不阻塞）
+    if (nopicHasUnpinnedZoom()) return;
     imageControls.forEach((btn, el) => {
       if (el._isZoomed) return;
       const rect = el.getBoundingClientRect();
@@ -7132,12 +7554,13 @@ function _nopicBootMain() {
       // ★【修改2】阅兵模式下的中键由遮罩层事件处理，此处不干预
       if (isParadeMode) return;
 
-      const clone = getCloneAtPoint(e.clientX, e.clientY);
+      // 中键在放大克隆图上 = 关闭该图（钉住的图跳过，它应像普通图一样处理）
+      const clone = getCloneAtPoint(e.clientX, e.clientY, true);
       if (clone) {
         e.preventDefault();
         e.stopPropagation();
         const el = getElByClone(clone);
-        if (el && el._isZoomed) zoomOut(el);
+        if (el && el._isZoomed) zoomOut(el, true);
         return;
       }
 
@@ -7198,12 +7621,13 @@ function _nopicBootMain() {
         e.stopPropagation();
         // ★★★ 钉图模式允许多图放大，非钉图模式只允许一张 ★★★
         if (targetEl._isZoomed) {
-          zoomOut(targetEl);
+          zoomOut(targetEl, true); // 中键点在原图上 = 显式关闭
           return;
         }
         if (!zoomPinModeConfig) {
           zoomedClones.forEach(function (info, el) {
-            if (el !== targetEl && el._isZoomed) {
+            // 中键放大新图时，不影响已经钉住的图
+            if (el !== targetEl && el._isZoomed && !el._pinned) {
               zoomOut(el);
             }
           });
@@ -7225,7 +7649,8 @@ function _nopicBootMain() {
         e.preventDefault();
         e.stopPropagation();
         imageControls.forEach((btn, el) => {
-          if (el._isZoomed) zoomOut(el);
+          // 钉住的图不因"中键点空白"被收走
+          if (el._isZoomed && !el._pinned) zoomOut(el);
         });
       }
     },
@@ -7248,7 +7673,7 @@ function _nopicBootMain() {
         effectiveZoomMode = "middle";
       }
 
-      const clone = getCloneAtPoint(e.clientX, e.clientY);
+      const clone = getCloneAtPoint(e.clientX, e.clientY, true);
       if (clone) {
         e.preventDefault();
         e.stopPropagation();
@@ -7446,7 +7871,7 @@ function _nopicBootMain() {
           }
           zoomIn(el, button, zoomBtn);
         } else {
-          zoomOut(el);
+          zoomOut(el, true);
         }
       });
       parent.appendChild(zoomBtn);
@@ -7520,22 +7945,22 @@ function _nopicBootMain() {
   // ============================================================
   let _nopicBlurLevel = 10;
   // ===== 新增：动画阈值 =====
-let _nopicThresholdCache = null;
-function _nopicGetThreshold() {
+  let _nopicThresholdCache = null;
+  function _nopicGetThreshold() {
     if (_nopicThresholdCache !== null) return _nopicThresholdCache;
     try {
-        const saved = localStorage.getItem('nopic_animation_threshold');
-        if (saved !== null) {
-            const val = parseInt(saved);
-            if (val > 0) {
-                _nopicThresholdCache = val;
-                return val;
-            }
+      const saved = localStorage.getItem("nopic_animation_threshold");
+      if (saved !== null) {
+        const val = parseInt(saved);
+        if (val > 0) {
+          _nopicThresholdCache = val;
+          return val;
         }
+      }
     } catch (e) {}
     _nopicThresholdCache = 80;
     return 80;
-}
+  }
   let _nopicBlurCheckTimer = null;
   let _nopicBlurThrottle = false;
 
@@ -7592,29 +8017,29 @@ function _nopicGetThreshold() {
         "nopic-animation-disabled",
       );
       var threshold = _nopicGetThreshold();
-if (hiddenCount > threshold) {
-    if (!currentlyDisabled) {
-        document.body.classList.add("nopic-animation-disabled");
-        disableAnimationConfig = true;
-        _nopicAutoDisabledAnimation = true;
-        const sw = settingsSubmenu
+      if (hiddenCount > threshold) {
+        if (!currentlyDisabled) {
+          document.body.classList.add("nopic-animation-disabled");
+          disableAnimationConfig = true;
+          _nopicAutoDisabledAnimation = true;
+          const sw = settingsSubmenu
             ? settingsSubmenu.querySelector('[data-key="disableAnimation"]')
             : null;
-        if (sw) sw.classList.add("on");
-        updateLampState();
-    }
-} else {
-    if (currentlyDisabled && _nopicAutoDisabledAnimation) {
-        document.body.classList.remove("nopic-animation-disabled");
-        disableAnimationConfig = false;
-        _nopicAutoDisabledAnimation = false;
-        const sw = settingsSubmenu
+          if (sw) sw.classList.add("on");
+          updateLampState();
+        }
+      } else {
+        if (currentlyDisabled && _nopicAutoDisabledAnimation) {
+          document.body.classList.remove("nopic-animation-disabled");
+          disableAnimationConfig = false;
+          _nopicAutoDisabledAnimation = false;
+          const sw = settingsSubmenu
             ? settingsSubmenu.querySelector('[data-key="disableAnimation"]')
             : null;
-        if (sw) sw.classList.remove("on");
-        updateLampState();
-    }
-}
+          if (sw) sw.classList.remove("on");
+          updateLampState();
+        }
+      }
     }
     // 如果 userDisabled === true，什么都不做，保持用户设置的状态
 
@@ -7962,7 +8387,7 @@ if (hiddenCount > threshold) {
       el.classList.remove("nopic-hidden");
       el.dataset.isHidden = "false";
       btn.remove();
-      if (el._isZoomed) zoomOut(el);
+      if (el._isZoomed) zoomOut(el, true);
       const zoomBtn = imageZoomControls.get(el);
       if (zoomBtn) zoomBtn.remove();
     });
@@ -8845,6 +9270,18 @@ if (hiddenCount > threshold) {
         <span>0.001×</span><span id="nopic-density-scope-tip">当前网站生效</span><span>100×</span>
       </div>
     </div>
+    <div class="nopic-menu-item" id="nopic-fontopacity-row" style="flex-direction:column;align-items:stretch;padding:6px 10px;border-top:1px dashed rgba(255,255,255,0.08);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:11px;">全页字体透明度</span>
+        <span id="nopic-fontopacity-val" title="点击复位到 100%" style="font-size:11px;color:rgba(255,255,255,0.5);cursor:pointer;">100%</span>
+      </div>
+      <div id="nopic-fontopacity-track">
+        <input type="range" class="nopic-mask-opacity-slider" id="nopic-fontopacity-slider" min="0" max="100" step="1" value="100">
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;">
+        <span>0%</span><span id="nopic-fontopacity-scope-tip">当前网站生效 · 相对缩放</span><span>100%</span>
+      </div>
+    </div>
     <div class="nopic-menu-separator">加载动画</div>
     <div class="nopic-menu-item"><span>全页动画特效</span><div class="nopic-switch" data-key="loadAnimation"></div></div>
     <div class="nopic-menu-separator">图片控制</div>
@@ -8947,7 +9384,7 @@ if (hiddenCount > threshold) {
   disguiseSubmenu.id = "nopic-disguise-submenu";
   disguiseSubmenu.className = "nopic-submenu";
   disguiseSubmenu.innerHTML = `
-    <div class="nopic-menu-separator">页面工具</div>
+    <div class="nopic-menu-separator" style="border-top:none;margin-top:0;padding-top:0;">页面工具</div>
     <div class="nopic-menu-item" style="justify-content:space-between;">
       <span>图片阅兵</span>
       <div class="nopic-switch" id="nopic-parade-toggle"></div>
@@ -9899,10 +10336,39 @@ if (hiddenCount > threshold) {
   document.documentElement.appendChild(randomQASubmenu);
   makeDraggable(randomQASubmenu);
 
-  // 这8个依然挂载在 menu 下（保持点击时的相对定位基准）
-  menu.appendChild(settingsSubmenu);
-  menu.appendChild(displaySubmenu);
-  menu.appendChild(disguiseSubmenu);
+  // 扩展/设置/显示内容这三个二级菜单用"玻璃壳"（.nopic-submenu-glass）包一层后挂载到页面根节点，
+  // 玻璃壳负责 fixed 像素定位 + 背景模糊 + 阴影；submenu 本体在壳内只保留半透明背景。
+  // 视觉数值（透明度/模糊度/颜色）与一级菜单 #nopic-menu 保持完全一致（见 CSS 与 nopicPlaceSubmenu）。
+  function nopicWrapSubmenu(submenu) {
+    if (
+      !submenu ||
+      (submenu.parentElement &&
+        submenu.parentElement.classList.contains("nopic-submenu-glass"))
+    ) {
+      return;
+    }
+    const wrap = document.createElement("div");
+    wrap.className = "nopic-submenu-glass";
+    document.documentElement.appendChild(wrap);
+    wrap.appendChild(submenu);
+  }
+  // 隐藏二级菜单时同步隐藏它的玻璃壳（壳本身带模糊/阴影，不能单独残留）
+  function nopicHideGlass(submenu) {
+    if (!submenu) return;
+    var wrap =
+      submenu.parentElement &&
+      submenu.parentElement.classList.contains("nopic-submenu-glass")
+        ? submenu.parentElement
+        : null;
+    if (wrap) {
+      wrap.classList.remove("nopic-submenu-show");
+      wrap.style.display = "none";
+    }
+    submenu.style.display = "none";
+  }
+  nopicWrapSubmenu(settingsSubmenu);
+  nopicWrapSubmenu(displaySubmenu);
+  nopicWrapSubmenu(disguiseSubmenu);
   // 下面这7个弹窗不挂载到 menu 下，直接挂载到 document.documentElement
   document.documentElement.appendChild(tabDisguiseSubmenu);
   document.documentElement.appendChild(maskSubmenu);
@@ -10506,13 +10972,15 @@ if (hiddenCount > threshold) {
       "ReadChars",
     ];
     map.forEach((k) => {
-      const key = "display" + k;
-      const configKey = k.charAt(0).toLowerCase() + k.slice(1);
-      const item = displaySubmenu.querySelector('[data-key="' + key + '"]');
-      if (item && configs[configKey] !== undefined)
-        item
-          .querySelector(".nopic-checkbox")
-          .classList.toggle("checked", configs[configKey]);
+      try {
+        const key = "display" + k;
+        const configKey = k.charAt(0).toLowerCase() + k.slice(1);
+        const item = displaySubmenu.querySelector('[data-key="' + key + '"]');
+        if (item && configs[configKey] !== undefined) {
+          const cb = item.querySelector(".nopic-checkbox");
+          if (cb) cb.classList.toggle("checked", configs[configKey]);
+        }
+      } catch (e) {}
     });
     const leaveOptions = settingsSubmenu.querySelector("#nopic-leave-options");
     if (leaveOptions)
@@ -10870,17 +11338,17 @@ if (hiddenCount > threshold) {
     // 注意：文字替换的显隐由全局开关 nopic_textreplace 决定（与菜单项 display 用的同一个来源），
     // 不能用按站保存的 textReplaceConfig.enabled，否则单独开启文字替换时整列会被判定为隐藏
     const col1Visible =
-      paradeConfig.enabled ||
-      isTrActive ||
-      quickTextEnabled ||
-      pageEditEnabled;
+      paradeConfig.enabled || isTrActive || quickTextEnabled || pageEditEnabled;
     const col2Visible =
       privacyLockConfig.enabled ||
       maskConfig.enabled ||
       nopicEKEnabled ||
       disguiseConfig.enabled;
     const col3Visible =
-      autoClickerConfig.enabled || pageMonitorEnabled || nopicKMEnabled || dcEnabled;
+      autoClickerConfig.enabled ||
+      pageMonitorEnabled ||
+      nopicKMEnabled ||
+      dcEnabled;
     const anyExtVisible = col1Visible || col2Visible || col3Visible;
 
     if (extSeparator) {
@@ -11087,16 +11555,16 @@ if (hiddenCount > threshold) {
 
   updateAllUI();
 
-function updateLampState() {
+  function updateLampState() {
     if (window.imgHidenSet === null) {
-        lamp.className = "off";
+      lamp.className = "off";
     } else if (_nopicAutoDisabledAnimation || disableAnimationConfig) {
-        // 只要自动禁用 或 手动禁用，指示灯都变黄
-        lamp.className = "on yellow";
+      // 只要自动禁用 或 手动禁用，指示灯都变黄
+      lamp.className = "on yellow";
     } else {
-        lamp.className = "on";
+      lamp.className = "on";
     }
-}
+  }
   updateLampState();
 
   function triggerSpinner() {
@@ -11104,15 +11572,15 @@ function updateLampState() {
     lamp.classList.add("spinning");
     clearTimeout(glowTimer);
     glowTimer = setTimeout(() => {
-        lamp.classList.remove("spinning");
-        if (widget.classList.contains("sleeping")) {
-            lamp.style.animation = "none";
-            lamp.offsetHeight;
-            lamp.style.animation = "";
-        }
-        updateLampState();
+      lamp.classList.remove("spinning");
+      if (widget.classList.contains("sleeping")) {
+        lamp.style.animation = "none";
+        lamp.offsetHeight;
+        lamp.style.animation = "";
+      }
+      updateLampState();
     }, 500);
-}
+  }
 
   const formatDist = (px) => {
     const m = px / PX_TO_METER;
@@ -11294,7 +11762,7 @@ function updateLampState() {
     <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
     <div>
       <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与钉图</div>
-      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片即可放大查看；放大或阅兵时可将图片「钉」在屏幕上固定，方便对照浏览</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片即可放大查看；放大时可将图片「钉」在屏幕上固定，方便对照浏览</div>
     </div>
   </div>
   
@@ -11302,7 +11770,7 @@ function updateLampState() {
     <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
     <div>
       <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">旋转和翻转图片</div>
-      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">放大、钉图或阅兵模式下，拖动图片任一角可自由旋转；在空白处拖动可翻转图片查看不同角度</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">放大模式下，拖动图片任一角可自由旋转；在空白处拖动可三维翻转图片查看不同角度</div>
     </div>
   </div>
 
@@ -12026,6 +12494,91 @@ function updateLampState() {
     }
   });
 
+  // 设置菜单开关统一处理（抽取自 menu 委托，供 menu 与 settingsSubmenu 共用）：
+  // settingsSubmenu 已移出 menu（挂载到玻璃壳 .nopic-submenu-glass），它的点击不再冒泡到 menu，
+  // menu 的 click 委托收不到 → 自动贴边/自动休眠/全页动画特效/虚线辅助等开关点击失效。
+  // 因此 settingsSubmenu 需要自己的 click 委托调用本函数。
+  function nopicHandleSwitchClick(sw) {
+    const key = sw.dataset.key;
+    if (key === "outline") {
+      showOutlineConfig = !showOutlineConfig;
+      setLocalConfig("showOutline", showOutlineConfig);
+    } else if (key === "hoverOnly") {
+      hoverOnlyConfig = !hoverOnlyConfig;
+      setLocalConfig("hoverOnly", hoverOnlyConfig);
+    } else if (key === "hoverShowImg") {
+      hoverShowImgConfig = !hoverShowImgConfig;
+      setLocalConfig("hoverShowImg", hoverShowImgConfig);
+      if (hoverShowImgConfig && zoomModeConfig === "click") {
+        zoomModeConfig = "hover";
+        setLocalConfig("zoomMode", zoomModeConfig);
+        if (window.imgHidenSet) {
+          imgShown();
+          imgHiden();
+        }
+      }
+    } else if (key === "autoHideIdle") {
+      autoHideIdleConfig = !autoHideIdleConfig;
+      setLocalConfig("autoHideIdle", autoHideIdleConfig);
+      if (!autoHideIdleConfig) {
+        clearTimeout(sleepTimer);
+        clearTimeout(sleepBgTimer);
+        isSleeping = false;
+        widget.classList.remove("sleeping", "transparent-bg");
+      } else {
+        startSleepTimer();
+      }
+    } else if (key === "autoSnap") {
+      autoSnapConfig = !autoSnapConfig;
+      setLocalConfig("autoSnap", autoSnapConfig);
+      applySnapPosition(false);
+    } else if (key === "zoomPinMode") {
+      zoomPinModeConfig = !zoomPinModeConfig;
+      setLocalConfig("zoomPinMode", zoomPinModeConfig);
+      if (zoomedClones.size > 0) {
+        imageControls.forEach((btn, el) => {
+          if (el._isZoomed) zoomOut(el, true);
+        });
+      }
+    } else if (key === "disableAnimation") {
+      disableAnimationConfig = !disableAnimationConfig;
+      setLocalConfig("disableAnimation", disableAnimationConfig);
+      // 立即生效
+      if (disableAnimationConfig) {
+        document.body.classList.add("nopic-animation-disabled");
+      } else {
+        document.body.classList.remove("nopic-animation-disabled");
+      }
+      updateLampState();
+    } else if (key === "loadAnimation") {
+      loadAnimationConfig = !loadAnimationConfig;
+      setGlobalConfig("loadAnimation", loadAnimationConfig);
+      if (!loadAnimationConfig) {
+        // 如果关闭，移除所有已添加的动画类
+        document.querySelectorAll(".nopic-load-anim").forEach((el) => {
+          el.classList.remove("nopic-load-anim");
+          el.style.opacity = "";
+          el.style.filter = "";
+          el.style.transition = "";
+          el.style.transform = "";
+        });
+      } else {
+        // 如果打开，对当前页面重新应用动画
+        setTimeout(initLoadAnimation, 100);
+      }
+    }
+    updateAllUI();
+    if (window.imgHidenSet) imgHiden();
+  }
+  // settingsSubmenu 自己的 click 委托（开关点击不再依赖 menu 冒泡）
+  settingsSubmenu.addEventListener("click", (e) => {
+    const sw = e.target.closest(".nopic-switch");
+    if (sw) {
+      e.stopPropagation();
+      nopicHandleSwitchClick(sw);
+    }
+  });
+
   menu.addEventListener("click", (e) => {
     const permaHideBtn = e.target.closest('[data-action="permaHide"]');
     if (permaHideBtn) {
@@ -12052,76 +12605,7 @@ function updateLampState() {
     const sw = e.target.closest(".nopic-switch");
     if (sw) {
       e.stopPropagation();
-      const key = sw.dataset.key;
-      if (key === "outline") {
-        showOutlineConfig = !showOutlineConfig;
-        setLocalConfig("showOutline", showOutlineConfig);
-      } else if (key === "hoverOnly") {
-        hoverOnlyConfig = !hoverOnlyConfig;
-        setLocalConfig("hoverOnly", hoverOnlyConfig);
-      } else if (key === "hoverShowImg") {
-        hoverShowImgConfig = !hoverShowImgConfig;
-        setLocalConfig("hoverShowImg", hoverShowImgConfig);
-        if (hoverShowImgConfig && zoomModeConfig === "click") {
-          zoomModeConfig = "hover";
-          setLocalConfig("zoomMode", zoomModeConfig);
-          if (window.imgHidenSet) {
-            imgShown();
-            imgHiden();
-          }
-        }
-      } else if (key === "autoHideIdle") {
-        autoHideIdleConfig = !autoHideIdleConfig;
-        setLocalConfig("autoHideIdle", autoHideIdleConfig);
-        if (!autoHideIdleConfig) {
-          clearTimeout(sleepTimer);
-          clearTimeout(sleepBgTimer);
-          isSleeping = false;
-          widget.classList.remove("sleeping", "transparent-bg");
-        } else {
-          startSleepTimer();
-        }
-      } else if (key === "autoSnap") {
-        autoSnapConfig = !autoSnapConfig;
-        setLocalConfig("autoSnap", autoSnapConfig);
-        applySnapPosition(false);
-      } else if (key === "zoomPinMode") {
-        zoomPinModeConfig = !zoomPinModeConfig;
-        setLocalConfig("zoomPinMode", zoomPinModeConfig);
-        if (zoomedClones.size > 0) {
-          imageControls.forEach((btn, el) => {
-            if (el._isZoomed) zoomOut(el);
-          });
-        }
-      } else if (key === "disableAnimation") {
-        disableAnimationConfig = !disableAnimationConfig;
-        setLocalConfig("disableAnimation", disableAnimationConfig);
-        // 立即生效
-        if (disableAnimationConfig) {
-          document.body.classList.add("nopic-animation-disabled");
-        } else {
-          document.body.classList.remove("nopic-animation-disabled");
-        }
-        updateLampState();
-      } else if (key === "loadAnimation") {
-        loadAnimationConfig = !loadAnimationConfig;
-        setGlobalConfig("loadAnimation", loadAnimationConfig);
-        if (!loadAnimationConfig) {
-          // 如果关闭，移除所有已添加的动画类
-          document.querySelectorAll(".nopic-load-anim").forEach((el) => {
-            el.classList.remove("nopic-load-anim");
-            el.style.opacity = "";
-            el.style.filter = "";
-            el.style.transition = "";
-            el.style.transform = "";
-          });
-        } else {
-          // 如果打开，对当前页面重新应用动画
-          setTimeout(initLoadAnimation, 100);
-        }
-      }
-      updateAllUI();
-      if (window.imgHidenSet) imgHiden();
+      nopicHandleSwitchClick(sw);
       return;
     }
 
@@ -12195,117 +12679,97 @@ function updateLampState() {
     '[data-submenu-trigger="displayContent"]',
   );
 
-  const showSettingsSubmenu = () => {
-    settingsSubmenu.style.display = "flex";
-    const menuRect = menu.getBoundingClientRect();
-    const subRect = settingsSubmenu.getBoundingClientRect();
-
-    // 判断主菜单在屏幕哪一侧
-    const isMenuOnRightSide = menuRect.left > window.innerWidth / 2;
-
-    if (isMenuOnRightSide) {
-      // 主菜单在右侧，二级菜单放左侧
-      settingsSubmenu.style.left = "auto";
-      settingsSubmenu.style.right = "100%";
-      settingsSubmenu.style.marginLeft = "0";
-      settingsSubmenu.style.marginRight = "4px";
-    } else {
-      // 主菜单在左侧，二级菜单放右侧
-      settingsSubmenu.style.left = "100%";
-      settingsSubmenu.style.right = "auto";
-      settingsSubmenu.style.marginLeft = "4px";
-      settingsSubmenu.style.marginRight = "0";
+  // 二级菜单已包进玻璃壳（.nopic-submenu-glass，position:fixed），统一用视口像素坐标对齐锚点。
+  // 这里操作的是玻璃壳（submenu 的父级）。视觉（背景/模糊/边框/阴影）完全由 CSS 负责：
+  // 三个二级菜单已加入"所有面板统一毛玻璃"组（深色 rgba(30,30,35,0.95)+blur(3px)；
+  // 浅色走 [data-nopic-theme="light"] 统一规则 rgb(232 235 241 / 85%)+blur(3px)），
+  // 与一级菜单 #nopic-menu 完全一致，JS 不再内联颜色，避免 auto 主题误判。
+  function nopicPlaceSubmenu(submenu, anchorRect, preferSide) {
+    const wrap =
+      submenu.parentElement &&
+      submenu.parentElement.classList.contains("nopic-submenu-glass")
+        ? submenu.parentElement
+        : submenu;
+    // ★ 关键：把玻璃壳移到 documentElement 末尾。
+    // 一级菜单 z-index(2147483666) 与玻璃壳一样会被 Chrome 钳制到 2147483647，
+    // 同层时按 DOM 顺序决定谁在上 —— 移到末尾才能确保二级菜单盖在一级菜单之上。
+    document.documentElement.appendChild(wrap);
+    submenu.style.display = "flex"; // 恢复内容显示（隐藏时被置为 none）
+    wrap.style.display = "inline-block";
+    wrap.style.visibility = "hidden";
+    wrap.style.left = "0px";
+    wrap.style.top = "0px";
+    wrap.style.right = "auto";
+    wrap.style.margin = "0";
+    const subRect = wrap.getBoundingClientRect();
+    const gap = 4; // 与一级菜单拉开 4px 空隙（保持原有视觉）
+    const onRight = preferSide
+      ? preferSide === "right"
+      : anchorRect.left > window.innerWidth / 2;
+    let left = onRight
+      ? anchorRect.left - subRect.width - gap
+      : anchorRect.right + gap;
+    // 水平方向防溢出
+    if (left < 4) left = 4;
+    if (left + subRect.width > window.innerWidth - 4)
+      left = Math.max(4, window.innerWidth - subRect.width - 4);
+    wrap.style.left = left + "px";
+    // 顶部与锚点对齐，底部溢出则上推，顶部溢出则钳制
+    let top = anchorRect.top;
+    if (top + subRect.height > window.innerHeight - 10)
+      top = Math.max(10, window.innerHeight - 10 - subRect.height);
+    wrap.style.top = top + "px";
+    wrap.style.visibility = "visible";
+    // ★ 与一级菜单一致的出现动画：先移除 show 类强制回流（重置起点），再下一帧加上触发过渡
+    if (wrap.classList.contains("nopic-submenu-show")) {
+      wrap.classList.remove("nopic-submenu-show");
+      void wrap.offsetWidth;
     }
+    requestAnimationFrame(() => {
+      if (wrap.parentNode) wrap.classList.add("nopic-submenu-show");
+    });
+  }
 
-    let currentTop = 0;
-    let absTop = menuRect.top + currentTop;
-    if (absTop + subRect.height > window.innerHeight - 10) {
-      currentTop -= absTop + subRect.height - (window.innerHeight - 10);
-      if (menuRect.top + currentTop < 10) currentTop = -menuRect.top + 10;
-      settingsSubmenu.style.top = currentTop + "px";
-    } else settingsSubmenu.style.top = currentTop + "px";
+  const showSettingsSubmenu = () => {
+    nopicPlaceSubmenu(settingsSubmenu, menu.getBoundingClientRect());
   };
 
   const hideSettingsSubmenu = () => {
-    settingsSubmenu.style.display = "none";
+    nopicHideGlass(settingsSubmenu);
     hideDisplaySubmenu();
   };
 
   const showDisplaySubmenu = () => {
-    displaySubmenu.style.display = "flex";
-    const settingsRect = settingsSubmenu.getBoundingClientRect();
-    const subRect = displaySubmenu.getBoundingClientRect();
-
-    const isSettingsOnRightSide = settingsRect.left > window.innerWidth / 2;
-
-    if (isSettingsOnRightSide) {
-      displaySubmenu.style.left = "auto";
-      displaySubmenu.style.right = "100%";
-      displaySubmenu.style.marginLeft = "0";
-      displaySubmenu.style.marginRight = "4px";
-    } else {
-      displaySubmenu.style.left = "100%";
-      displaySubmenu.style.right = "auto";
-      displaySubmenu.style.marginLeft = "4px";
-      displaySubmenu.style.marginRight = "0";
-    }
-
-    // 和二级菜单顶部对齐
-    let currentTop = parseFloat(settingsSubmenu.style.top) || 0;
-    let absTop = settingsRect.top + currentTop;
-
-    // 底部超出则往上推
-    if (absTop + subRect.height > window.innerHeight - 10) {
-      currentTop = window.innerHeight - 10 - subRect.height - settingsRect.top;
-    }
-    // 顶部不能出去
-    if (settingsRect.top + currentTop < 10) {
-      currentTop = -settingsRect.top + 10;
-    }
-
-    displaySubmenu.style.top = currentTop + "px";
+    // 以设置二级菜单为锚点，顶部对齐
+    nopicPlaceSubmenu(displaySubmenu, settingsSubmenu.getBoundingClientRect());
   };
 
   const hideDisplaySubmenu = () => {
-    displaySubmenu.style.display = "none";
+    nopicHideGlass(displaySubmenu);
   };
 
   // ===== 标签伪装菜单事件 =====
   const disguiseTrigger = menu.querySelector('[data-submenu="disguise"]');
 
   const showDisguiseSubmenu = () => {
-    disguiseSubmenu.style.display = "flex";
-    const menuRect = menu.getBoundingClientRect();
-    const subRect = disguiseSubmenu.getBoundingClientRect();
-    const isMenuOnRightSide = menuRect.left > window.innerWidth / 2;
-
-    if (isMenuOnRightSide) {
-      disguiseSubmenu.style.left = "auto";
-      disguiseSubmenu.style.right = "100%";
-      disguiseSubmenu.style.marginLeft = "0";
-      disguiseSubmenu.style.marginRight = "4px";
-      disguiseSubmenu.classList.add("left-side");
-    } else {
-      disguiseSubmenu.style.left = "100%";
-      disguiseSubmenu.style.right = "auto";
-      disguiseSubmenu.style.marginLeft = "4px";
-      disguiseSubmenu.style.marginRight = "0";
-      disguiseSubmenu.classList.remove("left-side");
-    }
-
-    // 和设置的二级菜单一样，顶部平齐
-    let currentTop = 0;
-    let absTop = menuRect.top + currentTop;
-    if (absTop + subRect.height > window.innerHeight - 10) {
-      currentTop -= absTop + subRect.height - (window.innerHeight - 10);
-      if (menuRect.top + currentTop < 10) currentTop = -menuRect.top + 10;
-    }
-    disguiseSubmenu.style.top = currentTop + "px";
+    nopicPlaceSubmenu(disguiseSubmenu, menu.getBoundingClientRect());
   };
 
   const hideDisguiseSubmenu = () => {
-    disguiseSubmenu.style.display = "none";
+    nopicHideGlass(disguiseSubmenu);
   };
+
+  // widget/一级菜单尺寸变化时（例如勾选"显示内容"某选项让统计区变大），
+  // 已打开的二/三级菜单跟随重定位，避免停在原地与一级菜单错位。
+  try {
+    const nopicSubmenuResizeObserver = new ResizeObserver(() => {
+      if (settingsSubmenu.style.display === "flex") showSettingsSubmenu();
+      if (disguiseSubmenu.style.display === "flex") showDisguiseSubmenu();
+      if (displaySubmenu.style.display === "flex") showDisplaySubmenu();
+    });
+    if (menu) nopicSubmenuResizeObserver.observe(menu);
+    if (widget) nopicSubmenuResizeObserver.observe(widget);
+  } catch (e) {}
 
   // 标签伪装开关（开关状态独立存储在URL级别）
   document
@@ -13955,14 +14419,13 @@ function updateLampState() {
       controls.appendChild(handle);
     });
 
-    // 中心拖拽手柄（整个遮罩区域都可拖拽）
+    // 中心拖拽手柄（整个遮罩区域都可拖拽）—— 不显示十字拖动光标
     const centerHandle = document.createElement("div");
     centerHandle.className = "nopic-mask-handle-center";
     centerHandle.style.cssText = `
     position: absolute;
     width: 100%;
     height: 100%;
-    cursor: move;
     pointer-events: auto;
     left: 0;
     top: 0;
@@ -15077,13 +15540,15 @@ function updateLampState() {
     });
   }
 
-  // 拖动功能
+  // 拖动功能：整个面板都可以拖拽（排除按钮/输入等交互元素）；
+  // 十字（move）光标只在面板头部显示（由 CSS .nopic-modal-header 控制），
+  // 拖拽过程中不额外改 cursor，保持头部才有拖动指针。
   function makeDraggable(popup) {
     let isDragging = false;
     let startX, startY, startLeft, startTop;
 
     popup.addEventListener("mousedown", (e) => {
-      // 只在标题栏或空白区域开始拖动
+      // 只排除交互元素，面板任意位置都可开始拖动
       const target = e.target;
       if (
         target.tagName === "INPUT" ||
@@ -15104,7 +15569,6 @@ function updateLampState() {
       startY = e.clientY;
       startLeft = popup.offsetLeft;
       startTop = popup.offsetTop;
-      popup.style.cursor = "move";
     });
 
     document.addEventListener("mousemove", (e) => {
@@ -15131,7 +15595,6 @@ function updateLampState() {
     document.addEventListener("mouseup", () => {
       if (isDragging) {
         isDragging = false;
-        popup.style.cursor = "move";
       }
     });
   }
@@ -16252,102 +16715,148 @@ function updateLampState() {
   }
 
   // ===== 结构相似度匹配（核心算法） =====
-  function dcGetStructureSignature(el) {
-    if (!el) return "";
-    var parts = [];
-    var cur = el;
-    var depth = 0;
-    var maxDepth = 4;
-
-    while (
-      cur &&
-      cur !== document.body &&
-      cur !== document.documentElement &&
-      depth < maxDepth
-    ) {
-      var tag = cur.tagName.toLowerCase();
-      var cls = "";
-      var id = "";
-
-      // 获取id（如果有意义）
+  // 老问题：签名里一旦掺入 id（元素自身或祖先），或用错 class，同类元素就匹配不上。
+  // 新方案：生成一组「从精确到宽松」的候选签名（CSS 选择器），匹配时按序收集并去重，
+  // 大幅提升"同一类元素"的召回率。
+  function dcGetMeaningfulClasses(el) {
+    var out = [];
+    try {
+      var cls = el.className;
+      var str =
+        typeof cls === "string" ? cls : cls && cls.baseVal ? cls.baseVal : "";
+      str.split(/\s+/).forEach(function (c) {
+        if (
+          c &&
+          !c.startsWith("nopic-") &&
+          !c.startsWith("dc_") &&
+          !c.startsWith("pm_") &&
+          !/^[a-f0-9]{8,}/.test(c) &&
+          !/^\d/.test(c)
+        ) {
+          out.push(c);
+        }
+      });
+    } catch (e) {}
+    return out;
+  }
+  function dcGetMeaningfulId(el) {
+    try {
       if (
-        cur.id &&
-        !cur.id.startsWith("nopic-") &&
-        !cur.id.startsWith("dc_") &&
-        !cur.id.startsWith("pm_")
+        el.id &&
+        !el.id.startsWith("nopic-") &&
+        !el.id.startsWith("dc_") &&
+        !el.id.startsWith("pm_")
       ) {
-        id = "#" + cur.id;
+        return el.id;
       }
-
-      // 获取class（过滤无意义的）
-      if (cur.className && typeof cur.className === "string") {
-        var classList = cur.className.split(" ").filter(function (c) {
-          return (
-            c &&
-            !c.startsWith("nopic-") &&
-            !c.startsWith("dc_") &&
-            !c.startsWith("pm_") &&
-            !/^[a-f0-9]{8,}/.test(c)
-          );
-        });
-        if (classList.length > 0) {
-          cls = "." + classList[0];
+    } catch (e) {}
+    return "";
+  }
+  function dcGetSignatureVariants(el) {
+    if (!el || !el.tagName) return [];
+    var chain = [];
+    var cur = el;
+    for (var i = 0; i < 4 && cur && cur !== document.body; i++) {
+      chain.push(cur);
+      cur = cur.parentElement;
+    }
+    function seg(node, useId) {
+      var tag = (node.tagName || "").toLowerCase();
+      if (!tag) return "";
+      var id = dcGetMeaningfulId(node);
+      if (useId && id) {
+        try {
+          return "#" + CSS.escape(id);
+        } catch (e) {
+          return "#" + id;
         }
       }
-
-      var sig = tag;
-      if (id) {
-        sig = id;
-      } else if (cls) {
-        sig = tag + cls;
-      }
-
-      // ===== 关键：不加 nth-child，让匹配更宽松 =====
-      parts.unshift(sig);
-      cur = cur.parentElement;
-      depth++;
+      var cls = dcGetMeaningfulClasses(node);
+      if (cls.length) return tag + "." + cls[0];
+      return tag;
     }
+    var variants = [];
+    var v1 = [];
+    for (var i1 = 0; i1 < chain.length; i1++) v1.push(seg(chain[i1], i1 > 0));
+    variants.push(v1.join(" > "));
+    var v2 = [];
+    for (var i2 = 0; i2 < chain.length; i2++) v2.push(seg(chain[i2], false));
+    variants.push(v2.join(" > "));
+    // 只留最近 2 层（去掉最外层容器约束）
+    if (chain.length >= 2) {
+      var v3 = [];
+      for (var i3 = chain.length - 2; i3 < chain.length; i3++)
+        v3.push(seg(chain[i3], false));
+      variants.push(v3.join(" > "));
+      // 父级 + 元素自身
+      variants.push(seg(chain[1], false) + " > " + seg(chain[0], false));
+    }
+    // 元素自身 tag + 全部 class（要求同时具备全部 class）
+    var elCls = dcGetMeaningfulClasses(el);
+    var selfTag = (el.tagName || "").toLowerCase();
+    if (elCls.length) {
+      variants.push(selfTag + "." + elCls.join("."));
+      // 元素自身 tag + 任一单个 class（逗号合并成多选器，覆盖 class 名不同的同类元素）
+      var singleSel = [];
+      elCls.forEach(function (c) {
+        singleSel.push(selfTag + "." + c);
+      });
+      variants.push(singleSel.join(","));
+    }
+    // 父级签名（带 id/class）+ 元素 tag
+    if (chain.length >= 2) {
+      variants.push(seg(chain[1], true) + " " + selfTag);
+      // 最宽松兜底：父级 tag + 元素 tag
+      var pTag = (chain[1].tagName || "").toLowerCase();
+      variants.push(pTag + " > " + selfTag);
+    }
+    // 去重
+    var seen = {},
+      out = [];
+    variants.forEach(function (v) {
+      if (!v || seen[v]) return;
+      seen[v] = true;
+      out.push(v);
+    });
+    return out;
+  }
 
-    return parts.join(" > ");
+  // 兼容旧调用方：返回第一个（最精确）签名
+  function dcGetStructureSignature(el) {
+    var vs = dcGetSignatureVariants(el);
+    return vs.length ? vs[0] : "";
   }
 
   function dcFindSimilarElements(sampleEl) {
     if (!sampleEl) return [];
-    let signature = dcGetStructureSignature(sampleEl);
-    if (!signature) return [];
-    let results = [];
-    try {
-      let candidates = document.querySelectorAll(signature);
-      candidates.forEach((el) => {
-        if (
-          el !== sampleEl &&
-          !el.closest("#nopic-datacollect-submenu") &&
-          !el.closest("#nopic-widget") &&
-          !el.closest("#nopic-menu")
-        ) {
+    var variants = dcGetSignatureVariants(sampleEl);
+    var results = [];
+    var seenEls = new Set();
+    var total = 0;
+    for (var vi = 0; vi < variants.length; vi++) {
+      var sel = variants[vi];
+      // 最后两个是"父级+tag"级别的宽松兜底：前面变体已找到足够匹配就不扩大范围，避免误抓整页
+      if (variants.length >= 6 && vi >= variants.length - 2 && total >= 2)
+        break;
+      try {
+        document.querySelectorAll(sel).forEach(function (el) {
+          if (el === sampleEl) return;
+          if (seenEls.has(el)) return;
+          if (
+            el.closest &&
+            (el.closest("#nopic-datacollect-submenu") ||
+              el.closest("#nopic-widget") ||
+              el.closest("#nopic-menu") ||
+              el.closest("#nopic-zoom-container"))
+          ) {
+            return;
+          }
+          seenEls.add(el);
           results.push(el);
-        }
-      });
-    } catch (e) {}
-    // 如果结果太少，降级匹配
-    if (results.length < 2) {
-      let parts = signature.split(" > ");
-      if (parts.length >= 2) {
-        let lastTwo = parts.slice(-2).join(" > ");
-        try {
-          let candidates = document.querySelectorAll(lastTwo);
-          candidates.forEach((el) => {
-            if (
-              el !== sampleEl &&
-              !el.closest("#nopic-datacollect-submenu") &&
-              !el.closest("#nopic-widget") &&
-              !el.closest("#nopic-menu")
-            ) {
-              if (!results.includes(el)) results.push(el);
-            }
-          });
-        } catch (e) {}
-      }
+          total++;
+        });
+      } catch (e) {}
+      if (total >= 300) break; // 安全上限，防误抓整页
     }
     return results;
   }
@@ -16567,6 +17076,8 @@ function updateLampState() {
       type: colType,
       sampleSelector: dcGetSelector(el),
       sampleSignature: dcGetStructureSignature(el),
+      // ★ 新增：保存完整的多级候选签名，翻页/监听时按同一套变体匹配，提升同类召回率
+      sampleSignatures: dcGetSignatureVariants(el),
       hasLink: hasLink,
       hasImage: hasImage,
     };
@@ -17379,6 +17890,8 @@ function updateLampState() {
     var resetBtn = e.target.closest("#nopic-reset-all-btn");
     if (resetBtn) {
       e.stopPropagation();
+      // 点击"初始化当前网站"后自动隐藏关于面板，避免确认弹窗与关于面板重叠
+      if (typeof hideAboutModal === "function") hideAboutModal();
       var siteHost = location.host;
       var siteUrlKey = encodeURIComponent(nopicGetUrlKey());
       showConfirmModal(
@@ -17390,6 +17903,8 @@ function updateLampState() {
             var k = localStorage.key(i);
             if (
               k &&
+              // ★★★ 隐私锁日志是安全审计信息，绝不随站点数据一起清除 ★★★
+              k.indexOf("nopic_privacylog_") !== 0 &&
               (k.indexOf(siteHost) !== -1 || k.indexOf(siteUrlKey) !== -1)
             ) {
               keysToRemove.push(k);
@@ -18469,24 +18984,42 @@ function updateLampState() {
     var animSeen = new Set();
 
     dcState.columns.forEach(function (col) {
-      if (!col.sampleSignature) return;
+      // ★ 优先使用多级候选签名（新采集的列），旧数据回退到单个签名
+      var variants =
+        col.sampleSignatures && col.sampleSignatures.length
+          ? col.sampleSignatures
+          : col.sampleSignature
+            ? [col.sampleSignature]
+            : [];
+      if (!variants.length) return;
 
       var matchedElements = [];
-      try {
-        var candidates = document.querySelectorAll(col.sampleSignature);
-        candidates.forEach(function (el) {
-          if (
-            !el.closest("#nopic-datacollect-submenu") &&
-            !el.closest("#nopic-widget") &&
-            !el.closest("#nopic-menu") &&
-            !el.closest("#nopic-zoom-container")
-          ) {
-            matchedElements.push(el);
-          }
-        });
-      } catch (e) {
-        console.log("[数据采集] 列 '" + col.name + "' 匹配出错:", e);
-        return;
+      var seenE = new Set();
+      var totalM = 0;
+      for (var vi = 0; vi < variants.length; vi++) {
+        // 与选取时一致：宽松兜底变体在已有足够匹配时不再扩大范围
+        if (variants.length >= 6 && vi >= variants.length - 2 && totalM >= 2)
+          break;
+        try {
+          var candidates = document.querySelectorAll(variants[vi]);
+          candidates.forEach(function (el) {
+            if (seenE.has(el)) return;
+            if (
+              !el.closest("#nopic-datacollect-submenu") &&
+              !el.closest("#nopic-widget") &&
+              !el.closest("#nopic-menu") &&
+              !el.closest("#nopic-zoom-container")
+            ) {
+              seenE.add(el);
+              matchedElements.push(el);
+              totalM++;
+            }
+          });
+        } catch (e) {
+          console.log("[数据采集] 列 '" + col.name + "' 匹配出错:", e);
+          break;
+        }
+        if (totalM >= 300) break; // 安全上限
       }
 
       // 按垂直位置排序
@@ -18530,25 +19063,43 @@ function updateLampState() {
 
   // ===== 替换文字规则列表更新 =====
 
+  // 仅当菜单尚未显示时才展开：避免鼠标悬停在已打开的菜单上反复重定位/重绘，
+  // 导致内容（如勾选框）闪烁消失
+  const nopicHoverShow = (showFn, sub) => () => {
+    if (sub.style.display === "flex") return;
+    showFn();
+  };
+
   settingsTrigger.addEventListener("mouseenter", () => {
-    showSettingsSubmenu();
+    if (settingsSubmenu.style.display !== "flex") showSettingsSubmenu();
     hideDisplaySubmenu();
     hideDisguiseSubmenu();
     // 扩展菜单是点击方式，不自动关闭
   });
-  settingsSubmenu.addEventListener("mouseenter", showSettingsSubmenu);
+  settingsSubmenu.addEventListener(
+    "mouseenter",
+    nopicHoverShow(showSettingsSubmenu, settingsSubmenu),
+  );
 
   // 扩展菜单事件
   disguiseTrigger.addEventListener("mouseenter", () => {
-    showDisguiseSubmenu();
+    if (disguiseSubmenu.style.display !== "flex") showDisguiseSubmenu();
     hideSettingsSubmenu();
     // 扩展菜单是点击方式，不自动关闭
   });
-  disguiseSubmenu.addEventListener("mouseenter", showDisguiseSubmenu);
+  disguiseSubmenu.addEventListener(
+    "mouseenter",
+    nopicHoverShow(showDisguiseSubmenu, disguiseSubmenu),
+  );
 
   // 鼠标移到"显示内容"上展开三级菜单
-  displayTrigger.addEventListener("mouseenter", showDisplaySubmenu);
-  displaySubmenu.addEventListener("mouseenter", showDisplaySubmenu);
+  displayTrigger.addEventListener("mouseenter", () => {
+    if (displaySubmenu.style.display !== "flex") showDisplaySubmenu();
+  });
+  displaySubmenu.addEventListener(
+    "mouseenter",
+    nopicHoverShow(showDisplaySubmenu, displaySubmenu),
+  );
 
   menu.addEventListener("mouseleave", () => {
     setTimeout(() => {
@@ -18693,18 +19244,82 @@ function updateLampState() {
       if (customTitleInput && document.activeElement === customTitleInput) {
         return;
       }
+      // 扩展/设置等二级菜单已挂载到页面（不在 menu 内），
+      // 鼠标从菜单移到二级菜单上时会触发 menu 的 mouseleave，
+      // 此时若二级菜单正被悬停，不能关闭菜单，否则无法操作二级菜单。
+      if (
+        settingsSubmenu.matches(":hover") ||
+        displaySubmenu.matches(":hover") ||
+        disguiseSubmenu.matches(":hover")
+      ) {
+        return;
+      }
       isHovering = false;
       menu.classList.remove("active");
       // 关闭一级子菜单（设置、显示内容、扩展），二级弹窗有自己的关闭按钮，不自动关闭
-      settingsSubmenu.style.display = "none";
-      displaySubmenu.style.display = "none";
-      disguiseSubmenu.style.display = "none";
+      nopicHideGlass(settingsSubmenu);
+      nopicHideGlass(displaySubmenu);
+      nopicHideGlass(disguiseSubmenu);
     }, 300);
   }
   widget.addEventListener("mouseenter", triggerHoverOn);
   widget.addEventListener("mouseleave", triggerHoverOff);
   menu.addEventListener("mouseenter", triggerHoverOn);
   menu.addEventListener("mouseleave", triggerHoverOff);
+
+  // 全局兜底：鼠标不在 widget/一级/二级/三级任一菜单上时，关闭所有菜单。
+  // 解决"鼠标从三级菜单直接移到页面空白，一级/二级菜单残留不关闭"的问题
+  // （triggerHoverOff 只在离开 widget/menu 时触发一次，鼠标从未经过 widget 时不会再次触发）。
+  let nopicMenuHoverCheckLast = 0;
+  document.addEventListener(
+    "mousemove",
+    () => {
+      const now = Date.now();
+      if (now - nopicMenuHoverCheckLast < 200) return;
+      nopicMenuHoverCheckLast = now;
+      try {
+        if (
+          widget.matches(":hover") ||
+          menu.matches(":hover") ||
+          settingsSubmenu.matches(":hover") ||
+          displaySubmenu.matches(":hover") ||
+          disguiseSubmenu.matches(":hover")
+        ) {
+          return;
+        }
+        // 输入框聚焦（输入法输入）时不自动关闭
+        const ae = document.activeElement;
+        if (
+          ae &&
+          ae.tagName &&
+          (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")
+        ) {
+          return;
+        }
+        if (isComposing) return;
+        // 记录"菜单是否原本打开"：只有菜单由打开变关闭这一次才重启休眠计时器，
+        // 避免鼠标在页面普通移动（菜单本就关闭）时不断重置计时器导致 widget 永不休眠。
+        // 用 menu 的 active 状态判断最准确（二级/三级只在 active 下存在）。
+        const wasMenuOpen = menu.classList.contains("active");
+        isHovering = false;
+        menu.classList.remove("active");
+        nopicHideGlass(settingsSubmenu);
+        nopicHideGlass(displaySubmenu);
+        nopicHideGlass(disguiseSubmenu);
+        // 菜单刚被关闭：重启自动休眠定时器（鼠标不在菜单区域时 widget 应能按时休眠）
+        if (
+          autoHideIdleConfig &&
+          wasMenuOpen &&
+          typeof startSleepTimer === "function"
+        ) {
+          try {
+            startSleepTimer();
+          } catch (e) {}
+        }
+      } catch (e) {}
+    },
+    true,
+  );
 
   widget.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -19381,8 +19996,8 @@ function updateLampState() {
           arrow.style.opacity = "1";
         }
         // 关键修复：必须在遮罩整体淡出（opacity 0.3s）完成后再复位黑底层，
-      // 否则会先把黑底 opacity 拉回 1，而此时遮罩仍可见，导致全屏闪一下黑色
-      setTimeout(resetLockBgLayer, 360);
+        // 否则会先把黑底 opacity 拉回 1，而此时遮罩仍可见，导致全屏闪一下黑色
+        setTimeout(resetLockBgLayer, 360);
       }, 550);
     } else {
       privacyLockOverlay.classList.remove("active");
@@ -23870,7 +24485,10 @@ function updateLampState() {
   if (autoClickerToggle) {
     autoClickerToggle.addEventListener("click", (e) => {
       e.stopPropagation();
-      autoClickerConfig.enabled = !nopicGetToggleState("nopic_autoclicker", true);
+      autoClickerConfig.enabled = !nopicGetToggleState(
+        "nopic_autoclicker",
+        true,
+      );
       nopicSetToggleState("nopic_autoclicker", autoClickerConfig.enabled);
       setAutoClickerConfigByScope(currentAutoClickerScope, autoClickerConfig);
       updateAllUI();
@@ -26187,6 +26805,10 @@ function updateLampState() {
     autoClickerConfig = getAutoClickerConfig();
     autoClickerSafetyConfig = getAutoClickerSafetyConfig();
     privacyLockConfig.enabled = nopicGetToggleState("nopic_privacylock", true);
+    // 键鼠映射 / 瞬切手势开关：存储（chrome.storage）就绪后重新读取，
+    // 避免初始化时默认值覆盖真实开关（否则其它标签页开启后本页仍按默认值运行）
+    nopicKMEnabled = nopicGetToggleState("nopic_keymap", true);
+    nopicKMGestureOn = nopicGetToggleState("nopic_km_gesture", false);
 
     // 3. 更新UI（只刷新显示，不重新扫描图片）
     updateAllUI();
@@ -26235,29 +26857,33 @@ function updateLampState() {
     // 如果状态一致，什么都不做
 
     // 阈值输入框事件绑定
-setTimeout(function() {
-    var input = document.getElementById('nopic-animation-threshold');
-    if (input) {
+    setTimeout(function () {
+      var input = document.getElementById("nopic-animation-threshold");
+      if (input) {
         // 加载保存的值
-        var saved = localStorage.getItem('nopic_animation_threshold');
+        var saved = localStorage.getItem("nopic_animation_threshold");
         if (saved !== null) input.value = saved;
         else input.value = 80;
-        
-        input.addEventListener('change', function() {
-            var val = parseInt(this.value);
-            if (isNaN(val) || val < 1) val = 1;
-            if (val > 99999) val = 99999;
-            this.value = val;
-            localStorage.setItem('nopic_animation_threshold', String(val));
-            _nopicThresholdCache = val; // 更新缓存
-            // 重新检查
-            if (window.imgHidenSet !== null) _nopicAdjustBlur();
+
+        input.addEventListener("change", function () {
+          var val = parseInt(this.value);
+          if (isNaN(val) || val < 1) val = 1;
+          if (val > 99999) val = 99999;
+          this.value = val;
+          localStorage.setItem("nopic_animation_threshold", String(val));
+          _nopicThresholdCache = val; // 更新缓存
+          // 重新检查
+          if (window.imgHidenSet !== null) _nopicAdjustBlur();
         });
         // 阻止事件冒泡到菜单
-        input.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        input.addEventListener('click', function(e) { e.stopPropagation(); });
-    }
-}, 500);
+        input.addEventListener("mousedown", function (e) {
+          e.stopPropagation();
+        });
+        input.addEventListener("click", function (e) {
+          e.stopPropagation();
+        });
+      }
+    }, 500);
 
     console.log("[nopic] 主体功能已就绪");
   });
@@ -27106,8 +27732,9 @@ setTimeout(function() {
 
   // ---- 主计算函数 ----
   function calculateAnswer(question, mode) {
-    if (!question || question.trim().length < 4) {
-      return { error: "请输入至少4个字符的有效问题" };
+    // 已取消"至少4个字符"的限制：非空即可提问
+    if (!question || !question.trim()) {
+      return { error: "请输入有效问题" };
     }
     if (question.length > 120) {
       return { error: "问题不能超过120个字符" };
@@ -27332,13 +27959,7 @@ setTimeout(function() {
       }
       return;
     }
-    if (question.length < 4) {
-      if (errorEl) {
-        errorEl.textContent = "请输入至少4个字符的有效问题";
-        errorEl.style.display = "block";
-      }
-      return;
-    }
+    // 已取消"至少4个字符"的限制
     if (question.length > 120) {
       if (errorEl) {
         errorEl.textContent = "问题不能超过120个字符";
@@ -28189,7 +28810,10 @@ setTimeout(function() {
   function nopicBuildUniqueSelector(el) {
     if (!el || el.nodeType !== 1) return null;
     try {
-      if (el.id && document.querySelectorAll("#" + CSS.escape(el.id)).length === 1)
+      if (
+        el.id &&
+        document.querySelectorAll("#" + CSS.escape(el.id)).length === 1
+      )
         return "#" + CSS.escape(el.id);
       const attrs = [
         "data-testid",
@@ -28204,7 +28828,12 @@ setTimeout(function() {
         const v = el.getAttribute && el.getAttribute(a);
         if (v && v.length < 120) {
           const sel =
-            el.tagName.toLowerCase() + "[" + a + '="' + v.replace(/"/g, '\\"') + '"]';
+            el.tagName.toLowerCase() +
+            "[" +
+            a +
+            '="' +
+            v.replace(/"/g, '\\"') +
+            '"]';
           try {
             if (document.querySelectorAll(sel).length === 1) return sel;
           } catch (e) {}
@@ -28213,7 +28842,10 @@ setTimeout(function() {
       const path = [];
       let cur = el;
       while (cur && cur.nodeType === 1 && cur !== document.documentElement) {
-        if (cur.id && document.querySelectorAll("#" + CSS.escape(cur.id)).length === 1) {
+        if (
+          cur.id &&
+          document.querySelectorAll("#" + CSS.escape(cur.id)).length === 1
+        ) {
           path.unshift("#" + CSS.escape(cur.id));
           const full = path.join(" > ");
           try {
@@ -28224,8 +28856,11 @@ setTimeout(function() {
         let seg = cur.tagName.toLowerCase();
         const p = cur.parentElement;
         if (p) {
-          const same = Array.from(p.children).filter((c) => c.tagName === cur.tagName);
-          if (same.length > 1) seg += ":nth-of-type(" + (same.indexOf(cur) + 1) + ")";
+          const same = Array.from(p.children).filter(
+            (c) => c.tagName === cur.tagName,
+          );
+          if (same.length > 1)
+            seg += ":nth-of-type(" + (same.indexOf(cur) + 1) + ")";
         }
         path.unshift(seg);
         cur = p;
@@ -28589,12 +29224,10 @@ setTimeout(function() {
           }, 1000);
         });
         row.addEventListener("mouseleave", () => {
-          document
-            .querySelectorAll(".nopic-elemkill-peek")
-            .forEach((el) => {
-              clearTimeout(el._nopicEkPeekTimer);
-              el.classList.remove("nopic-elemkill-peek");
-            });
+          document.querySelectorAll(".nopic-elemkill-peek").forEach((el) => {
+            clearTimeout(el._nopicEkPeekTimer);
+            el.classList.remove("nopic-elemkill-peek");
+          });
         });
         row.appendChild(label);
         row.appendChild(del);
@@ -28637,6 +29270,28 @@ setTimeout(function() {
     }, 260);
   }
 
+  // ===== 拾取确认弹窗的背景模糊遮罩 =====
+  // 剔除元素 / 键鼠映射在完成选择后弹出的保存弹窗，加全屏模糊遮罩，
+  // 让用户一眼看出"这是弹窗"而不是面板。
+  function nopicAttachPickBackdrop(dlg) {
+    if (!dlg || dlg._nopicBackdrop) return null;
+    var bd = document.createElement("div");
+    bd.className = "nopic-pick-backdrop";
+    document.documentElement.appendChild(bd);
+    dlg._nopicBackdrop = bd;
+    return bd;
+  }
+  function nopicRemovePickBackdrop(dlg) {
+    if (!dlg) return;
+    var bd = dlg._nopicBackdrop;
+    if (bd && bd.parentNode) {
+      try {
+        bd.parentNode.removeChild(bd);
+      } catch (e) {}
+    }
+    dlg._nopicBackdrop = null;
+  }
+
   function nopicEKConfirm(info) {
     const el = info.el;
     const selector = nopicBuildUniqueSelector(el);
@@ -28661,6 +29316,7 @@ setTimeout(function() {
       </div>
     `;
     document.documentElement.appendChild(dlg);
+    nopicAttachPickBackdrop(dlg);
     requestAnimationFrame(() => dlg.classList.add("active"));
 
     let scope = "url";
@@ -28674,6 +29330,7 @@ setTimeout(function() {
     });
     const close = () => {
       dlg.classList.remove("active");
+      nopicRemovePickBackdrop(dlg);
       setTimeout(() => dlg.remove(), 200);
     };
     dlg.querySelector("#nopic-ek-cancel").addEventListener("click", () => {
@@ -28706,10 +29363,12 @@ setTimeout(function() {
       e.stopPropagation();
       hideElemKillSubmenu();
     });
-  document.getElementById("nopic-elemkill-add").addEventListener("click", (e) => {
-    e.stopPropagation();
-    nopicEKStartAdd();
-  });
+  document
+    .getElementById("nopic-elemkill-add")
+    .addEventListener("click", (e) => {
+      e.stopPropagation();
+      nopicEKStartAdd();
+    });
 
   const elemKillTrigger = menu.querySelector('[data-submenu="elemkill"]');
   if (elemKillTrigger) {
@@ -28742,8 +29401,38 @@ setTimeout(function() {
 
   // ══════════════ 需求12：键鼠映射 ══════════════
   // 注意：nopicKMEnabled 已在脚本顶部声明并初始化，这里只重新赋值
-  nopicKMEnabled = nopicGetToggleState("nopic_keymap", false);
+  nopicKMEnabled = nopicGetToggleState("nopic_keymap", true);
   let nopicKMGestureOn = nopicGetToggleState("nopic_km_gesture", false);
+
+  // ★★★ 瞬切手势 / 键鼠映射：一处开关，全部标签页即时生效（免刷新）★★★
+  // 开关经 chrome.storage（nopic_toggle_* 键）全局同步，这里监听变化实时更新本地状态，
+  // 避免"在 A 标签打开、B 标签要刷新才能用"的体验问题。
+  if (
+    typeof chrome !== "undefined" &&
+    chrome.storage &&
+    chrome.storage.onChanged
+  ) {
+    try {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== "local" || !changes) return;
+        if (changes["nopic_toggle_nopic_keymap"]) {
+          nopicKMEnabled =
+            changes["nopic_toggle_nopic_keymap"].newValue !== false;
+          try {
+            updateAllUI();
+          } catch (e) {}
+        }
+        if (changes["nopic_toggle_nopic_km_gesture"]) {
+          nopicKMGestureOn =
+            changes["nopic_toggle_nopic_km_gesture"].newValue === true;
+          try {
+            var gs = document.getElementById("nopic-km-gesture-switch");
+            if (gs) gs.classList.toggle("on", nopicKMGestureOn);
+          } catch (e) {}
+        }
+      });
+    } catch (e) {}
+  }
   let nopicKMSubmenuOpen = false;
   let nopicKMRecording = false;
 
@@ -28773,7 +29462,11 @@ setTimeout(function() {
   // —— 瞬切手势 ——
   function nopicKMSendTabCmd(msg) {
     try {
-      if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id) {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.id
+      ) {
         chrome.runtime.sendMessage(msg, () => {
           void chrome.runtime.lastError;
         });
@@ -28945,8 +29638,14 @@ setTimeout(function() {
       });
     } catch (e) {}
     requestAnimationFrame(() => {
-      const viewX = Math.max(0, Math.min(x - window.scrollX, window.innerWidth - 1));
-      const viewY = Math.max(0, Math.min(y - window.scrollY, window.innerHeight - 1));
+      const viewX = Math.max(
+        0,
+        Math.min(x - window.scrollX, window.innerWidth - 1),
+      );
+      const viewY = Math.max(
+        0,
+        Math.min(y - window.scrollY, window.innerHeight - 1),
+      );
       nopicFlashPoint(viewX, viewY);
       const el = document.elementFromPoint(viewX, viewY);
       const init = {
@@ -28959,7 +29658,9 @@ setTimeout(function() {
       const tgt = el || document;
       if (
         el &&
-        (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
       ) {
         try {
           el.focus();
@@ -29014,7 +29715,7 @@ setTimeout(function() {
         <div class="nopic-km-howto-title">如何使用</div>
         <div class="nopic-km-howto-row"><b>按住右键 + 滚轮</b><span>上下滚 = 切换上一个 / 下一个标签页</span></div>
         <div class="nopic-km-howto-row"><b>按住右键 + 中键</b><span>关闭当前标签页</span></div>
-        <div class="nopic-km-howto-tip">瞬间换页，提升效率必备。仅在该工具已开启的页面可用。</div>
+        <div class="nopic-km-howto-tip">瞬间换页，提升效率必备。一处开启，所有标签页即时生效（无需刷新）。</div>
       </div>
     </div>
 
@@ -29058,9 +29759,11 @@ setTimeout(function() {
         main.className = "nopic-km-item-main";
         main.innerHTML =
           '<span class="nopic-km-combo"></span><span class="nopic-km-target"></span>';
-        main.querySelector(".nopic-km-combo").textContent = item.shortcut || "未设置";
+        main.querySelector(".nopic-km-combo").textContent =
+          item.shortcut || "未设置";
         main.querySelector(".nopic-km-target").textContent =
-          (item.mode === "position" ? "位置 · " : "元素 · ") + (item.label || "");
+          (item.mode === "position" ? "位置 · " : "元素 · ") +
+          (item.label || "");
         const ops = document.createElement("div");
         ops.className = "nopic-km-item-ops";
         const edit = document.createElement("span");
@@ -29174,6 +29877,7 @@ setTimeout(function() {
       </div>
     `;
     document.documentElement.appendChild(dlg);
+    nopicAttachPickBackdrop(dlg);
     requestAnimationFrame(() => dlg.classList.add("active"));
 
     const shortcutInput = dlg.querySelector("#nopic-km-shortcut");
@@ -29206,7 +29910,8 @@ setTimeout(function() {
       nopicKMRecording = false;
       recBtn.textContent = "录制";
       recBtn.classList.remove("recording");
-      if (recHandlerKey) document.removeEventListener("keydown", recHandlerKey, true);
+      if (recHandlerKey)
+        document.removeEventListener("keydown", recHandlerKey, true);
       if (recHandlerMouse)
         document.removeEventListener("mousedown", recHandlerMouse, true);
       recHandlerKey = recHandlerMouse = null;
@@ -29237,7 +29942,13 @@ setTimeout(function() {
         if (ev.target === recBtn) return;
         ev.preventDefault();
         ev.stopPropagation();
-        if (ev.button === 0 && !ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey)
+        if (
+          ev.button === 0 &&
+          !ev.ctrlKey &&
+          !ev.altKey &&
+          !ev.metaKey &&
+          !ev.shiftKey
+        )
           return; // 裸左键不允许
         const combo = getComboString(ev);
         if (!combo) return;
@@ -29252,6 +29963,7 @@ setTimeout(function() {
     const close = () => {
       stopRec();
       dlg.classList.remove("active");
+      nopicRemovePickBackdrop(dlg);
       setTimeout(() => dlg.remove(), 200);
     };
     dlg.querySelector("#nopic-km-cancel").addEventListener("click", () => {
@@ -29279,10 +29991,12 @@ setTimeout(function() {
     });
   }
 
-  document.getElementById("nopic-keymap-close").addEventListener("click", (e) => {
-    e.stopPropagation();
-    hideKeyMapSubmenu();
-  });
+  document
+    .getElementById("nopic-keymap-close")
+    .addEventListener("click", (e) => {
+      e.stopPropagation();
+      hideKeyMapSubmenu();
+    });
   document.getElementById("nopic-keymap-add").addEventListener("click", (e) => {
     e.stopPropagation();
     nopicKMStartAdd();
@@ -29345,9 +30059,7 @@ setTimeout(function() {
     const p =
       (t / (t > 0 ? NOPIC_DEN_LOG_RIGHT : NOPIC_DEN_LOG_LEFT)) *
       NOPIC_DEN_STEPS;
-    return Math.round(
-      Math.max(-NOPIC_DEN_STEPS, Math.min(NOPIC_DEN_STEPS, p)),
-    );
+    return Math.round(Math.max(-NOPIC_DEN_STEPS, Math.min(NOPIC_DEN_STEPS, p)));
   }
   // 0.001× 用 toFixed(2) 会显示成 0.00×，按量级切换小数位
   function nopicDenFmt(v) {
@@ -29376,9 +30088,12 @@ setTimeout(function() {
   function nopicDenMarkHeaders() {
     if (nopicDenHeadersMarked) return;
     try {
-      const kw = /(header|masthead|navbar|nav-bar|navwrap|nav-wrap|topbar|top-bar|menubar|menu-bar|toolbar|tool-bar|site-header|page-header|global-header|banner|brand|logo|search|searchbar|search-bar)/i;
+      // 只认"导航/顶栏"特征的强关键词；header/banner/brand/logo/search 太泛，
+      // 正文卡片里到处都是（如知乎的 header），豁免它们会误伤正文 → 已去掉
+      const kw =
+        /(navbar|nav-bar|navwrap|nav-wrap|topbar|top-bar|menubar|menu-bar|toolbar|tool-bar|site-header|page-header|global-header|masthead|header-nav|main-nav|main-navigation)/i;
       const tagEls = document.querySelectorAll(
-        'header, nav, [role="banner"], [role="navigation"]',
+        'nav, [role="banner"], [role="navigation"]',
       );
       tagEls.forEach((el) => el.classList.add("nopic-density-exempt"));
       document.querySelectorAll("*[class], *[id]").forEach((el) => {
@@ -29392,14 +30107,16 @@ setTimeout(function() {
           " " +
           (el.id || "");
         if (!kw.test(str)) return;
-        // 只豁免「看起来像顶部条」的元素：固定 / 吸顶，或在视口顶部附近
+        // 只豁免「看起来像顶部导航条」的元素，避免把正文容器误豁免：
+        // 要么 fixed/sticky 吸顶，要么是紧贴视口顶部、高度不大的横条
         const cs = window.getComputedStyle(el);
         const rect = el.getBoundingClientRect();
-        if (
-          cs.position === "fixed" ||
-          cs.position === "sticky" ||
-          rect.top < 90
-        ) {
+        const isBar =
+          rect.height > 0 &&
+          rect.height < 140 &&
+          rect.top >= 0 &&
+          rect.top < 80;
+        if (cs.position === "fixed" || cs.position === "sticky" || isBar) {
           el.classList.add("nopic-density-exempt");
         }
       });
@@ -29422,9 +30139,14 @@ setTimeout(function() {
     const lh = (1.5 + (v - 1) * 0.6).toFixed(4);
     // 头部（logo / 菜单 / 搜索栏）与扩展自身 UI 不参与密度变化
     const exempt =
-      'header,nav,[role="banner"],[role="navigation"],.nopic-density-exempt';
+      'nav,[role="banner"],[role="navigation"],.nopic-density-exempt';
+    // 正文范围：常规正文标签 + 被标记为"直接承载文字"的 div/span（知乎等正文不用 <p>）
+    const targets =
+      "p,li,dd,dt,td,th,blockquote,figcaption,summary,.nopic-density-text";
     style.textContent =
-      "body p,body li,body dd,body blockquote,body figcaption{line-height:" +
+      "body " +
+      targets +
+      "{line-height:" +
       lh +
       " !important;}" +
       exempt +
@@ -29434,10 +30156,64 @@ setTimeout(function() {
       exempt +
       " dd," +
       exempt +
+      " dt," +
+      exempt +
+      " td," +
+      exempt +
+      " th," +
+      exempt +
       " blockquote," +
       exempt +
-      " figcaption{line-height:normal !important;}";
+      " figcaption," +
+      exempt +
+      " summary," +
+      exempt +
+      " .nopic-density-text{line-height:normal !important;}";
     nopicDenMarkHeaders();
+    nopicDenMarkText();
+  }
+  // 知乎等站点正文常是 div 直接装文字（没有 <p>）。找出「自身直接承载成段文字、
+  // 且没有块级子元素」的元素打上 .nopic-density-text，让信息密度覆盖到它们。
+  // 注意：只用缓存标志标记一次，滑块拖动时不能反复全页扫描（会卡）。
+  const NOPIC_DEN_BLOCK_CHILD =
+    /^(address|article|aside|blockquote|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hr|li|main|nav|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)$/i;
+  let nopicDenTextMarked = false;
+  function nopicDenMarkText() {
+    if (nopicDenTextMarked) return;
+    nopicDenTextMarked = true;
+    try {
+      const els = document.querySelectorAll("div,span");
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (
+          el.classList.contains("nopic-density-text") ||
+          el.closest(
+            "#nopic-widget, #nopic-menu, #nopic-zoom-container, [id^='nopic-'], .nopic-submenu",
+          )
+        ) {
+          continue;
+        }
+        if (!el.childNodes || el.childNodes.length === 0) continue;
+        let textLen = 0;
+        let hasBlock = false;
+        const children = el.childNodes;
+        for (let j = 0; j < children.length; j++) {
+          const c = children[j];
+          if (c.nodeType === 3) {
+            textLen += (c.nodeValue || "").trim().length;
+          } else if (c.nodeType === 1) {
+            if (NOPIC_DEN_BLOCK_CHILD.test(c.tagName || "")) {
+              hasBlock = true;
+              break;
+            }
+            textLen += (c.textContent || "").trim().length;
+          }
+        }
+        if (!hasBlock && textLen >= 6) {
+          el.classList.add("nopic-density-text");
+        }
+      }
+    } catch (e) {}
   }
   function nopicDenSyncUI() {
     const slider = document.getElementById("nopic-density-slider");
@@ -29482,6 +30258,336 @@ setTimeout(function() {
         e.stopPropagation();
         nopicDenReset();
       });
+    }
+  })();
+
+  // ══════════════ 全页字体透明度（相对缩放） ══════════════
+  // 语义：把每个文字元素"当前实际显示的不透明度"当作 100%，滑块按比例缩放。
+  // 例：页面文字原始 50%，滑块拖到 50% → 显示 25%；滑块 100% → 完全还原，绝不把
+  // 原本半透明的文字强改成 100%。
+  function nopicFontOpacityKey() {
+    return nopicGetConfigStorageKey("nopic_fontopacity", "domain");
+  }
+  function nopicFontOpacityGet() {
+    try {
+      const v = parseFloat(localStorage.getItem(nopicFontOpacityKey()));
+      return isNaN(v) ? 1 : Math.max(0, Math.min(1, v));
+    } catch (e) {
+      return 1;
+    }
+  }
+  function nopicFontOpacitySet(v) {
+    try {
+      if (v >= 0.999) localStorage.removeItem(nopicFontOpacityKey());
+      else localStorage.setItem(nopicFontOpacityKey(), String(v));
+    } catch (e) {}
+  }
+  // 已被我们调整过的元素缓存（用于 100% 时精确还原 + 拖动时实时更新）
+  const nopicFontOpacityEls = []; // 元素缓存：避免拖动滑块时反复全页扫描
+  const NOPIC_FOP_MAX = 50000; // 缓存上限：足够覆盖绝大多数页面（之前 8000 在大页面会漏掉后半部分文字，表现为"只改了一部分字体"）
+  let nopicFopAnimTimer = null; // 初始化动画的过渡清理计时器（拖动时取消）
+
+  function nopicFontOpacityIsTextHolder(el) {
+    if (!el || el.nodeType !== 1 || !el.childNodes) return false;
+    const tag = (el.tagName || "").toLowerCase();
+    if (
+      /^(script|style|noscript|svg|canvas|video|audio|iframe|input|textarea|pre)$/.test(
+        tag,
+      )
+    ) {
+      return false;
+    }
+    // 扩展自身 UI 不参与
+    if (
+      el.closest &&
+      el.closest(
+        "#nopic-widget, #nopic-menu, #nopic-zoom-container, [id^='nopic-'], .nopic-submenu",
+      )
+    ) {
+      return false;
+    }
+    // 必须直接包含可见文字
+    for (let i = 0; i < el.childNodes.length; i++) {
+      const n = el.childNodes[i];
+      if (n.nodeType === 3 && n.textContent && n.textContent.trim()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 收集阶段：把页面上"直接承载文字"的元素加入缓存并记录原始透明度（增量去重）
+  function nopicFontOpacityCollect() {
+    const els = document.querySelectorAll("body *");
+    for (
+      let i = 0;
+      i < els.length && nopicFontOpacityEls.length < NOPIC_FOP_MAX;
+      i++
+    ) {
+      const el = els[i];
+      if (el.__nopicFopOrig !== undefined) continue; // 已收集过
+      if (!nopicFontOpacityIsTextHolder(el)) continue;
+      // 父级已是文字承载元素时跳过，避免同一段文字被嵌套修改导致过度变淡
+      if (el.parentElement && nopicFontOpacityIsTextHolder(el.parentElement)) {
+        // display:contents 的元素不渲染盒子、opacity 不生效（也无法覆盖子级），
+        // 依赖它控制子级透明度会失效 → 这种情况不跳过，继续收集子级自己
+        let parentDisplay = "";
+        try {
+          parentDisplay = getComputedStyle(el.parentElement).display;
+        } catch (e) {}
+        if (parentDisplay !== "contents") continue;
+      }
+      let orig = 1;
+      try {
+        orig = parseFloat(getComputedStyle(el).opacity);
+        if (isNaN(orig)) orig = 1;
+      } catch (e) {}
+      el.__nopicFopOrig = orig;
+      el.__nopicFopInline = el.style.opacity || "";
+      nopicFontOpacityEls.push(el);
+    }
+  }
+
+  // 应用：只遍历缓存，开销极小，可随滑块 input 实时调用。
+  // withAnim=true 仅用于"刷新页面后的初始化"：从默认 100% 平滑过渡到设定值（0.6s）。
+  // 拖动滑块（withAnim=false）时强制 transition:none，保证实时跟手、不被页面自身 transition 拖慢。
+  function nopicFontOpacityApply(factor, withAnim) {
+    const useAnim = !!withAnim && factor < 0.999;
+    // 任何一次应用都先取消残留的动画清理计时器，避免其干扰拖动/还原
+    if (nopicFopAnimTimer) {
+      clearTimeout(nopicFopAnimTimer);
+      nopicFopAnimTimer = null;
+    }
+    // 100%：完全还原，移除我们写入的所有内联 opacity（含 !important），
+    // 页面原本的透明度原样保留。
+    // ★★★ 注意：不能清空缓存！否则 100%→0%→拖回 50% 时会空转（缓存已空），
+    // 表现为"卡在 100% 调不动"。保留缓存，随时可再次应用。★★★
+    if (factor >= 0.999) {
+      for (let i = nopicFontOpacityEls.length - 1; i >= 0; i--) {
+        const el = nopicFontOpacityEls[i];
+        if (!el || !el.isConnected) {
+          nopicFontOpacityEls.splice(i, 1);
+          continue;
+        }
+        try {
+          // 先禁过渡，保证还原是即时的（不会出现回弹动画）
+          el.style.setProperty("transition", "none", "important");
+          el.style.removeProperty("opacity");
+          if (el.__nopicFopInline) el.style.opacity = el.__nopicFopInline;
+          // 还原后移除我们加的过渡，恢复页面自身 transition
+          el.style.removeProperty("transition");
+        } catch (e) {}
+      }
+      return;
+    }
+    for (let i = nopicFontOpacityEls.length - 1; i >= 0; i--) {
+      const el = nopicFontOpacityEls[i];
+      if (!el || !el.isConnected) {
+        nopicFontOpacityEls.splice(i, 1);
+        continue;
+      }
+      if (!el.__nopicFopOrig) continue;
+      const v = Math.max(0, Math.min(1, el.__nopicFopOrig * factor));
+      try {
+        // 拖动时过渡强制 none（实时跟手，不受页面自身 transition 拖慢）；
+        // 初始化动画时过渡 0.6s，动画结束由计时器移除。
+        el.style.setProperty(
+          "transition",
+          useAnim ? "opacity 0.6s ease" : "none",
+          "important",
+        );
+        el.style.setProperty("opacity", String(v), "important");
+      } catch (e) {}
+    }
+    // 初始化动画结束后移除过渡，恢复页面自身 transition（可被 input/change 取消）
+    if (useAnim) {
+      if (nopicFopAnimTimer) clearTimeout(nopicFopAnimTimer);
+      nopicFopAnimTimer = setTimeout(() => {
+        nopicFopAnimTimer = null;
+        nopicFontOpacityClearTransitions();
+      }, 700);
+    }
+  }
+  // 移除我们写入的内联 transition（恢复页面自身过渡），供动画结束 / 松手后调用
+  function nopicFontOpacityClearTransitions() {
+    for (let i = nopicFontOpacityEls.length - 1; i >= 0; i--) {
+      const el = nopicFontOpacityEls[i];
+      if (!el || !el.isConnected) continue;
+      try {
+        el.style.removeProperty("transition");
+      } catch (e) {}
+    }
+  }
+  // 拖动实时应用（同步 + 强制重排，根治"停手跳中间值"且不依赖 rAF）：
+  //   ① 同步对所有缓存元素设 transition:none —— 禁用页面/动画残留过渡；
+  //   ② 强制样式重算（读取布局，flush 样式计算），确保浏览器已确认 transition=none；
+  //   ③ 同步应用 opacity —— 此时过渡必然已禁用，修改即时生效，实时跟手。
+  // 若①②③在同一渲染批次里完成（依赖 rAF 异步化），浏览器会按"旧的 transition"
+  // 对 opacity 插值动画（同帧时序问题），导致拖动滞后、停下瞬间停在中间值、松手才到位。
+  function nopicFontOpacityApplyRealtime(factor) {
+    const els = nopicFontOpacityEls;
+    for (let i = els.length - 1; i >= 0; i--) {
+      const el = els[i];
+      if (!el || !el.isConnected) continue;
+      try {
+        el.style.setProperty("transition", "none", "important");
+      } catch (e) {}
+    }
+    // 强制样式重算：flush 当前样式变更，让 transition:none 真正落定
+    try {
+      if (document.body) void document.body.offsetHeight;
+    } catch (e) {}
+    nopicFontOpacityApply(factor, false);
+  }
+  function nopicFontOpacitySyncUI() {
+    const slider = document.getElementById("nopic-fontopacity-slider");
+    const val = document.getElementById("nopic-fontopacity-val");
+    const v = nopicFontOpacityGet();
+    if (slider) slider.value = String(Math.round(v * 100));
+    if (val) val.textContent = Math.round(v * 100) + "%";
+  }
+  // 当前生效值：优先取滑块实时值（拖动中），没有滑块时退回存储值。
+  // observer 重应用必须用这个值，否则会用"存储的旧值"覆盖正在拖动的实时值，
+  // 导致按住滑块不动时透明度自动跳回上一次松手存储的值。
+  function nopicFontOpacityCurrent() {
+    try {
+      const slider = document.getElementById("nopic-fontopacity-slider");
+      if (slider && slider.value !== "" && slider.value !== undefined) {
+        const v = (parseInt(slider.value, 10) || 0) / 100;
+        return Math.max(0, Math.min(1, v));
+      }
+    } catch (e) {}
+    return nopicFontOpacityGet();
+  }
+  function nopicFontOpacityReset() {
+    nopicFontOpacitySet(1);
+    nopicFontOpacityApply(1);
+    nopicFontOpacitySyncUI();
+    nopicFontOpacityStopObserver();
+  }
+  // 动态加载的内容（SPA / 无限滚动）也要套用透明度：增量收集 + 重新应用
+  let nopicFontOpacityObserver = null;
+  let nopicFontOpacityTimer = null;
+  // 判断一次 mutation 是否涉及"扩展自身 UI"（滑块数值文本、菜单等）——这些变化不需要重应用，
+  // 否则滑块拖动时数值文本更新会触发 observer，用存储值把实时透明度覆盖回去（回跳 bug）。
+  function nopicFontOpacityIsExtMutation(muts) {
+    for (let i = 0; i < muts.length; i++) {
+      const t = muts[i].target;
+      if (!t || t.nodeType !== 1) continue;
+      try {
+        if (
+          !t.closest(
+            "#nopic-widget, #nopic-menu, .nopic-submenu, [id^='nopic-'], .nopic-",
+          )
+        ) {
+          return false; // 存在页面自身的变化，需要处理
+        }
+      } catch (e) {
+        return false;
+      }
+    }
+    return true; // 全部都是扩展 UI 的变化，跳过
+  }
+  function nopicFontOpacityStartObserver() {
+    if (nopicFontOpacityObserver) return;
+    try {
+      nopicFontOpacityObserver = new MutationObserver((muts) => {
+        if (nopicFontOpacityTimer) return;
+        if (nopicFontOpacityIsExtMutation(muts)) return; // 扩展自身 UI 变化不重应用
+        nopicFontOpacityTimer = setTimeout(() => {
+          nopicFontOpacityTimer = null;
+          nopicFontOpacityCollect();
+          const f = nopicFontOpacityCurrent(); // 用当前滑块值，绝不用存储旧值覆盖实时拖动
+          if (f < 0.999) nopicFontOpacityApply(f, false);
+        }, 300);
+      });
+      nopicFontOpacityObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    } catch (e) {}
+  }
+  function nopicFontOpacityStopObserver() {
+    if (nopicFontOpacityObserver) {
+      try {
+        nopicFontOpacityObserver.disconnect();
+      } catch (e) {}
+      nopicFontOpacityObserver = null;
+    }
+    if (nopicFontOpacityTimer) {
+      clearTimeout(nopicFontOpacityTimer);
+      nopicFontOpacityTimer = null;
+    }
+  }
+  (function bindFontOpacity() {
+    const slider = document.getElementById("nopic-fontopacity-slider");
+    if (!slider) return;
+    // 首次打开设置面板时收集一次（若还没收集过）
+    nopicFontOpacityCollect();
+    slider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      const v = (parseInt(slider.value, 10) || 0) / 100;
+      const val = document.getElementById("nopic-fontopacity-val");
+      if (val) val.textContent = Math.round(v * 100) + "%";
+      // 实时：取消残留的初始化动画计时器，用"两帧分离"应用
+      // （先禁用过渡、下一帧再改 opacity，避免同帧时序导致停手瞬间跳到中间值）
+      if (nopicFopAnimTimer) {
+        clearTimeout(nopicFopAnimTimer);
+        nopicFopAnimTimer = null;
+      }
+      // 兜底：若缓存为空（document_start 时 collect 失败且 init 未收集），先收集再应用
+      if (nopicFontOpacityEls.length === 0) nopicFontOpacityCollect();
+      nopicFontOpacityApplyRealtime(v);
+      if (v >= 0.999) nopicFontOpacityStopObserver();
+      else nopicFontOpacityStartObserver();
+    });
+    slider.addEventListener("change", (e) => {
+      e.stopPropagation();
+      const v = (parseInt(slider.value, 10) || 0) / 100;
+      if (nopicFopAnimTimer) {
+        clearTimeout(nopicFopAnimTimer);
+        nopicFopAnimTimer = null;
+      }
+      nopicFontOpacitySet(v);
+      nopicFontOpacityApply(v, false);
+      // 松手后恢复页面自身 transition（下次拖动时 input 会再强制 none + 重排）
+      nopicFontOpacityClearTransitions();
+      if (v >= 0.999) nopicFontOpacityStopObserver();
+      else nopicFontOpacityStartObserver();
+    });
+    slider.addEventListener("mousedown", (e) => e.stopPropagation());
+    slider.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      nopicFontOpacityReset();
+    });
+    const valEl = document.getElementById("nopic-fontopacity-val");
+    if (valEl) {
+      valEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        nopicFontOpacityReset();
+      });
+    }
+  })();
+
+  // 页面加载后应用已保存的透明度设置（与信息密度保持一致）。
+  // 延迟到 DOM 就绪再收集+应用，确保文字元素齐全；
+  // withAnim=true：从默认 100% 平滑过渡（0.6s）到设定值，而不是突变。
+  // ★ 无论存储值是否为 100% 都必须 collect：document_start 时 body 未解析，
+  //   bindFontOpacity 的 collect 是空的；若此处因 v=100% 提前 return 而不收集，
+  //   缓存将永久为空 → 之后拖动滑块 apply 空转 → "修改无效"。
+  (function initFontOpacity() {
+    const v = nopicFontOpacityGet();
+    nopicFontOpacitySyncUI();
+    const run = () => {
+      nopicFontOpacityCollect();
+      if (v >= 0.999) return;
+      nopicFontOpacityApply(v, true);
+      nopicFontOpacityStartObserver();
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", run, { once: true });
+    } else {
+      run();
     }
   })();
 
@@ -29560,6 +30666,7 @@ setTimeout(function() {
 
     nopicSyncBtnPairLabels();
     nopicDenSyncUI();
+    nopicFontOpacitySyncUI();
   };
 
   const _origHideAllSubmenus2 = hideAllSubmenus;
@@ -29622,18 +30729,20 @@ setTimeout(function() {
     chrome.runtime.onMessage
   ) {
     try {
-      chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-        try {
-          if (msg && msg.type === "nopic-show-panel") {
-            sendResponse({ ok: window.__nopicShowPanel(true) });
-          } else {
+      chrome.runtime.onMessage.addListener(
+        function (msg, sender, sendResponse) {
+          try {
+            if (msg && msg.type === "nopic-show-panel") {
+              sendResponse({ ok: window.__nopicShowPanel(true) });
+            } else {
+              sendResponse({ ok: false });
+            }
+          } catch (e) {
             sendResponse({ ok: false });
           }
-        } catch (e) {
-          sendResponse({ ok: false });
-        }
-        return false;
-      });
+          return false;
+        },
+      );
     } catch (e) {}
   }
 

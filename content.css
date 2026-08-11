@@ -522,10 +522,10 @@ svg:not(.nopic-clone),
     background-position 0.5s;
   opacity: 0;
   background-image:
-    linear-gradient(90deg, #919191 50%, transparent 50%),
-    linear-gradient(90deg, #919191 50%, transparent 50%),
-    linear-gradient(0deg, #919191 50%, transparent 50%),
-    linear-gradient(0deg, #919191 50%, transparent 50%);
+    linear-gradient(90deg, rgba(145, 145, 145, 0.55) 50%, transparent 50%),
+    linear-gradient(90deg, rgba(145, 145, 145, 0.55) 50%, transparent 50%),
+    linear-gradient(0deg, rgba(145, 145, 145, 0.55) 50%, transparent 50%),
+    linear-gradient(0deg, rgba(145, 145, 145, 0.55) 50%, transparent 50%);
   background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
   background-size:
     15px 2px,
@@ -660,7 +660,7 @@ html[data-nopic-theme] #nopic-widget {
 }
 #nopic-widget.dragging {
   transition: none !important;
-  cursor: grabbing;
+  cursor: default;
 }
 #nopic-widget.sleeping {
   min-height: 20px !important;
@@ -869,6 +869,7 @@ html[data-nopic-theme] #nopic-widget {
   position: relative;
   transition: background 0.3s;
   flex-shrink: 0;
+  cursor: pointer;
 }
 .nopic-switch.on {
   background: #3b82f6;
@@ -1304,13 +1305,13 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 .nopic-modal-popup::-webkit-scrollbar {
   display: none;
 }
 .nopic-modal-popup .nopic-modal-header {
-  cursor: move;
+  cursor: default;
 }
 .nopic-modal-popup input,
 .nopic-modal-popup button,
@@ -1666,7 +1667,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 #nopic-mask-submenu::-webkit-scrollbar {
   display: none;
@@ -2042,7 +2043,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 #nopic-privacylock-submenu::-webkit-scrollbar {
   display: none;
@@ -2253,7 +2254,7 @@ html[data-nopic-theme] #nopic-widget {
 }
 .nopic-privacy-lock-wrapper.dragging {
   transition: none !important;
-  cursor: grabbing;
+  cursor: default;
 }
 .nopic-privacy-lock-wrapper.unlocked {
   transform: translateY(-100%) !important;
@@ -2780,7 +2781,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 #nopic-textreplace-submenu::-webkit-scrollbar {
   display: none;
@@ -2910,7 +2911,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 #nopic-autoclicker-submenu::-webkit-scrollbar {
   display: none;
@@ -2939,7 +2940,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 #nopic-pageedit-submenu::-webkit-scrollbar {
   display: none;
@@ -2969,7 +2970,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
 }
 #nopic-pagemonitor-submenu::-webkit-scrollbar {
   display: none;
@@ -4323,6 +4324,9 @@ html[data-nopic-theme] #nopic-widget {
   }
 }
 /* ===== 所有面板统一毛玻璃效果（排除隐私锁上锁界面） ===== */
+#nopic-settings-submenu,
+#nopic-display-submenu,
+#nopic-disguise-submenu,
 #nopic-tabdisguise-submenu,
 #nopic-mask-submenu,
 #nopic-privacylock-submenu,
@@ -9049,7 +9053,7 @@ html[data-nopic-theme] #nopic-widget {
   max-height: 82vh;
   overflow-y: auto;
   scrollbar-width: none;
-  cursor: move;
+  cursor: default;
   color: rgba(255, 255, 255, 0.85);
   font-size: 12px;
 }
@@ -9693,4 +9697,242 @@ html[data-nopic-theme] #nopic-widget {
 }
 [data-nopic-theme="light"] #nopic-density-val:hover {
   color: #2563eb !important;
+}
+
+/* ===== 扩展/设置/显示内容二级菜单：挂载到页面后的定位与玻璃拟态 =====
+   结构：JS 把三个二级菜单包进 .nopic-submenu-glass（玻璃壳），
+   壳负责 position:fixed 定位 + backdrop-filter 高斯模糊 + 阴影；
+   submenu 本体在壳内正常流（relative），只保留半透明背景。
+   这样模糊不受 submenu 自身 overflow:auto 滚动容器的干扰，且挂载在页面根节点，
+   能透过半透明背景模糊到真实页面内容。left/top 由 JS 内联设置。 */
+.nopic-submenu-glass {
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  z-index: 2147483677;
+  border-radius: 12px;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+  visibility: hidden;
+  /* ★ 与一级菜单 #nopic-menu 相同的出现动画：淡入 + 从左侧缩小滑入 */
+  opacity: 0;
+  transform: translateX(-10px) scale(0.95);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.nopic-submenu-glass.nopic-submenu-show {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+/* 非玻璃壳的二级/三级菜单（直接挂 documentElement 的 .nopic-submenu）：
+   显示时 display:none→flex，用 animation 实现与一级菜单一致的出现动画 */
+html > .nopic-submenu {
+  animation: nopic-submenu-in 0.2s ease;
+}
+@keyframes nopic-submenu-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+/* 二级菜单视觉与一级菜单 #nopic-menu 完全一致：
+   深色背景 rgba(30,30,35,0.95) + 边框 rgba(255,255,255,0.15) + blur(3px)；
+   浅色背景 rgba(232,235,241,0.85) + 边框 rgba(0,0,0,0.08)（同"所有面板统一毛玻璃"规则）。 */
+#nopic-settings-submenu,
+#nopic-display-submenu,
+#nopic-disguise-submenu {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  right: auto !important;
+  margin: 0 !important;
+  background: rgba(30, 30, 35, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ===== 全页字体透明度滑块：与信息密度滑块一致的轨道样式（无中心刻度） ===== */
+#nopic-fontopacity-track {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+#nopic-fontopacity-track input {
+  position: relative !important;
+  z-index: 1 !important;
+}
+#nopic-fontopacity-val:hover {
+  color: #60a5fa !important;
+}
+[data-nopic-theme="light"] #nopic-fontopacity-val:hover {
+  color: #2563eb !important;
+}
+
+/* ===== 剔除元素 / 键鼠映射 保存弹窗的全屏模糊遮罩 =====
+   让用户一眼看出这是"弹窗"而不是面板。
+   z-index 必须低于弹窗 clamp 后的值（2147483647）：Chrome 会把
+   >2147483647 的 z-index 钳制到 2147483647，弹窗 2147483680 被钳制后
+   与遮罩同层，后插入的遮罩会盖住弹窗 —— 所以这里用 2147483646。 */
+.nopic-pick-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483646;
+  background: rgba(10, 12, 18, 0.42);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  animation: nopic-backdrop-in 0.22s ease;
+}
+@keyframes nopic-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ===== 面板拖拽光标：只显示在面板头部 =====
+   十字（move）光标仅出现在弹窗标题栏；面板主体保持默认光标。
+   拖拽也只在头部触发（见 JS makeDraggable），光标与拖拽行为一致。 */
+.nopic-modal-header,
+.nopic-modal-popup .nopic-modal-header {
+  cursor: move;
+}
+/* 头部内的关闭按钮等可点击元素保持 pointer，不被 move 覆盖 */
+.nopic-modal-header .nopic-modal-close,
+.nopic-modal-close {
+  cursor: pointer !important;
+}
+
+/* ===== 二级菜单最终裁决样式（文件末尾，高特异性 + !important）
+   与一级菜单 #nopic-menu 完全一致，杜绝中间多条规则互相覆盖：
+     深色：rgba(30,30,35,0.95) + blur(3px) + 边框 rgba(255,255,255,0.15)
+     浅色：rgb(232 235 241 / 85%) + blur(3px) + 边框 rgba(0,0,0,0.08)
+   JS 不再内联任何颜色，一切以本组为准。 */
+#nopic-settings-submenu,
+#nopic-display-submenu,
+#nopic-disguise-submenu {
+  background: rgba(30, 30, 35, 0.95) !important;
+  backdrop-filter: none !important; /* 模糊由玻璃壳承担，避免嵌套导致阴影异常 */
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important; /* 阴影由玻璃壳承担：子元素阴影会被父级 backdrop-filter 吞掉 */
+  border-radius: 12px !important;
+}
+[data-nopic-theme="light"] #nopic-settings-submenu,
+[data-nopic-theme="light"] #nopic-display-submenu,
+[data-nopic-theme="light"] #nopic-disguise-submenu {
+  background: rgb(232 235 241 / 85%) !important;
+  backdrop-filter: none !important; /* 模糊由玻璃壳承担，避免嵌套导致阴影异常 */
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: none !important; /* 阴影由玻璃壳承担 */
+  border-radius: 12px !important;
+}
+/* 玻璃壳：模糊 3px 与一级一致；阴影直接放玻璃壳（父级自身的 box-shadow 能正常渲染，
+   而 submenu 子级的 box-shadow 会被父级 backdrop-filter 吞掉——Chrome 渲染层合成问题）。
+   深色 0 8px 32px rgba(0,0,0,0.4) / 浅色 0 8px 32px rgba(0,0,0,0.08)，与一级菜单 #nopic-menu 完全一致。 */
+.nopic-submenu-glass {
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important; /* 与一级菜单深色阴影一致 */
+  z-index: 2147483647 !important; /* 二级菜单浮在一级菜单(2147483666)之上 */
+}
+[data-nopic-theme="light"] .nopic-submenu-glass {
+  /* 浅色背景下 0.08 的阴影几乎不可见（用户反馈浅色下"完全没阴影"），
+     加重到 0.2 保证与深色模式一样清晰可见；形状保持与一级菜单一致 0 8px 32px */
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ===== 拖入以钉图：非钉图模式下放大图片时，视口右上角的"钉图"按钮 =====
+   图片拖到按钮上 → 按钮化成一个虚线框罩住图片 → 松手后图片进入"钉住"状态
+   （页面遮罩消失、可自由操作；只有单击/中键点在图上才归位）。
+   按钮固定挂 documentElement，z-index 高于遮罩(2147483640)与图片(2147483641)；
+   它常驻右上角小胶囊，与居中的放大图基本不重叠；拖图交互按鼠标坐标检测，
+   即使按钮与图片短暂重叠也不影响命中。 */
+.nopic-pin-dock {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2147483643;
+  box-sizing: border-box; /* ★ 虚线框展开时 width/height 含边框，避免 border 把框撑出视口右边距 */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(30, 30, 35, 0.85);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: grab;
+  user-select: none;
+  white-space: nowrap;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease,
+    left 0.3s cubic-bezier(0.22, 1, 0.36, 1), top 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.3s cubic-bezier(0.22, 1, 0.36, 1), height 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.3s ease, background-color 0.25s ease, border-color 0.25s ease;
+}
+.nopic-pin-dock.shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* 拖入包裹态：变成无文字的虚线框（目标位置在视口内不越界，大小由图片决定，
+   四周 pad 露出虚线；松手后图片飞行动画飞到虚线框位置） */
+.nopic-pin-dock.wrapping {
+  cursor: grabbing;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 3px dashed rgba(255, 255, 255, 0.55) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 6px;
+  padding: 0;
+}
+.nopic-pin-dock.wrapping .nopic-pin-dock-label,
+.nopic-pin-dock.wrapping svg {
+  opacity: 0;
+  pointer-events: none;
+}
+/* 钉住确认：整体淡出 */
+.nopic-pin-dock.pinned {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.nopic-pin-dock.hidden {
+  display: none !important;
+}
+[data-nopic-theme="light"] .nopic-pin-dock {
+  background: rgba(245, 247, 252, 0.92);
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #1a1a1e;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+}
+[data-nopic-theme="light"] .nopic-pin-dock.wrapping {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: rgba(15, 23, 42, 0.55) !important;
+  box-shadow: none !important;
 }
