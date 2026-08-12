@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon128.png" width="128" height="128" alt="网页控制大师">
+</p>
+
 # 网页控制大师
 
 [![Edge Add-on](https://img.shields.io/badge/Edge-商店-0078D7?style=flat-square&logo=microsoft-edge)](https://microsoftedge.microsoft.com/addons/detail/mmgfooecliddbadakcegfmjigjagllnh)
