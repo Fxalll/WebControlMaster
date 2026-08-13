@@ -6026,6 +6026,17 @@ function _nopicBootMain() {
     let animFrame = null;
     let hasDragged = false;
 
+    // ★ 修复：翻转拖拽期间拦截文本选中与原生图片拖拽，
+    //   避免拖动时把图片框/页面内容选中（快速拖动尤其明显）。
+    function blockSelect(e) {
+      e.preventDefault();
+    }
+    function blockDragStart(e) {
+      e.preventDefault();
+    }
+    container.addEventListener("selectstart", blockSelect);
+    container.addEventListener("dragstart", blockDragStart);
+
     const flipCard = container._flipCard;
 
     // 翻转角以 _flipState 为唯一真源：transform 里现在写的是 rotate3d（轴随图片方向变），
@@ -6194,6 +6205,8 @@ function _nopicBootMain() {
       e.preventDefault();
       e.stopPropagation();
       onStart(e.clientX, e.clientY);
+      // 拖拽期间全页禁止文本选中，防止快速拖动把页面文字/图片框选中
+      document.addEventListener("selectstart", blockSelect, true);
     });
 
     document.addEventListener("mousemove", (e) => {
@@ -6202,6 +6215,7 @@ function _nopicBootMain() {
 
     document.addEventListener("mouseup", (e) => {
       if (e.button !== 0) return;
+      document.removeEventListener("selectstart", blockSelect, true);
       onEnd();
     });
 
@@ -9072,6 +9086,49 @@ function _nopicBootMain() {
   setInterval(estimateAds, 3000);
 
   // --- 6. 仪表盘 UI ---
+  // ===== 显示模式（全局设置，由扩展 popup 的「此网站总开关」上方三档切换） =====
+  // 'full'    完整模式：悬停指示灯 → 一级菜单（默认）
+  // 'simple'  简洁模式：悬停指示灯 → 直接呼出设置二级菜单，填补消失的一级菜单位置
+  // 'indicator' 仅指示灯模式：悬停指示灯只展开指示灯本身，不展开任何菜单
+  let nopicUiMode = "full";
+  function nopicNormalizeUiMode(v) {
+    return v === "simple" || v === "indicator" ? v : "full";
+  }
+  function nopicCloseAllMenusForMode() {
+    try {
+      menu.classList.remove("active");
+      if (typeof nopicHideGlass === "function") {
+        nopicHideGlass(settingsSubmenu);
+        nopicHideGlass(displaySubmenu);
+        nopicHideGlass(disguiseSubmenu);
+      }
+      try {
+        if (typeof hideAllSubmenus === "function") hideAllSubmenus();
+      } catch (e) {}
+    } catch (e) {}
+  }
+  if (
+    typeof chrome !== "undefined" &&
+    chrome.storage &&
+    chrome.storage.local
+  ) {
+    try {
+      chrome.storage.local.get("nopic_ui_mode", (items) => {
+        nopicUiMode = nopicNormalizeUiMode(
+          items && items["nopic_ui_mode"],
+        );
+      });
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local" || !changes || !changes["nopic_ui_mode"]) return;
+        nopicUiMode = nopicNormalizeUiMode(
+          changes["nopic_ui_mode"].newValue,
+        );
+        // 切换模式后立即收敛当前已展开的菜单，避免残留
+        nopicCloseAllMenusForMode();
+      });
+    } catch (e) {}
+  }
+
   const widget = document.createElement("div");
   widget.id = "nopic-widget";
   const lamp = document.createElement("div");
@@ -10361,10 +10418,26 @@ function _nopicBootMain() {
         ? submenu.parentElement
         : null;
     if (wrap) {
+      // ★ 退出动画：移除 show 类 → opacity/transform 过渡淡出（200ms 与 CSS 一致），
+      //   过渡结束后才真正 display:none。期间标记 _nopicHiding：
+      //   - 跟随循环/重定位跳过，避免把 show 类加回导致"永远关不掉"；
+      //   - 若快速重新显示（nopicPlaceSubmenu 视为首次显示），取消淡出直接恢复。
+      //   显式保持 visibility:visible（避免基础 CSS 让淡出瞬间消失），
+      //   并禁用交互（淡出中的菜单不可点），显示时由 nopicPlaceSubmenu 恢复。
       wrap.classList.remove("nopic-submenu-show");
-      wrap.style.display = "none";
+      wrap.style.visibility = "visible";
+      wrap.style.pointerEvents = "none";
+      wrap._nopicHiding = true;
+      clearTimeout(wrap._nopicHideTimer);
+      wrap._nopicHideTimer = setTimeout(function () {
+        wrap._nopicHiding = false;
+        wrap._nopicHideTimer = null;
+        wrap.style.display = "none";
+        submenu.style.display = "none";
+      }, 220);
+    } else {
+      submenu.style.display = "none";
     }
-    submenu.style.display = "none";
   }
   nopicWrapSubmenu(settingsSubmenu);
   nopicWrapSubmenu(displaySubmenu);
@@ -10785,6 +10858,19 @@ function _nopicBootMain() {
 
   let _nopicThemeTimer = null;
 
+  // 把生效主题同步到 chrome.storage.local，扩展 popup 据此切换深浅色
+  function nopicSyncThemeToStorage(theme) {
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
+        chrome.storage.local.set({ nopic_theme_effective: theme });
+      }
+    } catch (e) {}
+  }
+
   function applyTheme(mode) {
     // 清除旧定时器
     if (_nopicThemeTimer) {
@@ -10798,6 +10884,7 @@ function _nopicBootMain() {
       const brightness = computeBackgroundBrightness();
       theme = brightness >= 0.7 ? "light" : "dark";
       localStorage.setItem("nopic_theme_actual", theme);
+      nopicSyncThemeToStorage(theme);
 
       // 每隔 3 秒重新计算一次背景亮度
       _nopicThemeTimer = setInterval(function () {
@@ -10808,6 +10895,7 @@ function _nopicBootMain() {
         if (newTheme !== currentTheme) {
           document.documentElement.setAttribute("data-nopic-theme", newTheme);
           localStorage.setItem("nopic_theme_actual", newTheme);
+          nopicSyncThemeToStorage(newTheme);
           // 更新UI高亮
           updateThemeUI(mode);
         }
@@ -10815,6 +10903,7 @@ function _nopicBootMain() {
     } else {
       theme = mode;
       localStorage.removeItem("nopic_theme_actual");
+      nopicSyncThemeToStorage(theme);
     }
 
     document.documentElement.setAttribute("data-nopic-theme", theme);
@@ -11777,8 +11866,8 @@ function _nopicBootMain() {
   <div style="display: flex; align-items: flex-start; gap: 10px;">
     <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">4</span>
     <div>
-      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更多功能</div>
-      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">将鼠标移至左侧指示灯可展开菜单，内含图片阅兵、隐私锁、自动点击器、键鼠映射等更多工具</div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">总开关与显示模式</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击浏览器工具栏上的扩展图标可打开弹窗，可切换简洁模式，或一键关闭当前网站功能</div>
     </div>
   </div>
 
@@ -11867,11 +11956,11 @@ function _nopicBootMain() {
   <div class="about-right">
     <div class="about-title">关于</div>
 <div class="about-text small" style="margin-bottom: 4px;">永久免费 · 本地运行 · 开源 · MIT 协议</div>
-<div class="about-text small" style="margin-bottom: 6px;">若本工具对您有所帮助，欢迎赞助以支持持续开发。</div>
+<div class="about-text small" style="margin-bottom: 6px;">如果这个工具帮到了你，就是对我最好的鼓励。</div>
     <div class="about-text" style="margin-bottom: 8px;">一款用于提升网页浏览效率的辅助工具，帮助您更从容地掌控页面内容。</div>
     <img id="nopic-about-img" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////////////////////////////////////2wBDAVVaWnhpeOuCguv/////////////////////////////////////////////////////////////////////////wAARCAFpAWIDASIAAhEBAxEB/8QAGQAAAwEBAQAAAAAAAAAAAAAAAAMEAgUB/8QAORAAAgIBAQMKBAQGAwEBAAAAAQIAAxEEEiExExQzQVFSYXGBkSIycqE0U7HBI0JiktHhJEOCY/D/xAAXAQEBAQEAAAAAAAAAAAAAAAAAAQID/8QAGhEBAAMBAQEAAAAAAAAAAAAAAAECETESUf/aAAwDAQACEQMRAD8AshCLe6us4dsHygMhE86p7/2P+Ic6p7/2P+IDoRPOqe/9j/iHOqe/9j/iA6ETzqnv/Y/4hzqnv/YwHQmK7ksyEOcT17FrALnGYGoRddyWNhGyZp7FrGXOBA1CJ51T3/sf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" style="width:200px;height:200px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);pointer-events:auto;cursor:pointer;" title="点击放大查看">
 
-    <div class="about-sponsor">扫码赞助 · 感谢支持</div>
+    <div class="about-sponsor">感谢支持 · 随缘赞助</div>
     <div id="nopic-show-welcome-btn" style="
         font-size: 12px;
         color: rgba(255,255,255,0.25);
@@ -12576,6 +12665,33 @@ function _nopicBootMain() {
     if (sw) {
       e.stopPropagation();
       nopicHandleSwitchClick(sw);
+      return;
+    }
+    // ★ 修复：settingsSubmenu 移出 menu 后，「图片放大方式 / 还原图片方式」的
+    // 单选按钮点击事件同样冒泡不到 menu 的委托，这里补上同一套处理逻辑。
+    const zoomBtn = e.target.closest(".nopic-range-btn[data-zoom]");
+    if (zoomBtn) {
+      e.stopPropagation();
+      let newMode = zoomBtn.dataset.zoom;
+      if (hoverShowImgConfig && newMode === "click") newMode = "hover";
+      zoomModeConfig = newMode;
+      setLocalConfig("zoomMode", zoomModeConfig);
+      if (zoomModeConfig === "hover") {
+        zoomLeaveModeConfig = "leave";
+        setLocalConfig("zoomLeaveMode", zoomLeaveModeConfig);
+      }
+      updateAllUI();
+      // ★ 修复：切换放大方式不应影响图片隐藏/显示状态。
+      // 原先这里会 imgShown()+imgHiden() 重放隐藏动画，导致已隐藏的图片闪出/退出隐藏，让用户困惑。
+      return;
+    }
+    const leaveBtn = e.target.closest(".nopic-range-btn[data-leave]");
+    if (leaveBtn) {
+      e.stopPropagation();
+      zoomLeaveModeConfig = leaveBtn.dataset.leave;
+      setLocalConfig("zoomLeaveMode", zoomLeaveModeConfig);
+      updateAllUI();
+      return;
     }
   });
 
@@ -12621,10 +12737,7 @@ function _nopicBootMain() {
         setLocalConfig("zoomLeaveMode", zoomLeaveModeConfig);
       }
       updateAllUI();
-      if (window.imgHidenSet) {
-        imgShown();
-        imgHiden();
-      }
+      // 切换放大方式不影响图片隐藏/显示状态（与 settingsSubmenu 的委托保持一致）
       return;
     }
 
@@ -12684,6 +12797,8 @@ function _nopicBootMain() {
   // 三个二级菜单已加入"所有面板统一毛玻璃"组（深色 rgba(30,30,35,0.95)+blur(3px)；
   // 浅色走 [data-nopic-theme="light"] 统一规则 rgb(232 235 241 / 85%)+blur(3px)），
   // 与一级菜单 #nopic-menu 完全一致，JS 不再内联颜色，避免 auto 主题误判。
+  // 首次显示：定位用 .nopic-submenu-static 禁用 left/top 过渡，再播出现动画；
+  // 已显示后的重定位：玻璃壳自带 left/top 过渡，像一级菜单一样顺滑贴合（不再一卡一卡）。
   function nopicPlaceSubmenu(submenu, anchorRect, preferSide) {
     const wrap =
       submenu.parentElement &&
@@ -12692,15 +12807,33 @@ function _nopicBootMain() {
         : submenu;
     // ★ 关键：把玻璃壳移到 documentElement 末尾。
     // 一级菜单 z-index(2147483666) 与玻璃壳一样会被 Chrome 钳制到 2147483647，
-    // 同层时按 DOM 顺序决定谁在上 —— 移到末尾才能确保二级菜单盖在一级菜单之上。
-    document.documentElement.appendChild(wrap);
+    // 同层时按 DOM 顺序决定谁在上 —— 首次显示时移到末尾确保盖在一级菜单之上。
+    // 已显示期间（跟随循环每帧重定位）【不再移动 DOM】，否则玻璃壳每帧被
+    // appendChild 搬移，会造成滚动/点击等交互不稳定（显示内容菜单无法滚动操作的回归）。
+    const isFirstShow =
+      submenu.style.display !== "flex" || !!wrap._nopicHiding;
+    if (wrap._nopicHiding) {
+      wrap._nopicHiding = false;
+      clearTimeout(wrap._nopicHideTimer);
+      wrap._nopicHideTimer = null;
+    }
+    if (
+      isFirstShow ||
+      wrap.parentElement !== document.documentElement
+    ) {
+      document.documentElement.appendChild(wrap);
+    }
     submenu.style.display = "flex"; // 恢复内容显示（隐藏时被置为 none）
     wrap.style.display = "inline-block";
-    wrap.style.visibility = "hidden";
-    wrap.style.left = "0px";
-    wrap.style.top = "0px";
     wrap.style.right = "auto";
     wrap.style.margin = "0";
+    if (isFirstShow) {
+      // 首次显示：先归零测量真实尺寸，期间禁用过渡
+      wrap.classList.add("nopic-submenu-static");
+      wrap.style.visibility = "hidden";
+      wrap.style.left = "0px";
+      wrap.style.top = "0px";
+    }
     const subRect = wrap.getBoundingClientRect();
     const gap = 4; // 与一级菜单拉开 4px 空隙（保持原有视觉）
     const onRight = preferSide
@@ -12719,19 +12852,49 @@ function _nopicBootMain() {
     if (top + subRect.height > window.innerHeight - 10)
       top = Math.max(10, window.innerHeight - 10 - subRect.height);
     wrap.style.top = top + "px";
-    wrap.style.visibility = "visible";
-    // ★ 与一级菜单一致的出现动画：先移除 show 类强制回流（重置起点），再下一帧加上触发过渡
-    if (wrap.classList.contains("nopic-submenu-show")) {
-      wrap.classList.remove("nopic-submenu-show");
+    if (isFirstShow) {
+      // 首次显示：定位完成后恢复过渡能力，再播出现动画（淡入 + 从左侧缩小滑入）
+      wrap.style.pointerEvents = "auto"; // 恢复交互（淡出时被置 none）
+      wrap.style.visibility = "visible";
       void wrap.offsetWidth;
+      wrap.classList.remove("nopic-submenu-static");
+      if (wrap.classList.contains("nopic-submenu-show")) {
+        wrap.classList.remove("nopic-submenu-show");
+        void wrap.offsetWidth;
+      }
+      requestAnimationFrame(() => {
+        if (wrap.parentNode) wrap.classList.add("nopic-submenu-show");
+      });
+    } else {
+      // 已显示：只重定位，不重播动画（left/top 过渡自然平滑）
+      wrap.style.pointerEvents = "auto";
+      wrap.style.visibility = "visible";
+      if (!wrap.classList.contains("nopic-submenu-show")) {
+        wrap.classList.add("nopic-submenu-show");
+      }
     }
-    requestAnimationFrame(() => {
-      if (wrap.parentNode) wrap.classList.add("nopic-submenu-show");
-    });
+  }
+
+  // 简洁模式下二级菜单的锚点 = 指示灯(widget) 本身（垂直相对它居中），
+  // 视觉上正好填补消失的一级菜单位置；间距与一级菜单完全一致：
+  //   右侧场景：菜单左边缘距指示灯 10px（同步 syncMenu 的 wRect.right + 10）；
+  //   左侧场景：菜单右边缘贴住指示灯左边缘（同步 syncMenu 的 right = innerWidth - wRect.left）。
+  // 说明：nopicPlaceSubmenu 内部还有 4px gap，这里把锚点各让出 4px 抵消，
+  //   右侧 right + 6 = 距 10px；左侧 left + 4 = 距 0px。
+  function nopicSimpleAnchor() {
+    const wRect = widget.getBoundingClientRect();
+    const mHeight = menu.offsetHeight || 200;
+    return {
+      left: wRect.left + 4,
+      right: wRect.right + 6,
+      top: wRect.top + wRect.height / 2 - mHeight / 2,
+    };
   }
 
   const showSettingsSubmenu = () => {
-    nopicPlaceSubmenu(settingsSubmenu, menu.getBoundingClientRect());
+    const anchor =
+      nopicUiMode === "simple" ? nopicSimpleAnchor() : menu.getBoundingClientRect();
+    nopicPlaceSubmenu(settingsSubmenu, anchor);
   };
 
   const hideSettingsSubmenu = () => {
@@ -12761,11 +12924,18 @@ function _nopicBootMain() {
 
   // widget/一级菜单尺寸变化时（例如勾选"显示内容"某选项让统计区变大），
   // 已打开的二/三级菜单跟随重定位，避免停在原地与一级菜单错位。
+  // rAF 合并：指示灯展开动画期间一帧内多次触发只重定位一次，位置靠玻璃壳的
+  // left/top 过渡顺滑贴合（与一级菜单 syncMenu 的 rAF 跟随体验一致）。
   try {
+    let nopicResizeRaf = 0;
     const nopicSubmenuResizeObserver = new ResizeObserver(() => {
-      if (settingsSubmenu.style.display === "flex") showSettingsSubmenu();
-      if (disguiseSubmenu.style.display === "flex") showDisguiseSubmenu();
-      if (displaySubmenu.style.display === "flex") showDisplaySubmenu();
+      if (nopicResizeRaf) return;
+      nopicResizeRaf = requestAnimationFrame(() => {
+        nopicResizeRaf = 0;
+        if (settingsSubmenu.style.display === "flex") showSettingsSubmenu();
+        if (disguiseSubmenu.style.display === "flex") showDisguiseSubmenu();
+        if (displaySubmenu.style.display === "flex") showDisplaySubmenu();
+      });
     });
     if (menu) nopicSubmenuResizeObserver.observe(menu);
     if (widget) nopicSubmenuResizeObserver.observe(widget);
@@ -19008,7 +19178,9 @@ function _nopicBootMain() {
   // 仅当菜单尚未显示时才展开：避免鼠标悬停在已打开的菜单上反复重定位/重绘，
   // 导致内容（如勾选框）闪烁消失
   const nopicHoverShow = (showFn, sub) => () => {
-    if (sub.style.display === "flex") return;
+    // 淡出中(_nopicHiding)重新悬停 → 取消淡出恢复显示；已正常显示则跳过
+    const wrap = nopicGlassWrapOf(sub);
+    if (sub.style.display === "flex" && !(wrap && wrap._nopicHiding)) return;
     showFn();
   };
 
@@ -19095,6 +19267,31 @@ function _nopicBootMain() {
       }
     }, 100);
   });
+  // ★ 修复：简洁模式下在二级菜单操作后离开，指示灯无法按时休眠。
+  // 根因：休眠计时器原先只靠「全局 mousemove 检查」在菜单关闭时重启，
+  // 但鼠标离开二级菜单后若不再移动（或菜单已被 mouseleave 提前关闭），
+  // 检查读不到「菜单曾打开」，计时器永不重启，isHovering 也一直为 true。
+  // 这里在二级菜单实际关闭时直接判定：鼠标不在任何面板相关区域 → 结束悬停并重启休眠。
+  function nopicMaybeEndHover() {
+    try {
+      if (
+        settingsSubmenu.matches(":hover") ||
+        displaySubmenu.matches(":hover") ||
+        disguiseSubmenu.matches(":hover") ||
+        menu.matches(":hover") ||
+        widget.matches(":hover")
+      ) {
+        return;
+      }
+      isHovering = false;
+      if (autoHideIdleConfig && typeof startSleepTimer === "function") {
+        try {
+          startSleepTimer();
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
   settingsSubmenu.addEventListener("mouseleave", () => {
     setTimeout(() => {
       if (
@@ -19103,6 +19300,7 @@ function _nopicBootMain() {
         !settingsTrigger.matches(":hover")
       ) {
         hideSettingsSubmenu();
+        nopicMaybeEndHover();
       }
     }, 100);
   });
@@ -19113,6 +19311,7 @@ function _nopicBootMain() {
         !displayTrigger.matches(":hover")
       ) {
         hideDisplaySubmenu();
+        nopicMaybeEndHover();
       }
     }, 100);
   });
@@ -19127,6 +19326,7 @@ function _nopicBootMain() {
         !disguiseTrigger.matches(":hover")
       ) {
         hideDisguiseSubmenu();
+        nopicMaybeEndHover();
       }
     }, 100);
   });
@@ -19177,7 +19377,22 @@ function _nopicBootMain() {
   function triggerHoverOn() {
     clearTimeout(hoverTimer);
     isHovering = true;
-    menu.classList.add("active");
+    if (nopicUiMode === "simple") {
+      // 简洁模式：不展开一级菜单，直接呼出「设置」二级菜单填补一级菜单位置
+      menu.classList.remove("active");
+      hideDisplaySubmenu();
+      nopicHideGlass(disguiseSubmenu);
+      // 已显示时 nopicPlaceSubmenu 自动只重定位不重播动画
+      showSettingsSubmenu();
+    } else if (nopicUiMode === "indicator") {
+      // 仅指示灯模式：只唤醒/展开指示灯本身，任何菜单都不弹出
+      menu.classList.remove("active");
+      nopicHideGlass(settingsSubmenu);
+      nopicHideGlass(displaySubmenu);
+      nopicHideGlass(disguiseSubmenu);
+    } else {
+      menu.classList.add("active");
+    }
   }
   function triggerHoverOff() {
     clearTimeout(hoverTimer);
@@ -19242,7 +19457,13 @@ function _nopicBootMain() {
         // 记录"菜单是否原本打开"：只有菜单由打开变关闭这一次才重启休眠计时器，
         // 避免鼠标在页面普通移动（菜单本就关闭）时不断重置计时器导致 widget 永不休眠。
         // 用 menu 的 active 状态判断最准确（二级/三级只在 active 下存在）。
-        const wasMenuOpen = menu.classList.contains("active");
+        // ★ 简洁模式下 menu 从不 active，改为同时看二级菜单是否可见，
+        //   否则二级菜单关闭后休眠计时器不会重启，指示灯将一直醒着。
+        const wasMenuOpen =
+          menu.classList.contains("active") ||
+          settingsSubmenu.style.display === "flex" ||
+          disguiseSubmenu.style.display === "flex" ||
+          displaySubmenu.style.display === "flex";
         isHovering = false;
         menu.classList.remove("active");
         nopicHideGlass(settingsSubmenu);
@@ -19413,7 +19634,14 @@ function _nopicBootMain() {
     // 新增：先清除 right，让 applySnapPosition 正常计算 left
     widget.style.right = "auto";
     if (autoSnapConfig) applySnapPosition(false);
-    if (isHovering) menu.classList.add("active");
+    // 拖完松手后按当前显示模式恢复菜单状态（简洁/仅指示灯模式不展开一级菜单）
+    if (isHovering) {
+      if (nopicUiMode === "full") menu.classList.add("active");
+      else if (nopicUiMode === "simple") {
+        menu.classList.remove("active");
+        showSettingsSubmenu();
+      }
+    }
   });
 
   function syncMenu() {
@@ -19448,6 +19676,51 @@ function _nopicBootMain() {
     requestAnimationFrame(syncMenu);
   }
   syncMenu();
+
+  // ★ 二级/三级菜单「每帧跟随」循环（与一级菜单 syncMenu 同款机制）：
+  //   - 简洁模式：settings 每帧跟随指示灯；完整模式：settings 跟随一级菜单（menu 被 syncMenu 每帧定位）。
+  //   - display（显示内容，三级）每帧跟随 settings —— 解决此前「窗口无法跟着二级菜单跑、滞后」的问题。
+  //   - disguise（扩展，二级）跟随一级菜单。
+  //   跟随期间加 .nopic-submenu-static（无 left/top 过渡，直变跟手），与指示灯/一级菜单同步展开；
+  //   淡出中(_nopicHiding)跳过，避免把 show 类加回导致关不掉。
+  function nopicGlassWrapOf(sub) {
+    return sub &&
+      sub.parentElement &&
+      sub.parentElement.classList.contains("nopic-submenu-glass")
+      ? sub.parentElement
+      : null;
+  }
+  function nopicFollowSubmenus() {
+    try {
+      if (
+        settingsSubmenu.style.display === "flex" &&
+        !(nopicGlassWrapOf(settingsSubmenu) || {})._nopicHiding
+      ) {
+        // 所有模式统一直变跟手（static 只禁 left/top 过渡，出现动画不受影响）
+        const wrap = nopicGlassWrapOf(settingsSubmenu);
+        if (wrap) wrap.classList.add("nopic-submenu-static");
+        showSettingsSubmenu();
+      }
+      if (
+        displaySubmenu.style.display === "flex" &&
+        !(nopicGlassWrapOf(displaySubmenu) || {})._nopicHiding
+      ) {
+        const wrap = nopicGlassWrapOf(displaySubmenu);
+        if (wrap) wrap.classList.add("nopic-submenu-static");
+        showDisplaySubmenu();
+      }
+      if (
+        disguiseSubmenu.style.display === "flex" &&
+        !(nopicGlassWrapOf(disguiseSubmenu) || {})._nopicHiding
+      ) {
+        const wrap = nopicGlassWrapOf(disguiseSubmenu);
+        if (wrap) wrap.classList.add("nopic-submenu-static");
+        showDisguiseSubmenu();
+      }
+    } catch (e) {}
+    requestAnimationFrame(nopicFollowSubmenus);
+  }
+  requestAnimationFrame(nopicFollowSubmenus);
 
   if (
     (localStorage.getItem("nopicValueList") || "")
@@ -29139,17 +29412,40 @@ function _nopicBootMain() {
     <button class="nopic-mask-btn primary" id="nopic-elemkill-add" style="width:100%;padding:8px 0;margin-top:8px;">＋ 新增剔除元素</button>
     <div class="nopic-ek-lists">
       <div class="nopic-ek-col">
-        <div class="nopic-ek-col-title">仅当前页</div>
+        <div class="nopic-ek-col-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>仅当前页</span>
+          <span class="nopic-scope-clear-btn" data-ek-clear="url" title="清空当前页列表" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:12px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
+        </div>
         <div class="nopic-ek-list" id="nopic-elemkill-list-url"></div>
       </div>
       <div class="nopic-ek-col">
-        <div class="nopic-ek-col-title">当前网站</div>
+        <div class="nopic-ek-col-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>当前网站</span>
+          <span class="nopic-scope-clear-btn" data-ek-clear="domain" title="清空当前网站列表" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:12px;color:#f87171;cursor:pointer;background:transparent;transition:background 0.2s;flex-shrink:0;">✕</span>
+        </div>
         <div class="nopic-ek-list" id="nopic-elemkill-list-domain"></div>
       </div>
     </div>
   `;
   document.documentElement.appendChild(elemKillSubmenu);
   makeDraggable(elemKillSubmenu);
+
+  // ★ 一键清空对应 scope 的剔除列表（仿快捷文本的 ✕）
+  elemKillSubmenu.querySelectorAll("[data-ek-clear]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const scope = btn.dataset.ekClear;
+      // 先清掉悬停残留的红色虚线，避免元素恢复后虚线一直挂着
+      document.querySelectorAll(".nopic-elemkill-peek").forEach((el) => {
+        clearTimeout(el._nopicEkPeekTimer);
+        el.classList.remove("nopic-elemkill-peek");
+      });
+      nopicEKSave(scope, []);
+      nopicEKRestoreAll();
+      nopicEKApplyAll();
+      nopicEKRenderLists();
+    });
+  });
 
   function nopicEKRenderLists() {
     ["url", "domain"].forEach((scope) => {
@@ -29452,6 +29748,11 @@ function _nopicBootMain() {
   let nopicKMLastWheel = 0;
   let nopicKMSawRightDown = false; // 本页是否亲眼见过这次右键按下
   let nopicKMSuppressCtxUntil = 0; // 在此时间戳前到来的右键菜单一律吞掉
+  // ★ 本次右键按住期间是否滚过滚轮（= 手势真实进行中）。
+  // macOS 上 contextmenu 在 mousedown 瞬间就触发（Windows 在 mouseup 之后），
+  // 若无条件以 nopicKMRightDown 拦截，Mac 上普通右键菜单永远弹不出来。
+  // 只有「右键还按着 + 已经滚过滚轮」才说明真的是瞬切手势，才该吞掉菜单。
+  let nopicKMWheelDuringPress = false;
   const nopicKMIsTop = (function () {
     try {
       return window.top === window.self;
@@ -29477,6 +29778,7 @@ function _nopicBootMain() {
     nopicKMRightDown = false;
     nopicKMGestureFired = false;
     nopicKMSawRightDown = false;
+    nopicKMWheelDuringPress = false;
   }
   function nopicKMMarkFired() {
     nopicKMGestureFired = true;
@@ -29493,6 +29795,7 @@ function _nopicBootMain() {
           nopicKMRightDown = true;
           nopicKMGestureFired = false;
           nopicKMSawRightDown = true;
+          nopicKMWheelDuringPress = false; // 新一轮按下，重置滚轮标记
         } else if (e.button === 1 && nopicKMSyncRight(e)) {
           e.preventDefault();
           e.stopPropagation();
@@ -29516,6 +29819,7 @@ function _nopicBootMain() {
         }
         nopicKMRightDown = false;
         nopicKMSawRightDown = false;
+        nopicKMWheelDuringPress = false;
       },
       true,
     );
@@ -29527,6 +29831,7 @@ function _nopicBootMain() {
         if (!nopicKMSyncRight(e)) return;
         e.preventDefault();
         e.stopPropagation();
+        nopicKMWheelDuringPress = true; // 右键按住期间滚过滚轮 → 手势进行中
         nopicKMMarkFired();
         const now = Date.now();
         if (now - nopicKMLastWheel < 160) return;
@@ -29542,16 +29847,31 @@ function _nopicBootMain() {
       "contextmenu",
       (e) => {
         if (!nopicKMGestureOn) return;
-        // 右键手势进行中（按住 / 刚触发 / 刚从别的标签页切过来）一律拦截右键菜单
+        // 只有「手势真实发生」时才拦截右键菜单，普通右键一律放行：
+        //  1) 手势已触发（right+滚轮 后松手的补发菜单，Windows 上 contextmenu 在 mouseup 之后才到）；
+        //  2) 刚触发后的吞噬窗口期（切标签的尾巴菜单）；
+        //  3) 右键按住且本次按下期间滚过滚轮 —— 手势进行中。
+        // ★ 关键修复：macOS 的 contextmenu 在 mousedown 瞬间触发（Windows 在 mouseup 后），
+        //   若仅凭「右键按着」就拦截，Mac 上普通右键菜单会永远弹不出来（用户反馈的问题）。
+        //   此时滚轮还没发生，手势尚未开始 → 放行，原生右键菜单正常弹出。
+        const gestureInProgress = nopicKMRightDown && nopicKMWheelDuringPress;
         if (
-          nopicKMRightDown ||
           nopicKMGestureFired ||
-          Date.now() < nopicKMSuppressCtxUntil
+          Date.now() < nopicKMSuppressCtxUntil ||
+          gestureInProgress
         ) {
           e.preventDefault();
           e.stopPropagation();
           nopicKMGestureFired = false;
           nopicKMSuppressCtxUntil = 0;
+        } else {
+          // 菜单放行：这次右键按下的手势状态到此为止。
+          // macOS 的原生菜单在 mousedown 就弹出，之后 Chrome 不再向页面派发 mouseup，
+          // 若不重置，nopicKMRightDown 会永久卡在「按住」，导致后续中键点击被 auxclick
+          // 拦截、右键状态错乱等连锁问题。
+          nopicKMRightDown = false;
+          nopicKMWheelDuringPress = false;
+          nopicKMSawRightDown = false;
         }
       },
       true,

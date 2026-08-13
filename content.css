@@ -8995,6 +8995,18 @@ html[data-nopic-theme] #nopic-widget {
   will-change: transform;
   backface-visibility: hidden;
 }
+/* ★ 修复：翻转/拖动放大图时，浏览器原生图片拖拽（ghost 拖影）或文本选中
+   会把图片框/页面内容选中。自己造的 UI 永远不需要被拖拽或选中。 */
+.nopic-flip-container,
+.nopic-flip-card,
+.nopic-flip-front,
+.nopic-flip-back,
+.nopic-clone,
+.nopic-parade-clone {
+  -webkit-user-drag: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
 [data-nopic-theme="light"] #nopic-animation-threshold {
     background: rgba(255,255,255,0.7) !important;
     border-color: rgba(0,0,0,0.1) !important;
@@ -9510,7 +9522,9 @@ html[data-nopic-theme] #nopic-widget {
   backdrop-filter: blur(3px) !important;
   -webkit-backdrop-filter: blur(3px) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
+  /* ★ 浅色阴影与其它面板统一：rgb(11 37 95 / 35%) 0px 8px 32px
+     （此前这两块还是 0 8px 32px rgba(0,0,0,0.08)，浅色下阴影明显比别的面板淡） */
+  box-shadow: rgb(11 37 95 / 35%) 0px 8px 32px !important;
 }
 [data-nopic-theme="light"] .nopic-pick-dialog {
   color: rgba(0, 0, 0, 0.82) !important;
@@ -9715,6 +9729,8 @@ html[data-nopic-theme] #nopic-widget {
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  /* 退出动画期间（show 类已移除）由 JS 内联 pointer-events:none 禁用交互；
+     正常显示时保持可交互，避免显示内容等子菜单无法滚动/点击 */
   pointer-events: auto;
   visibility: hidden;
   /* ★ 与一级菜单 #nopic-menu 相同的出现动画：淡入 + 从左侧缩小滑入 */
@@ -9722,7 +9738,17 @@ html[data-nopic-theme] #nopic-widget {
   transform: translateX(-10px) scale(0.95);
   transition:
     opacity 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    /* ★ 位置变化平滑过渡：简洁模式下指示灯展开/拖动时，二级菜单像一级菜单一样顺滑贴合 */
+    left 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* 跟随定位模式（简洁模式 rAF 每帧直改位置）：禁用 left/top 过渡，
+   但保留出现动画（opacity/transform），否则二级菜单淡入缩小动画会消失 */
+.nopic-submenu-glass.nopic-submenu-static {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease !important;
 }
 .nopic-submenu-glass.nopic-submenu-show {
   visibility: visible;
@@ -9843,7 +9869,8 @@ html > .nopic-submenu {
 }
 /* 玻璃壳：模糊 3px 与一级一致；阴影直接放玻璃壳（父级自身的 box-shadow 能正常渲染，
    而 submenu 子级的 box-shadow 会被父级 backdrop-filter 吞掉——Chrome 渲染层合成问题）。
-   深色 0 8px 32px rgba(0,0,0,0.4) / 浅色 0 8px 32px rgba(0,0,0,0.08)，与一级菜单 #nopic-menu 完全一致。 */
+   深色 0 8px 32px rgba(0,0,0,0.4) / 浅色 rgb(11 37 95 / 35%) 0px 8px 32px，
+   与一级菜单 #nopic-menu 完全一致（深浅色同款）。 */
 .nopic-submenu-glass {
   backdrop-filter: blur(3px) !important;
   -webkit-backdrop-filter: blur(3px) !important;
@@ -9851,9 +9878,8 @@ html > .nopic-submenu {
   z-index: 2147483647 !important; /* 二级菜单浮在一级菜单(2147483666)之上 */
 }
 [data-nopic-theme="light"] .nopic-submenu-glass {
-  /* 浅色背景下 0.08 的阴影几乎不可见（用户反馈浅色下"完全没阴影"），
-     加重到 0.2 保证与深色模式一样清晰可见；形状保持与一级菜单一致 0 8px 32px */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+  /* 与一级菜单浅色阴影完全一致（此前是 rgba(0,0,0,0.2)，观感比一级菜单轻） */
+  box-shadow: rgb(11 37 95 / 35%) 0px 8px 32px !important;
 }
 
 /* ===== 拖入以钉图：非钉图模式下放大图片时，视口右上角的"钉图"按钮 =====

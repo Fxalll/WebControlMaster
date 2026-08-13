@@ -17,12 +17,46 @@
         <span class="ver" id="version"></span>
       </div>
 
+      <!-- 显示模式（全局设置） -->
+      <div class="mode-card">
+        <div class="mode-head">
+          <span class="mode-title">显示模式</span>
+          <span class="mode-global">全局</span>
+        </div>
+        <div class="mode-seg" id="mode-seg">
+          <button
+            class="mode-btn"
+            data-mode="indicator"
+            title="悬停指示灯只展开指示灯"
+          >
+            仅指示灯
+          </button>
+          <button
+            class="mode-btn"
+            data-mode="simple"
+            title="悬停指示灯直接出现设置菜单"
+          >
+            简洁
+          </button>
+          <button
+            class="mode-btn"
+            data-mode="full"
+            title="悬停指示灯展开完整菜单"
+          >
+            完整
+          </button>
+        </div>
+        <div class="mode-desc" id="mode-desc">
+          悬停指示灯时的菜单展示方式（对所有网站生效）
+        </div>
+      </div>
+
       <!-- 总开关卡片 -->
       <div class="switch-card">
         <div class="host-label" id="host-label"></div>
         <div class="switch-main">
           <div class="switch-info">
-            <div class="switch-title">总开关</div>
+            <div class="switch-title">此网站总开关</div>
             <div class="switch-status" id="status-text">已开启</div>
           </div>
           <label class="toggle" id="toggle-wrap">

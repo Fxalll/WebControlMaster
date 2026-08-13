@@ -16,6 +16,61 @@ let currentOn = true;
 let activeTabId = null;
 let hintTimer = null;
 
+// ===== 显示模式（全局）：完整 / 简洁 / 仅指示灯 =====
+const UI_MODE_KEY = "nopic_ui_mode";
+const UI_MODE_DESC = {
+  full: "悬停指示灯时展开完整菜单（所有功能）",
+  simple: "悬停指示灯直接出现「设置」菜单，不再显示一级菜单",
+  indicator: "悬停指示灯只展开指示灯本身，任何菜单都不弹出",
+};
+
+function renderMode(mode) {
+  document.querySelectorAll("#mode-seg .mode-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+  const desc = $("mode-desc");
+  if (desc) desc.textContent = UI_MODE_DESC[mode] || UI_MODE_DESC.full;
+}
+
+function readUiMode(cb) {
+  if (!HAS_CHROME) {
+    cb("full");
+    return;
+  }
+  try {
+    chrome.storage.local.get(UI_MODE_KEY, (items) => {
+      const v = items && items[UI_MODE_KEY];
+      cb(v === "simple" || v === "indicator" ? v : "full");
+    });
+  } catch (e) {
+    cb("full");
+  }
+}
+
+document.querySelectorAll("#mode-seg .mode-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (!HAS_CHROME) return;
+    const mode = btn.dataset.mode;
+    chrome.storage.local.set({ [UI_MODE_KEY]: mode }, () => renderMode(mode));
+  });
+});
+
+// ===== 深浅色同步：跟随网页面板的主题开关（nopic_theme_effective） =====
+const THEME_KEY = "nopic_theme_effective";
+
+function applyThemeClass(theme) {
+  document.body.classList.toggle("light", theme === "light");
+}
+
+function readTheme() {
+  if (!HAS_CHROME) return;
+  try {
+    chrome.storage.local.get(THEME_KEY, (items) => {
+      applyThemeClass(items && items[THEME_KEY]);
+    });
+  } catch (e) {}
+}
+
 function masterKey() {
   return "nopic_master_switch_domain_" + encodeURIComponent(currentHost);
 }
@@ -114,7 +169,15 @@ $("show-panel-btn").addEventListener("click", () => {
 if (HAS_CHROME) {
   // 其它标签页改动了当前网站的总开关时同步刷新
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !currentHost || !changes[masterKey()]) return;
+    if (area !== "local") return;
+    if (changes[UI_MODE_KEY]) {
+      const v = changes[UI_MODE_KEY].newValue;
+      renderMode(v === "simple" || v === "indicator" ? v : "full");
+    }
+    if (changes[THEME_KEY]) {
+      applyThemeClass(changes[THEME_KEY].newValue);
+    }
+    if (!currentHost || !changes[masterKey()]) return;
     const v = changes[masterKey()].newValue;
     render(v === undefined ? true : !!v);
   });
@@ -145,6 +208,8 @@ try {
 
 // 初始化：先取当前标签页域名，再读该网站的开关状态
 function init() {
+  readTheme();
+  readUiMode((mode) => renderMode(mode));
   if (!HAS_CHROME) {
     render(true);
     return;
