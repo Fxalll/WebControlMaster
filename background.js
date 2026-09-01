@@ -145,7 +145,7 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
 //   角标底色用蓝色同色系。
 // ============================================================
 const nopicBadgeCounts = {}; // tabId -> 隐藏图片数
-const NOPIC_BADGE_COLOR = "#4d84e1"; // 蓝色同色系
+const NOPIC_BADGE_COLOR = "#407ffc"; // 蓝色同色系
 
 function nopicBadgeApply(tabId) {
   try {
@@ -157,6 +157,7 @@ function nopicBadgeApply(tabId) {
 
 try {
   chrome.action.setBadgeBackgroundColor({ color: NOPIC_BADGE_COLOR });
+  chrome.action.setBadgeTextColor({ color: "#ebf3fd" });
 } catch (e) {}
 
 try {

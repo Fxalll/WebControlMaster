@@ -86,6 +86,13 @@
   color: var(--nopic-text-muted) !important;
 }
 
+/* 欢迎弹窗里的「刷新标签页」提示：深色用内联琥珀黄，浅色下加深并提高对比 */
+[data-nopic-theme="light"] .nopic-welcome-reload-hint {
+  color: #b45309 !important;
+  background: rgba(180, 83, 9, 0.10) !important;
+  border-color: rgba(180, 83, 9, 0.28) !important;
+}
+
 /* ===== 输入框 ===== */
 [data-nopic-theme="light"] .nopic-disguise-input,
 [data-nopic-theme="light"] .nopic-textreplace-input,
@@ -10116,6 +10123,15 @@ html > .nopic-submenu {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+/* 拖动途中（幽灵态）：窗口每帧重定位，backdrop-filter 会随内容重绘。
+   性能模式（去模糊）开启时由 .nopic-dp-noblur 统一关掉模糊；性能模式关闭时
+   保留 .nopic-dp-ghosting 的 blur(3px)「一点点」磨砂感。这里不再主动关模糊，
+   只把窗口提升到独立合成层（will-change），让 left/top 改动走合成而非布局重排，
+   配合 JS 端 requestAnimationFrame 合帧，尽量把卡顿压下去。 */
+.nopic-dp-win.nopic-dp-dragging {
+  /* 提示浏览器把窗口提升到独立合成层，left/top 改动走合成而非布局重排 */
+  will-change: left, top;
+}
 /* 显形前：只露标签，藏起标题栏 / 缩放柄 / 遮罩 / 正文（正文仍在后台加载） */
 .nopic-dp-win.nopic-dp-ghosting .nopic-dp-bar,
 .nopic-dp-win.nopic-dp-ghosting .nopic-dp-grip,
@@ -10315,11 +10331,13 @@ html > .nopic-submenu {
   padding: 0 6px 0 10px !important;
   cursor: grab !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
+  /* 实色背景：标题栏不透明，盖住窗口的 backdrop-filter 毛玻璃，标题框保持清爽不糊；
+     窗口整体的「一点点高斯模糊」由 .nopic-dp-win 的 blur(3px) 在边框/边缘保留 */
+  background: rgba(20, 20, 26, 1) !important;
 }
 .nopic-dp-win[data-dp-theme="light"] .nopic-dp-bar {
   border-bottom-color: rgba(15, 23, 42, 0.1) !important;
-  background: rgba(15, 23, 42, 0.03) !important;
+  background: rgba(237, 240, 245, 1) !important;
 }
 .nopic-dp-win.nopic-dp-active .nopic-dp-bar {
   cursor: grabbing !important;
@@ -10731,10 +10749,18 @@ html.nopic-perf .nopic-dp-win[data-dp-theme="light"].nopic-dp-ghosting {
   inset: 0;
   z-index: 2147483500;
   background: rgba(0, 0, 0, 0.55);
-  display: none;
+  /* 用 opacity/visibility 过渡实现淡入淡出（display 无法过渡，会导致突兀出现/消失）。
+     visibility 随 transition 延迟到淡出结束才翻成 hidden，淡出期间保持可见；
+     pointer-events 立即切到 none，使遮罩淡出时页面立即可交互，不被回收操作干扰。 */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .26s ease, visibility .26s ease;
 }
 .nopic-dp-overlay.nopic-dp-show {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* 未钉住预览窗存在时，锁死外层页面滚动，避免 iframe 内滚轮链到父页面 */

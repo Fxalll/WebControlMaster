@@ -11994,7 +11994,7 @@ function _nopicBootMain() {
     <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
     <div>
       <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更快捷的拖拽速览</div>
-      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">拖动文字或链接可快速预览相关页面，该功能需要在工具栏的扩展图标弹窗打开「拖动速览」</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">拖动文字或链接可快速预览相关页面，该功能需要在浏览器工具栏的扩展图标弹窗打开「拖动速览」</div>
     </div>
   </div>
 
@@ -12021,8 +12021,8 @@ function _nopicBootMain() {
   </div>
 </div>
 
-  <div style="font-size: 11px; color: rgba(251,191,36,0.92); margin-top: 12px; line-height: 1.6; padding: 8px 10px; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); border-radius: 8px;">
-    ⚠ 安装插件后，请刷新已打开的标签页，新功能才会正常生效。
+  <div class="nopic-welcome-reload-hint" style="font-size: 11px; color: rgba(251,191,36,0.92); margin-top: 12px; line-height: 1.6; padding: 8px 10px; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); border-radius: 8px;">
+    提示：安装插件后，请刷新已打开的标签页，新功能才会正常生效。
   </div>
 
 <div class="nopic-welcome-divider" style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
@@ -31507,10 +31507,35 @@ function _nopicBootMain() {
     el.style.transform = "scale(.7)";
     el.style.opacity = "0";
     setTimeout(function () {
+      nopicDpFreeWin(el);
       try {
         el.remove();
       } catch (e) {}
     }, 220);
+  }
+
+  // 释放预览窗占用的资源，避免内存泄漏：
+  // 1) 把每个内嵌 iframe 的 src 指回 about:blank 再移除——跨域文档要等 GC 才会
+  //    释放，连续拖多个链接会累积占用；先导航回空白再 detach 能让浏览器立刻回收。
+  // 2) 清空对「来源元素 / 历史栈数组」的引用，断开悬挂引用，便于 GC 回收整棵 DOM。
+  // 注意：本函数不负责移除 win 自身（由调用方在动画结束后再 remove）。
+  function nopicDpFreeWin(win) {
+    if (!win) return;
+    try {
+      const frames = win.querySelectorAll(".nopic-dp-frame");
+      for (let i = 0; i < frames.length; i++) {
+        const f = frames[i];
+        try {
+          f.src = "about:blank";
+        } catch (e) {}
+        try {
+          f.remove();
+        } catch (e) {}
+      }
+    } catch (e) {}
+    win._nopicDpStack = null;
+    win._srcRect = null;
+    win._srcPt = null;
   }
 
   function nopicDpGhostLabel(ctx) {
@@ -31663,6 +31688,9 @@ function _nopicBootMain() {
 
     const win = nopicDpCreateWin(ctx);
     win.classList.add("nopic-dp-ghosting");
+    // 拖动途中关掉毛玻璃（见 .nopic-dp-dragging），避免每帧重绘卡顿；
+    // 松手「显形」时由 nopicDpPromote 移除本类，模糊照常恢复。
+    win.classList.add("nopic-dp-dragging");
     win.style.position = "fixed";
     win.style.left = rect.left + "px";
     win.style.top = rect.top + "px";
@@ -31679,9 +31707,11 @@ function _nopicBootMain() {
     nopicDpGhost = { el: win, rect: rect };
     // 拖动一开始就把 iframe 挂上去加载，松手时就已经 ready
     nopicDpStartLoad(win, ctx);
-    // 下一帧再放行过渡，保证起始状态被浏览器记录
+    // 下一帧再放行过渡：先强制一次重排，确保浏览器已把 scale(.1) 初态提交，
+    // 否则初始态会和最终态在同一帧被合并，过渡不会播放（看起来就是「直接出现」）。
     requestAnimationFrame(function () {
       if (!nopicDpGhost || nopicDpGhost.el !== win) return;
+      void win.offsetWidth; // 强制同步重排，锁定 scale(.1) 初态
       win.style.transition =
         "transform .46s cubic-bezier(.22,1.28,.42,1), opacity .24s ease";
       win.style.transform = "scale(1)";
@@ -31693,10 +31723,10 @@ function _nopicBootMain() {
     if (!nopicDpGhost) return;
     const el = nopicDpGhost.el;
     nopicDpGhost.rect = rect;
+    // 尺寸拖动中恒定（nopicDpSize），只更新 left/top；少写两个样式属性，
+    // 减少每帧的样式重算。width/height 在 nopicDpShowGhost 创建时只设过一次。
     el.style.left = rect.left + "px";
     el.style.top = rect.top + "px";
-    el.style.width = rect.w + "px";
-    el.style.height = rect.h + "px";
   }
 
   // ---------- iframe 内页面深浅色探针 ----------
@@ -31804,6 +31834,7 @@ function _nopicBootMain() {
     nopicDpFrameShake(win, false); // 关掉后不再需要这个框架转发摇晃
     win.classList.add("nopic-dp-leaving");
     setTimeout(function () {
+      nopicDpFreeWin(win); // 先释放 iframe 与引用，避免内嵌页面滞留内存
       try {
         win.remove();
       } catch (e) {}
@@ -31987,7 +32018,13 @@ function _nopicBootMain() {
   function nopicDpBack(win) {
     if (!win || !win._nopicDpStack || win._nopicDpStack.length <= 1) return;
     const top = win._nopicDpStack.pop();
-    if (top && top.parentNode) top.parentNode.removeChild(top);
+    // 先导航回空白再移除，释放被弹掉那层的页面资源
+    if (top) {
+      try {
+        top.src = "about:blank";
+      } catch (e) {}
+      if (top.parentNode) top.parentNode.removeChild(top);
+    }
     const cur = win._nopicDpStack[win._nopicDpStack.length - 1];
     if (cur) nopicDpSetTitle(win, cur.dataset.dpUrl || win.dataset.dpUrl);
     nopicDpUpdateBackState(win);
@@ -32121,6 +32158,9 @@ function _nopicBootMain() {
     ov.className = "nopic-dp-overlay";
     ov.style.zIndex = String(2147483500);
     document.documentElement.appendChild(ov);
+    // 强制提交初始样式(opacity:0/visibility:hidden)，确保随后 nopicDpRefreshOverlay
+    // 补上 .nopic-dp-show 时能从 0 过渡淡入，而不是同帧直接跳到 1（那样就没有淡入）
+    void ov.offsetWidth;
 
     // 滚轮：缩放「最上层、未钉住」的预览窗（以中心为锚点）
     ov.addEventListener(
@@ -32307,6 +32347,9 @@ function _nopicBootMain() {
   function nopicDpExit(win) {
     if (!win || !nopicDpWins.has(win)) return;
     nopicDpWins.delete(win);
+    // 退出即触发遮罩淡出 + 解锁页面滚动：把视觉收尾与「释放 iframe / 移除 DOM」的
+    // 回收解耦，用户松手后立刻能滚动、点击页面，回收在飞回动画结束后才执行，互不干扰。
+    nopicDpRefreshOverlay();
     nopicDpFrameShake(win, false);
     // 清掉入场动画残留，避免压住飞回动画
     win.classList.remove(
@@ -32343,6 +32386,7 @@ function _nopicBootMain() {
     win.style.opacity = "0";
     win.style.pointerEvents = "none";
     setTimeout(function () {
+      nopicDpFreeWin(win); // 先释放 iframe 与引用，避免内嵌页面滞留内存
       try {
         win.remove();
       } catch (e) {}
@@ -32424,6 +32468,12 @@ function _nopicBootMain() {
       win = nopicDpGhost.el;
       nopicDpGhost = null;
       win.classList.remove("nopic-dp-ghosting");
+      // 松手显形：退出拖动态，恢复「静止预览窗」的模糊开关——
+      // 与 nopicDpCreateWin 保持一致：模糊特效开（nopicImgBlurEffect=true）→ 带模糊；
+      // 性能模式（=false）→ 保持无模糊（html.nopic-perf 也会全局兜底关模糊）。
+      win.classList.remove("nopic-dp-dragging");
+      if (nopicImgBlurEffect) win.classList.remove("nopic-dp-noblur");
+      else win.classList.add("nopic-dp-noblur");
       // 清掉幽灵期残留的内联样式，免得压住入场动画 / 关闭动画
       win.style.transition = "";
       win.style.transformOrigin = "";
@@ -32511,7 +32561,7 @@ function _nopicBootMain() {
     return /^https?:\/\//i.test(href) ? href : null;
   }
 
-  document.addEventListener(
+  window.addEventListener(
     "dragstart",
     function (e) {
       nopicDpDrag = null;
@@ -32521,6 +32571,7 @@ function _nopicBootMain() {
       _nopicDpDragShake.rev = 0;
       _nopicDpDragShake.dist = 0;
       _nopicDpDragShake.lastDir = 0;
+      _nopicDpDragShake.swing = 0;
       if (!nopicDpEnabled || !_nopicMasterOn) return;
       const t = e.target;
       if (!t || nopicDpIsOwnUI(t)) return;
@@ -32554,17 +32605,27 @@ function _nopicBootMain() {
         moved: false,
         canceled: false,
       };
+      // 我们要接管这次拖放：在 window 捕获阶段就挡住，网站收不到 dragstart，
+      // 也就无法在拖放过程中做任何跳转 / 抢跑（不 preventDefault，原生拖拽照常进行）
+      e.stopPropagation();
     },
     true,
   );
 
-  // 捕获阶段只负责跟随鼠标画幽灵（不改变页面行为）
-  document.addEventListener(
+  // window 捕获阶段统一处理：跟随鼠标画幽灵 + 标记接管 + 让 drop 合法 +
+  // 并彻底屏蔽网站自身的 dragover / drop，避免「拖链接触发网站跳转」。
+  // 仅在「我们自己要接管的链接 / 文字拖拽」时拦截；落在输入框等可编辑区域或
+  // 不是我们的拖拽时，原样放行给网站（这样网站的合法拖放不受影响）。
+  // 之所以用 window 而非 document 捕获：有些站点把 drop 监听挂在 window 捕获
+  // 阶段，会比 document 捕获更早执行；只有同样挂在 window 捕获并先注册，
+  // 我们的 stopPropagation 才能挡住它。content script 在 document_start 运行，
+  // 注册早于页面脚本，因此我们的 window 捕获监听总是先跑。
+  window.addEventListener(
     "dragover",
     function (e) {
       const d = nopicDpDrag;
-      if (!d) return;
-      // 本次拖动已被「摇晃撤销」取消过 → 不再出预览，直到下次拖动
+      if (!d) return; // 不是我们的拖拽，放行
+      // 本次拖动已被「摇晃撤销」取消过 → 立即收掉幽灵，不再出预览，直到下次拖动
       if (d.canceled) {
         nopicDpDiscardGhost();
         return;
@@ -32582,39 +32643,48 @@ function _nopicBootMain() {
         return;
       }
       d.overEditable = false;
-      // 拖动途中快速左右摇晃鼠标 → 立刻撤销这次预览（不用等松手）
-      nopicDpFeedDragShake(e.clientX, d);
-      if (d.canceled) return;
-      nopicDpShowGhost(d, e.clientX, e.clientY);
-    },
-    true,
-  );
-
-  // 冒泡阶段才决定「接不接这个拖放」
-  document.addEventListener(
-    "dragover",
-    function (e) {
-      const d = nopicDpDrag;
-      if (!d || !d.moved || d.overEditable) return;
-      if (e.defaultPrevented) {
-        // 页面自己要这个拖放 → 我们退让
-        d.armed = false;
-        nopicDpDiscardGhost();
-        return;
-      }
+      // —— 同步部分只做「接管判定」，必须立刻执行：让 drop 合法并屏蔽网站自身的
+      // dragover/drop（stopPropagation 让网站收不到事件，不会在松手时跳转）——
       d.armed = true;
       e.preventDefault();
       try {
         e.dataTransfer.dropEffect = "copy";
       } catch (err) {}
+      e.stopPropagation();
+      // —— 重活（摇晃判定 + 重画幽灵）合并到「一帧一次」：dragover 触发频率极高，
+      // 一帧内可能来多次，每次同步重设 left/top 会反复重排 → 拖动卡顿。
+      // 只记录最新坐标，下一帧用 rAF 统一处理一次（拖动态已关毛玻璃，重绘很轻）。
+      d._mx = e.clientX;
+      d._my = e.clientY;
+      if (!d._raf) {
+        d._raf = requestAnimationFrame(function () {
+          d._raf = 0;
+          // 拖动已结束或被新一次拖动覆盖 → 丢弃过期回调，避免误建幽灵
+          if (nopicDpDrag !== d) return;
+          if (d.canceled) {
+            nopicDpDiscardGhost();
+            return;
+          }
+          nopicDpFeedDragShake(d._mx, d);
+          if (d.canceled) return;
+          nopicDpShowGhost(d, d._mx, d._my);
+        });
+      }
     },
-    false,
+    true,
   );
 
-  document.addEventListener(
+  // window 捕获拦截：先于「网站自身挂在 window/document 上的 drop 监听」执行，
+  // 一旦我们决定接管，stopPropagation() 就能彻底挡住网站跳转。
+  window.addEventListener(
     "drop",
     function (e) {
       const d = nopicDpDrag;
+      // 取消拖动态可能挂起的「画幽灵」rAF，避免过期回调在松手后误建幽灵
+      if (d && d._raf) {
+        cancelAnimationFrame(d._raf);
+        d._raf = 0;
+      }
       if (!d) return;
       if (!d.armed || d.overEditable || e.defaultPrevented || d.canceled) {
         nopicDpDrag = null;
@@ -32696,12 +32766,19 @@ function _nopicBootMain() {
         if (ctx.kind === "text") window.getSelection().removeAllRanges();
       } catch (err) {}
     },
-    false,
+    // 捕获阶段拦截：必须先于「网站自身挂在内部元素上的 drop 监听」执行，
+    // 这样一旦我们决定接管这次拖放，stopPropagation() 就能彻底挡住网站跳转。
+    true,
   );
 
   document.addEventListener(
     "dragend",
     function () {
+      const d = nopicDpDrag;
+      if (d && d._raf) {
+        cancelAnimationFrame(d._raf);
+        d._raf = 0;
+      }
       nopicDpDrag = null;
       nopicDpDiscardGhost();
     },
@@ -32736,12 +32813,23 @@ function _nopicBootMain() {
   // 松手后 nopicDpDrag 被置空，下面这套判定全部失效，所以松手后怎么晃都不会误关窗口。
   // 指针停在跨域 iframe 上时父页面的 dragover 收不到，那种情况由 dp-frame.js
   // 把子框架内部的 dragover / mousemove 转发上来（见下方 message 监听）。
+  //
+  // 摇晃撤销灵敏度参数（数值越大越「迟钝」，越不容易误触）：
+  //   MIN_SWING      —— 单次单向摆动至少要走这么远（px），才把「下一次换向」记作有效一次
+  //   MIN_REVERSALS  —— 需要这么多次「有效换向」才判定为摇晃
+  //   MIN_DIST       —— 统计窗口内的总水平位移阈值（px）
+  //   WINDOW         —— 统计窗口（ms），超过则清零重新计
+  const NOPIC_DP_SHAKE_MIN_SWING = 34;
+  const NOPIC_DP_SHAKE_MIN_REVERSALS = 4;
+  const NOPIC_DP_SHAKE_MIN_DIST = 220;
+  const NOPIC_DP_SHAKE_WINDOW = 900;
   let _nopicDpDragShake = {
     last: 0,
     lastDir: 0,
     rev: 0,
     dist: 0,
     t0: 0,
+    swing: 0,
   };
   function nopicDpFeedDragShake(x, d) {
     if (!d || d.canceled) return;
@@ -32754,25 +32842,38 @@ function _nopicBootMain() {
       s.lastDir = 0;
       s.rev = 0;
       s.dist = 0;
+      s.swing = 0;
       return;
     }
     const dx = x - s.last;
     const dir = dx > 0 ? 1 : dx < 0 ? -1 : 0;
-    s.dist += Math.abs(dx);
-    if (dir !== 0 && s.lastDir !== 0 && dir !== s.lastDir) s.rev++;
-    if (dir !== 0) s.lastDir = dir;
+    if (dir !== 0) {
+      s.dist += Math.abs(dx);
+      s.swing += Math.abs(dx);
+      if (dir !== s.lastDir) {
+        // 只有「上一段已摆动足够距离」才算一次有效换向，过滤掉手抖微抖
+        if (s.lastDir !== 0 && s.swing >= NOPIC_DP_SHAKE_MIN_SWING) s.rev++;
+        s.lastDir = dir;
+        s.swing = 0;
+      }
+    }
     s.last = x;
-    if (now - s.t0 > 800) {
+    if (now - s.t0 > NOPIC_DP_SHAKE_WINDOW) {
       s.t0 = now;
       s.rev = 0;
       s.dist = 0;
       s.lastDir = 0;
+      s.swing = 0;
     }
-    if (s.rev >= 3 && s.dist > 140) {
+    if (
+      s.rev >= NOPIC_DP_SHAKE_MIN_REVERSALS &&
+      s.dist > NOPIC_DP_SHAKE_MIN_DIST
+    ) {
       s.last = 0;
       s.rev = 0;
       s.dist = 0;
       s.lastDir = 0;
+      s.swing = 0;
       d.canceled = true;
       nopicDpDiscardGhost();
     }
