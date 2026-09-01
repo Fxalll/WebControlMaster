@@ -17,7 +17,31 @@
         <span class="ver" id="version"></span>
       </div>
 
-      <!-- 显示模式（全局设置） -->
+      <!-- 总开关卡片：此网站总开关（放在最上面） -->
+      <div class="switch-card">
+        <div class="host-label" id="host-label"></div>
+        <div class="switch-main">
+          <div class="switch-info">
+            <div class="switch-title">此网站总开关</div>
+            <div class="switch-status" id="status-text">已开启</div>
+          </div>
+          <label class="toggle" id="toggle-wrap">
+            <input type="checkbox" id="master-toggle" />
+            <span class="track"></span>
+          </label>
+        </div>
+        <div class="switch-desc" id="status-desc">所有功能正常生效</div>
+      </div>
+
+      <!-- 修改总开关后出现的刷新提示（平时不显示，用户自己刷新即可） -->
+      <div class="off-hint" id="off-hint" hidden>
+        <div class="hint-text" id="hint-text">
+          已关闭 · 刷新当前页让残留效果彻底消失。
+        </div>
+        <button class="btn" id="reload-btn">刷新当前页</button>
+      </div>
+
+      <!-- 显示模式（全局设置）：放在性能模式 / 拖动速览 上面 -->
       <div class="mode-card">
         <div class="mode-head">
           <span class="mode-title">显示模式</span>
@@ -47,32 +71,56 @@
           </button>
         </div>
         <div class="mode-desc" id="mode-desc">
-          悬停指示灯时的菜单展示方式（对所有网站生效）
+          悬停指示灯时的菜单展示方式
         </div>
       </div>
 
-      <!-- 总开关卡片 -->
-      <div class="switch-card">
-        <div class="host-label" id="host-label"></div>
-        <div class="switch-main">
-          <div class="switch-info">
-            <div class="switch-title">此网站总开关</div>
-            <div class="switch-status" id="status-text">已开启</div>
+      <!-- 性能模式 + 拖动速览（并排，文字与开关同一行，下方各加一行说明） -->
+      <div class="dp-row">
+        <div class="dp-cell">
+          <div class="dp-cell-top">
+            <span class="dp-name">性能模式</span>
+            <label class="toggle head-toggle" id="blur-toggle-wrap">
+              <input type="checkbox" id="blur-toggle" />
+              <span class="track"></span>
+            </label>
           </div>
-          <label class="toggle" id="toggle-wrap">
-            <input type="checkbox" id="master-toggle" />
-            <span class="track"></span>
-          </label>
+          <div class="dp-desc">关闭图片与预览窗模糊，低端设备更流畅</div>
         </div>
-        <div class="switch-desc" id="status-desc">所有功能正常生效</div>
+        <div class="dp-cell">
+          <div class="dp-cell-top">
+            <span class="dp-name">拖动速览</span>
+            <label class="toggle head-toggle" id="dp-toggle-wrap">
+              <input type="checkbox" id="dp-toggle" />
+              <span class="track"></span>
+            </label>
+          </div>
+          <div class="dp-desc">选中文字 / 拖链接松手即弹出预览窗</div>
+        </div>
       </div>
 
-      <!-- 修改总开关后出现的刷新提示（平时不显示，用户自己刷新即可） -->
-      <div class="off-hint" id="off-hint" hidden>
-        <div class="hint-text" id="hint-text">
-          已关闭 · 刷新当前页让残留效果彻底消失。
+      <!-- 搜索引擎选择（仅拖动速览开启时显示）；置于虚线之上，独立于下方「显示控制面板」 -->
+      <div class="field" id="dp-engine-box">
+        <div class="field-label">拖动速览 · 搜索引擎</div>
+        <select class="select" id="dp-engine">
+          <option value="bing">必应 Bing</option>
+          <option value="google">谷歌 Google</option>
+          <option value="baidu">百度</option>
+          <option value="ddg">DuckDuckGo</option>
+          <option value="sogou">搜狗</option>
+          <option value="custom">自定义…</option>
+        </select>
+        <input
+          class="input"
+          id="dp-custom"
+          type="text"
+          spellcheck="false"
+          placeholder="https://example.com/search?q=%s"
+          hidden
+        />
+        <div class="field-hint" id="dp-custom-hint" hidden>
+          用 %s 代表搜索关键词，留空则回退到必应
         </div>
-        <button class="btn" id="reload-btn">刷新当前页</button>
       </div>
 
       <!-- 底部操作 -->

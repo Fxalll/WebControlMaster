@@ -55,20 +55,153 @@ document.querySelectorAll("#mode-seg .mode-btn").forEach((btn) => {
   });
 });
 
-// ===== 深浅色同步：跟随网页面板的主题开关（nopic_theme_effective） =====
+// 性能模式开关（全局）：开启 = 关闭图片模糊与拖动速览模糊（省性能）；关闭 = 两者都开
+$("blur-toggle").addEventListener("change", (e) => {
+  const on = e.target.checked; // on = 性能模式是否开启
+  renderImgBlur(!on); // 性能模式开启 → 模糊特效关闭
+  if (!HAS_CHROME) return;
+  chrome.storage.local.set({ [IMG_BLUR_KEY]: !on });
+});
+
+// 拖动速览开关（全局）
+$("dp-toggle").addEventListener("change", (e) => {
+  const on = e.target.checked;
+  const box = $("dp-engine-box");
+  if (box) box.hidden = !on;
+  if (!HAS_CHROME) return;
+  chrome.storage.local.set({ [DP_ENABLED_KEY]: on });
+});
+
+// 搜索引擎选择
+$("dp-engine").addEventListener("change", (e) => {
+  const engine = DP_ENGINE_IDS.includes(e.target.value) ? e.target.value : "bing";
+  const custom = $("dp-custom");
+  const hint = $("dp-custom-hint");
+  const isCustom = engine === "custom";
+  if (custom) custom.hidden = !isCustom;
+  if (hint) hint.hidden = !isCustom;
+  if (isCustom && custom) custom.focus();
+  if (!HAS_CHROME) return;
+  chrome.storage.local.set({ [DP_ENGINE_KEY]: engine });
+});
+
+// 自定义搜索模板（边输边存）
+$("dp-custom").addEventListener("input", (e) => {
+  if (!HAS_CHROME) return;
+  chrome.storage.local.set({ [DP_CUSTOM_KEY]: e.target.value.trim() });
+});
+
+// ===== 全局设置：性能模式（原「图片模糊特效」，逻辑取反） =====
+// 底层键 IMG_BLUR_KEY 表示「模糊特效是否开启」。
+// 性能模式 开启 = 模糊关闭（IMG_BLUR_KEY=false）；关闭 = 模糊开启（IMG_BLUR_KEY=true）。
+const IMG_BLUR_KEY = "nopic_img_blur_effect";
+
+function renderImgBlur(blurOn) {
+  // blurOn = 模糊特效是否开启；性能模式开关勾选态 = !blurOn
+  const input = $("blur-toggle");
+  if (input && input.checked !== !blurOn) input.checked = !blurOn;
+}
+
+function readImgBlur() {
+  if (!HAS_CHROME) {
+    renderImgBlur(true);
+    return;
+  }
+  try {
+    chrome.storage.local.get(IMG_BLUR_KEY, (items) => {
+      const v = items && items[IMG_BLUR_KEY];
+      renderImgBlur(v === undefined ? true : !!v);
+    });
+  } catch (e) {
+    renderImgBlur(true);
+  }
+}
+
+// ===== 全局设置：拖动速览 =====
+const DP_ENABLED_KEY = "nopic_drag_preview_enabled";
+const DP_ENGINE_KEY = "nopic_drag_preview_engine";
+const DP_CUSTOM_KEY = "nopic_drag_preview_custom";
+const DP_ENGINE_IDS = ["bing", "google", "baidu", "ddg", "sogou", "custom"];
+
+function renderDragPreview(state) {
+  const input = $("dp-toggle");
+  if (input && input.checked !== state.enabled) input.checked = state.enabled;
+  const box = $("dp-engine-box");
+  if (box) box.hidden = !state.enabled;
+  const sel = $("dp-engine");
+  if (sel && sel.value !== state.engine) sel.value = state.engine;
+  const custom = $("dp-custom");
+  const hint = $("dp-custom-hint");
+  const isCustom = state.engine === "custom";
+  if (custom) {
+    custom.hidden = !isCustom;
+    if (document.activeElement !== custom) custom.value = state.custom || "";
+  }
+  if (hint) hint.hidden = !isCustom;
+}
+
+function readDragPreview() {
+  if (!HAS_CHROME) {
+    renderDragPreview({ enabled: false, engine: "bing", custom: "" });
+    return;
+  }
+  try {
+    chrome.storage.local.get(
+      [DP_ENABLED_KEY, DP_ENGINE_KEY, DP_CUSTOM_KEY],
+      (items) => {
+        const rawEnabled = items && items[DP_ENABLED_KEY];
+        const rawEngine = items && items[DP_ENGINE_KEY];
+        renderDragPreview({
+          enabled: rawEnabled === undefined ? false : !!rawEnabled,
+          engine: DP_ENGINE_IDS.includes(rawEngine) ? rawEngine : "bing",
+          custom: (items && items[DP_CUSTOM_KEY]) || "",
+        });
+      },
+    );
+  } catch (e) {
+    renderDragPreview({ enabled: false, engine: "bing", custom: "" });
+  }
+}
+
+// ===== 深浅色同步 =====
+// 以「当前标签页」为准：直接问该标签页的 content script 要生效主题。
+// nopic_theme_effective 是全局单键，会被所有标签页竞争写入（谁最后写谁赢），
+// 只能当作 content script 无响应时（chrome:// 等未注入页面）的兜底。
 const THEME_KEY = "nopic_theme_effective";
 
 function applyThemeClass(theme) {
   document.body.classList.toggle("light", theme === "light");
 }
 
-function readTheme() {
-  if (!HAS_CHROME) return;
+function readThemeFromStorage() {
   try {
     chrome.storage.local.get(THEME_KEY, (items) => {
       applyThemeClass(items && items[THEME_KEY]);
     });
   } catch (e) {}
+}
+
+function readTheme() {
+  if (!HAS_CHROME) return;
+  getActiveTab((tab) => {
+    if (!tab || tab.id == null) {
+      readThemeFromStorage();
+      return;
+    }
+    activeTabId = tab.id;
+    try {
+      chrome.tabs.sendMessage(tab.id, { type: "nopic-get-theme" }, (resp) => {
+        // 未注入 / 总开关关闭 / 受限页面 → 回退到全局键
+        if (chrome.runtime.lastError || !resp || !resp.theme) {
+          readThemeFromStorage();
+          return;
+        }
+        applyThemeClass(resp.theme);
+      });
+    } catch (e) {
+      readThemeFromStorage();
+    }
+  });
 }
 
 function masterKey() {
@@ -174,13 +307,33 @@ if (HAS_CHROME) {
       const v = changes[UI_MODE_KEY].newValue;
       renderMode(v === "simple" || v === "indicator" ? v : "full");
     }
-    if (changes[THEME_KEY]) {
-      applyThemeClass(changes[THEME_KEY].newValue);
+    // 注意：THEME_KEY 是所有标签页共用的单键，不能直接拿来改 popup 深浅色，
+    // 否则别的标签页一写入就会串色。主题只认当前标签页的回复（见 readTheme）。
+    if (changes[IMG_BLUR_KEY]) {
+      const v = changes[IMG_BLUR_KEY].newValue;
+      renderImgBlur(v === undefined ? true : !!v);
+    }
+    if (
+      changes[DP_ENABLED_KEY] ||
+      changes[DP_ENGINE_KEY] ||
+      changes[DP_CUSTOM_KEY]
+    ) {
+      readDragPreview();
     }
     if (!currentHost || !changes[masterKey()]) return;
     const v = changes[masterKey()].newValue;
     render(v === undefined ? true : !!v);
   });
+
+  // 当前标签页的主题变化（自动模式下页面背景变亮/变暗、或用户手动切换）
+  // 由 content script 主动广播，popup 只认当前活动标签页发来的那一条。
+  try {
+    chrome.runtime.onMessage.addListener((msg, sender) => {
+      if (!msg || msg.type !== "nopic-theme-changed") return;
+      if (!sender || !sender.tab || sender.tab.id !== activeTabId) return;
+      applyThemeClass(msg.theme);
+    });
+  } catch (e) {}
 
   // 当前活动标签页刷新完成后「刷新当前页」提示自动消失
   getActiveTab((tab) => {
@@ -188,13 +341,14 @@ if (HAS_CHROME) {
   });
   try {
     chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-      if (
-        tabId === activeTabId &&
-        changeInfo.status === "complete" &&
-        touched
-      ) {
-        touched = false;
-        render(currentOn);
+      if (tabId !== activeTabId) return;
+      if (changeInfo.status === "complete") {
+        // 页面换了 → 重新问一次该标签页的生效主题
+        readTheme();
+        if (touched) {
+          touched = false;
+          render(currentOn);
+        }
       }
     });
   } catch (e) {}
@@ -210,6 +364,8 @@ try {
 function init() {
   readTheme();
   readUiMode((mode) => renderMode(mode));
+  readImgBlur();
+  readDragPreview();
   if (!HAS_CHROME) {
     render(true);
     return;

@@ -7,7 +7,7 @@
   --text: #ffffff;
   --text-2: rgba(255, 255, 255, 0.62);
   --text-3: rgba(255, 255, 255, 0.38);
-  --accent: #60a5fa;
+  --accent: #4d84e1;
   --danger: #ef4444;
   --danger-bg: rgba(239, 68, 68, 0.16);
   --btn-bg: rgba(255, 255, 255, 0.07);
@@ -21,7 +21,7 @@ body.light {
   --text: #1a1a1e;
   --text-2: rgba(0, 0, 0, 0.62);
   --text-3: rgba(0, 0, 0, 0.4);
-  --accent: #2563eb;
+  --accent: #4d84e1;
   --danger: #dc2626;
   --danger-bg: rgba(220, 38, 38, 0.1);
   --btn-bg: rgba(0, 0, 0, 0.05);
@@ -37,7 +37,8 @@ body {
   width: 300px;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
   font-size: 12px;
   user-select: none;
@@ -62,6 +63,7 @@ body {
   width: 34px;
   height: 34px;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px #3c609b69);
 }
 
 .titles {
@@ -114,8 +116,8 @@ body {
 .mode-global {
   font-size: 9px;
   color: var(--accent);
-  background: rgba(96, 165, 250, 0.14);
-  border: 1px solid rgba(96, 165, 250, 0.3);
+  background: rgba(77, 132, 225, 0.14);
+  border: 1px solid rgba(77, 132, 225, 0.3);
   border-radius: 999px;
   padding: 1px 7px;
   letter-spacing: 0.3px;
@@ -144,13 +146,15 @@ body.light .mode-seg {
   padding: 5px 0;
   border-radius: 7px;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
   white-space: nowrap;
 }
 
 .mode-btn:hover {
   color: var(--text);
-  background: rgba(96, 165, 250, 0.12);
+  background: rgba(77, 132, 225, 0.12);
 }
 
 .mode-btn.active {
@@ -164,6 +168,149 @@ body.light .mode-seg {
   font-size: 10px;
   color: var(--text-3);
   line-height: 1.5;
+}
+
+/* 卡片标题行右侧的开关（性能模式 / 拖动速览） */
+.toggle.head-toggle {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* 性能模式 + 拖动速览 并排 */
+.dp-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dp-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+body.light .dp-cell {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* 开关那一行：名称在左、开关在右 */
+.dp-cell-top {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 开关下方的一行简单说明 */
+.dp-desc {
+  font-size: 10px;
+  color: var(--text-3);
+  line-height: 1.45;
+  margin-top: -1px;
+}
+
+.dp-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 卡片内的表单字段（搜索引擎选择等）；置于虚线之上，独立于下方「显示控制面板」 */
+.field {
+  margin-top: 12px;
+  padding-top: 11px;
+  padding-bottom: 2px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field[hidden] {
+  display: none !important;
+}
+
+.field-label {
+  font-size: 10.5px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.field-hint {
+  font-size: 9.5px;
+  color: var(--text-3);
+  line-height: 1.45;
+}
+
+.field-hint[hidden] {
+  display: none !important;
+}
+
+.select,
+.input {
+  width: 100%;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 6px 8px;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.select {
+  cursor: pointer;
+  appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 11px 11px;
+}
+
+.input[hidden] {
+  display: none !important;
+}
+
+.select:hover,
+.input:hover {
+  border-color: rgba(77, 132, 225, 0.35);
+}
+
+.select:focus,
+.input:focus {
+  border-color: var(--accent);
+}
+
+.select option {
+  background: #1e1e23;
+  color: #fff;
+}
+
+body.light .select option {
+  background: #f5f5fa;
+  color: #1a1a1e;
+}
+
+.input::placeholder {
+  color: var(--text-3);
 }
 
 /* ---------- 总开关卡片 ---------- */
@@ -273,7 +420,7 @@ body.light .toggle .track::after {
 }
 
 .toggle input:checked + .track {
-  background: #3b82f6;
+  background: #4d84e1;
 }
 
 .toggle input:checked + .track::after {
@@ -281,7 +428,7 @@ body.light .toggle .track::after {
 }
 
 .toggle input:focus-visible + .track {
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.4);
+  box-shadow: 0 0 0 2px rgba(77, 132, 225, 0.4);
 }
 
 /* ---------- 刷新提示（仅拨动总开关后出现） ---------- */
@@ -302,8 +449,8 @@ body.light .toggle .track::after {
 
 /* 拨到「开启」时的提示配色：蓝色系 */
 .off-hint.mode-on {
-  background: rgba(59, 130, 246, 0.14);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(77, 132, 225, 0.14);
+  border-color: rgba(77, 132, 225, 0.3);
 }
 
 .hint-text {
@@ -313,7 +460,7 @@ body.light .toggle .track::after {
 }
 
 .off-hint.mode-on .hint-text {
-  color: #93c5fd;
+  color: #a9c8f2;
 }
 
 .btn {
@@ -325,11 +472,13 @@ body.light .toggle .track::after {
   cursor: pointer;
   background: var(--danger);
   color: #fff;
-  transition: opacity 0.2s, background 0.2s;
+  transition:
+    opacity 0.2s,
+    background 0.2s;
 }
 
 .off-hint.mode-on .btn {
-  background: #3b82f6;
+  background: #4d84e1;
 }
 
 .btn:hover {
@@ -345,8 +494,8 @@ body.light .toggle .track::after {
 }
 
 .btn.ghost:hover {
-  background: rgba(96, 165, 250, 0.14);
-  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(77, 132, 225, 0.14);
+  border-color: rgba(77, 132, 225, 0.3);
   color: var(--accent);
 }
 

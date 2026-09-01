@@ -396,6 +396,30 @@ svg:not(.nopic-clone),
   filter: blur(10px) !important;
   opacity: 0 !important;
 }
+/* ===== 全局设置：关闭「图片模糊特效」=====
+   由 popup 的全局开关写入 chrome.storage.local(nopic_img_blur_effect=false)，
+   content.js 给 <html> 加上 .nopic-no-img-blur。
+   隐藏/显示图片时不再有 blur 过渡，只保留淡入淡出（opacity）。
+   选择器特意写得比 content.js 动态注入的 `.nopic-hidden` /
+   `.nopic-animation-disabled .nopic-hidden`（均带 !important）更高优先级，
+   保证无论动态样式写入什么模糊值都能被压住。 */
+html.nopic-no-img-blur .nopic-hidden,
+html.nopic-no-img-blur .nopic-animation-disabled .nopic-hidden {
+  filter: none !important;
+}
+/* 关闭模糊时，过渡里也去掉 filter，避免残留一次无意义的 filter 插值 */
+html.nopic-no-img-blur img:not(.nopic-clone),
+html.nopic-no-img-blur svg:not(.nopic-clone),
+html.nopic-no-img-blur .nopic-has-bg:not(.nopic-clone) {
+  transition: opacity 0.5s ease !important;
+}
+html.nopic-no-img-blur .nopic-animation-disabled img:not(.nopic-clone),
+html.nopic-no-img-blur .nopic-animation-disabled svg:not(.nopic-clone),
+html.nopic-no-img-blur
+  .nopic-animation-disabled
+  .nopic-has-bg:not(.nopic-clone) {
+  transition: none !important;
+}
 
 /* 跳出式放大容器 */
 #nopic-zoom-container {
@@ -825,9 +849,13 @@ html[data-nopic-theme] #nopic-widget {
   pointer-events: none;
   opacity: 0;
   transform: translateX(-10px) scale(0.95);
+  /* ★ 未展开时 display:none：不占渲染、F12 里也不再挂着一堆看不见的面板。
+     display 参与过渡（allow-discrete）+ @starting-style 保证出现动画不丢。 */
+  display: none;
   transition:
     opacity 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    display 0.2s allow-discrete;
   background: rgba(30, 30, 35, 1);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
@@ -844,6 +872,14 @@ html[data-nopic-theme] #nopic-widget {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0) scale(1);
+  display: flex;
+}
+/* display:none → flex 的同一帧里给出动画起始值，否则会直接闪出来 */
+@starting-style {
+  #nopic-menu.active {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.95);
+  }
 }
 .nopic-menu-item {
   display: flex;
@@ -1361,8 +1397,9 @@ html[data-nopic-theme] #nopic-widget {
   padding: 16px 18px 18px 18px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   min-width: 280px;
-  max-width: 640px;
-  width: 600px;
+  max-width: 560px;
+  width: 520px;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 6px;
   z-index: 2147483647;
@@ -1376,11 +1413,42 @@ html[data-nopic-theme] #nopic-widget {
   display: none;
 }
 .nopic-disguise-section {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  padding: 10px 12px 12px 12px;
-  margin-top: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 12px;
+  padding: 12px 14px 14px 14px;
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.nopic-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.nopic-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.3px;
+}
+.nopic-modal-close {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.nopic-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 .nopic-disguise-section:first-child {
   margin-top: 0;
@@ -2210,16 +2278,23 @@ html[data-nopic-theme] #nopic-widget {
   bottom: 0;
   z-index: 2147483680;
   pointer-events: none;
-  display: flex;
+  /* ★ 未激活时 display:none，别让一个全屏遮罩一直躺在 DOM 里渲染 */
+  display: none;
   align-items: flex-start;
   justify-content: center;
   overflow: hidden;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, display 0.3s allow-discrete;
 }
 #nopic-privacy-lock-overlay.active {
   pointer-events: auto;
   opacity: 1;
+  display: flex;
+}
+@starting-style {
+  #nopic-privacy-lock-overlay.active {
+    opacity: 0;
+  }
 }
 .nopic-privacy-lock-bg {
   position: absolute;
@@ -2340,14 +2415,24 @@ html[data-nopic-theme] #nopic-widget {
   opacity: 0;
   pointer-events: none;
   transform: translateY(-8px);
+  /* ★ 未激活时 display:none */
+  display: none;
   transition:
     opacity 0.25s,
-    transform 0.25s;
+    transform 0.25s,
+    display 0.25s allow-discrete;
 }
 #nopic-privacy-log-panel.active {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+  display: block;
+}
+@starting-style {
+  #nopic-privacy-log-panel.active {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 .nopic-privacy-log-header {
   display: flex;
@@ -3720,8 +3805,9 @@ html[data-nopic-theme] #nopic-widget {
   z-index: 2147483680 !important;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.25s ease;
-  display: flex;
+  transition: opacity 0.25s ease, display 0.25s allow-discrete;
+  /* ★ 未激活时 display:none */
+  display: none;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
@@ -3729,6 +3815,12 @@ html[data-nopic-theme] #nopic-widget {
 #nopic-confirm-modal.active {
   pointer-events: auto;
   opacity: 1;
+  display: flex;
+}
+@starting-style {
+  #nopic-confirm-modal.active {
+    opacity: 0;
+  }
 }
 .nopic-confirm-box {
   background: rgba(30, 30, 35, 1);
@@ -3917,7 +4009,9 @@ html[data-nopic-theme] #nopic-widget {
 }
 /* ===== 关于弹窗 - 左右布局 ===== */
 #nopic-about-modal {
-  display: flex !important;
+  /* ★ 原来这里是 display:flex !important，会盖掉 JS 的内联 display:none，
+     结果关于弹窗永远挂在 DOM 里渲染（只是透明）。改为用 .nopic-modal-open 类开合。 */
+  display: none !important;
   flex-direction: row !important;
   max-width: 90vw !important;
   min-width: auto !important;
@@ -3933,6 +4027,9 @@ html[data-nopic-theme] #nopic-widget {
   background: rgba(20, 20, 25, 0.97) !important;
   border-radius: 14px !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+#nopic-about-modal.nopic-modal-open {
+  display: flex !important;
 }
 
 /* ===== 左列 ===== */
@@ -9723,7 +9820,9 @@ html[data-nopic-theme] #nopic-widget {
   position: fixed;
   top: 0;
   left: 0;
-  display: inline-block;
+  /* ★ 默认 display:none（JS 显示时会内联成 inline-block）：
+     未打开的二级菜单玻璃壳不再渲染，F12 里也不会一直挂着 */
+  display: none;
   z-index: 2147483677;
   border-radius: 12px;
   backdrop-filter: blur(3px);
@@ -9962,3 +10061,750 @@ html > .nopic-submenu {
   border-color: rgba(15, 23, 42, 0.55) !important;
   box-shadow: none !important;
 }
+
+/* ============================================================
+   拖动速览（drag preview）
+   搜索关键词：拖动速览 / nopic-dp
+
+   一个角色，两种状态：
+   1. .nopic-dp-win.nopic-dp-ghosting —— 拖动途中跟在鼠标下方的圆角矩形「幽灵」。
+      半透明 + 轻模糊（和面板同一套观感 blur(3px)），由小到大用贝塞尔曲线长出来，
+      它就是预览窗本身，只是套了一层毛玻璃态；iframe 在拖动途中就已开始加载。
+      深浅色跟随扩展设置（[data-nopic-theme]）。
+   2. .nopic-dp-win —— 松手后「显形」的真正的预览窗（标题栏 + iframe + 四角缩放柄）。
+      标题栏和三个按钮的深浅色跟随 iframe 里那个网页，
+      由 dp-frame.js 探针回报后写在 win 的 data-dp-theme 上，
+      所以这里不用 [data-nopic-theme] 而用 [data-dp-theme]。
+
+   关于 !important 的取舍（改这段之前先看一眼）：
+   - 外观 / 盒模型类属性一律加 !important，页面的全局 reset（* { box-sizing }、
+     div { margin } 之类）非常常见，不加就会被搓变形。
+   - 但下面这几个属性坚决不加，因为它们由 JS 内联控制，
+     加了 !important 就会反过来把 JS 顶掉：
+       .nopic-dp-win  的 position / left / top / width / height（钉住、拖动、缩放）
+       .nopic-dp-mask 的 display（拖动时才盖上）
+       幽灵的 transform / transform-origin / opacity / transition（生长动画）
+   ============================================================ */
+
+/* ---------- 幽灵（拖动途中跟在鼠标的半透明毛玻璃态） ----------
+   现在的做法是：幽灵就是预览窗本身（.nopic-dp-win 加上 .nopic-dp-ghosting）。
+   拖动时它是半透明 + 轻模糊的圆角矩形（模糊度和面板一致 blur(3px)），
+   松手去掉这个态就「显形」成实心预览窗，iframe 在途中已经加载好了。
+   深浅色跟随扩展设置（[data-nopic-theme]）。 */
+.nopic-dp-win.nopic-dp-ghosting {
+  position: fixed !important;
+  pointer-events: none !important;
+  z-index: 2147483644 !important;
+  background: rgba(24, 24, 30, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(3px) saturate(1.25);
+  -webkit-backdrop-filter: blur(3px) saturate(1.25);
+}
+.nopic-dp-win[data-dp-theme="light"].nopic-dp-ghosting {
+  background: rgba(248, 249, 253, 0.55) !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  box-shadow:
+    0 18px 60px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+/* 性能模式（图片模糊特效）开启时去掉预览窗模糊；关闭时保留轻模糊 */
+.nopic-dp-win.nopic-dp-noblur,
+.nopic-dp-win.nopic-dp-noblur.nopic-dp-ghosting {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* 显形前：只露标签，藏起标题栏 / 缩放柄 / 遮罩 / 正文（正文仍在后台加载） */
+.nopic-dp-win.nopic-dp-ghosting .nopic-dp-bar,
+.nopic-dp-win.nopic-dp-ghosting .nopic-dp-grip,
+.nopic-dp-win.nopic-dp-ghosting .nopic-dp-mask {
+  display: none !important;
+}
+.nopic-dp-win.nopic-dp-ghosting .nopic-dp-body {
+  visibility: hidden !important;
+}
+.nopic-dp-ghost-label {
+  display: none !important;
+}
+.nopic-dp-win.nopic-dp-ghosting .nopic-dp-ghost-label {
+  display: flex !important;
+  position: absolute !important;
+  inset: 0 !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding: 10px 12px !important;
+  margin: 0 !important;
+  gap: 8px !important;
+  font:
+    500 13px/1.4 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+.nopic-dp-win[data-dp-theme="light"].nopic-dp-ghosting .nopic-dp-ghost-label {
+  color: rgba(15, 23, 42, 0.88) !important;
+}
+.nopic-dp-ghost-kind {
+  flex: none !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+  background: rgba(96, 165, 250, 0.28) !important;
+  color: #cfe4ff !important;
+  border: 1px solid rgba(96, 165, 250, 0.45) !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-ghost-kind {
+  background: rgba(37, 99, 235, 0.14) !important;
+  color: #1d4ed8 !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+}
+.nopic-dp-ghost-text {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  opacity: 0.85;
+}
+
+/* 幽灵（拖动途中）中央的提示：「摇晃以撤销预览」 */
+/* 摇晃撤销提示：只是居中半透明文字，不是按钮、不挡内容 */
+.nopic-dp-hint {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  display: none !important;
+  z-index: 4 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 92% !important;
+  text-align: center !important;
+  font:
+    600 16px/1.3 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  text-shadow:
+    0 1px 8px rgba(0, 0, 0, 0.5),
+    0 0 2px rgba(0, 0, 0, 0.35) !important;
+  background: none !important;
+  border: 0 !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-hint {
+  color: rgba(20, 22, 34, 0.5) !important;
+  text-shadow:
+    0 1px 8px rgba(255, 255, 255, 0.65),
+    0 0 2px rgba(255, 255, 255, 0.5) !important;
+}
+/* 拖动途中（幽灵态）一直显示；松手显形后立即隐藏（见 nopicDpPromote 不再加 hint-show） */
+.nopic-dp-win.nopic-dp-ghosting .nopic-dp-hint {
+  display: block !important;
+}
+
+/* ---------- 预览窗 ---------- */
+/* 注意：position / left / top / width / height 交给 JS 内联，这里不能加 !important */
+.nopic-dp-win {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  /* 深色为默认；data-dp-theme 由探针改写 */
+  background: rgba(24, 24, 30, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 20px 64px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(3px) saturate(1.2);
+  -webkit-backdrop-filter: blur(3px) saturate(1.2);
+  color: rgba(255, 255, 255, 0.92) !important;
+  font:
+    400 13px/1.5 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif !important;
+  text-align: left !important;
+}
+.nopic-dp-win[data-dp-theme="light"] {
+  background: rgba(250, 251, 254, 0.95) !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  box-shadow:
+    0 20px 64px rgba(15, 23, 42, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  color: rgba(15, 23, 42, 0.9) !important;
+}
+/* 拖动 / 缩放时禁掉文字选择，免得把页面文字一路刷蓝 */
+.nopic-dp-win.nopic-dp-active {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.nopic-dp-win.nopic-dp-leaving {
+  opacity: 0 !important;
+  transform: scale(0.9) !important;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease !important;
+  pointer-events: none !important;
+}
+
+/* 松手显形时的入场动画：内容淡入，而不是突然出现。
+   动画作用在「内容区（.nopic-dp-body）」上——窗口外框（那个带「摇晃以撤销预览」
+   提示的矩形）在整个动画期间保持可见、不闪、不消失；而「摇晃以撤销预览」提示在
+   松手（去掉 .nopic-dp-ghosting 态）的瞬间即隐藏，不等动画结束。
+   性能模式（图片模糊特效）关 → 内容带一点模糊进入再归零（和「显示图片」的
+   blur(10px)→0 + opacity 的动画一致）；性能模式开 → 内容只做透明度淡入。
+   用 @keyframes 而非 transition，避免和幽灵残留的内联 transition 打架，
+   也避免压住 .nopic-dp-leaving 的关闭动画。 */
+@keyframes nopic-dp-reveal-blur {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+@keyframes nopic-dp-reveal-plain {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* 入场动画只作用在内容区，窗口外框不闪、不消失 */
+.nopic-dp-win.nopic-dp-reveal-blur .nopic-dp-body {
+  animation: nopic-dp-reveal-blur 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.nopic-dp-win.nopic-dp-reveal-plain .nopic-dp-body {
+  animation: nopic-dp-reveal-plain 0.5s ease both;
+}
+
+/* 标题栏 */
+.nopic-dp-bar {
+  flex: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 6px 0 10px !important;
+  cursor: grab !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-bar {
+  border-bottom-color: rgba(15, 23, 42, 0.1) !important;
+  background: rgba(15, 23, 42, 0.03) !important;
+}
+.nopic-dp-win.nopic-dp-active .nopic-dp-bar {
+  cursor: grabbing !important;
+}
+.nopic-dp-dot {
+  flex: none !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #60a5fa !important;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.8) !important;
+}
+.nopic-dp-title {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: inherit !important;
+  opacity: 0.9;
+}
+.nopic-dp-acts {
+  flex: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+}
+/* 返回键：仅在预览窗有浏览历史（多于一层 iframe）时显示 */
+.nopic-dp-btn.nopic-dp-back {
+  display: none !important;
+}
+.nopic-dp-win.nopic-dp-has-history .nopic-dp-btn.nopic-dp-back {
+  display: inline-flex !important;
+}
+.nopic-dp-btn {
+  all: unset;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  color: rgba(255, 255, 255, 0.68);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.nopic-dp-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  display: block !important;
+}
+.nopic-dp-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.nopic-dp-btn.on {
+  background: rgba(96, 165, 250, 0.28);
+  color: #cfe4ff;
+}
+.nopic-dp-btn[data-act="close"]:hover {
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn {
+  color: rgba(15, 23, 42, 0.6);
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn:hover {
+  background: rgba(15, 23, 42, 0.09);
+  color: #0f172a;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn.on {
+  background: rgba(37, 99, 235, 0.16);
+  color: #1d4ed8;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn[data-act="close"]:hover {
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+}
+
+/* 正文（iframe + 遮罩 + 提示） */
+.nopic-dp-body {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.nopic-dp-frame {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  display: block !important;
+  /* 宽高继承窗口（由 JS 设到 100%），这里不能加 !important */
+  width: 100%;
+  height: 100%;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  /* 预览窗未钉住（变暗模式）时，iframe 内容滚到头不要「滚动链」到外层页面，
+     否则 iframe 里不需要滚动时滚轮会把外面的页面带动。 */
+  overscroll-behavior: none !important;
+}
+.nopic-dp-win[data-dp-theme="dark"] .nopic-dp-frame {
+  background: #1b1b20 !important;
+}
+/* 拖动 / 缩放时盖住 iframe，否则鼠标一进框里 mousemove 就被吃掉了。
+   display 由 JS 内联切换，这里不能加 !important */
+.nopic-dp-mask {
+  position: absolute !important;
+  inset: 0 !important;
+  display: none;
+  background: transparent !important;
+  cursor: inherit !important;
+}
+
+/* 加载 / 失败提示已移除：不再用整块遮罩遮挡内容（见 nopicDpMarkBlocked 的底部横幅） */
+
+/* 「可能不允许内嵌」底部横幅：不遮挡内容，万一误判也不碍事 */
+.nopic-dp-banner {
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  bottom: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 7px 8px 7px 12px !important;
+  border-radius: 10px !important;
+  background: rgba(24, 24, 30, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-size: 12px !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-banner {
+  background: rgba(250, 251, 254, 0.94) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.18) !important;
+  color: rgba(15, 23, 42, 0.86) !important;
+}
+.nopic-dp-banner-text {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: inherit !important;
+}
+.nopic-dp-banner-btn,
+.nopic-dp-banner-x {
+  all: unset;
+  box-sizing: border-box !important;
+  flex: none !important;
+  cursor: pointer !important;
+  border-radius: 7px !important;
+  font-size: 12px !important;
+  transition: background 0.15s ease;
+}
+.nopic-dp-banner-btn {
+  padding: 5px 10px !important;
+  background: rgba(96, 165, 250, 0.25) !important;
+  color: #cfe4ff !important;
+}
+.nopic-dp-banner-btn:hover {
+  background: rgba(96, 165, 250, 0.4) !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-banner-btn {
+  background: rgba(37, 99, 235, 0.14) !important;
+  color: #1d4ed8 !important;
+}
+.nopic-dp-banner-x {
+  width: 22px !important;
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  opacity: 0.6;
+}
+.nopic-dp-banner-x:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 四角缩放柄：只做角、不做边，避免误触。
+   放在内侧（inset 0）而不是外侧，否则会被 .nopic-dp-win 的 overflow:hidden 裁掉 */
+.nopic-dp-grip {
+  position: absolute !important;
+  width: 16px !important;
+  height: 16px !important;
+  z-index: 3 !important;
+  background: transparent !important;
+}
+.nopic-dp-grip[data-dir="nw"] {
+  left: 0 !important;
+  top: 0 !important;
+  cursor: nwse-resize !important;
+}
+.nopic-dp-grip[data-dir="ne"] {
+  right: 0 !important;
+  top: 0 !important;
+  cursor: nesw-resize !important;
+}
+.nopic-dp-grip[data-dir="sw"] {
+  left: 0 !important;
+  bottom: 0 !important;
+  cursor: nesw-resize !important;
+}
+.nopic-dp-grip[data-dir="se"] {
+  right: 0 !important;
+  bottom: 0 !important;
+  cursor: nwse-resize !important;
+}
+/* 右下角给一点视觉提示，其它三角保持隐形 */
+.nopic-dp-grip[data-dir="se"]::after {
+  content: "" !important;
+  position: absolute !important;
+  right: 4px !important;
+  bottom: 4px !important;
+  width: 7px !important;
+  height: 7px !important;
+  border-right: 2px solid rgba(255, 255, 255, 0.35) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.35) !important;
+  border-radius: 0 0 3px 0 !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-grip[data-dir="se"]::after {
+  border-right-color: rgba(15, 23, 42, 0.28) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.28) !important;
+}
+
+/* 关闭动画期间禁用交互（配合 JS 的 nopic-dp-leaving） */
+.nopic-dp-win.nopic-dp-leaving .nopic-dp-frame {
+  pointer-events: none !important;
+}
+
+/* ============================================================
+   性能模式（<html class="nopic-perf">，由 JS 在「图片模糊特效」关闭时挂上）
+   目标：关掉一切模糊；原本「半透明 + 毛玻璃」的面板改成 95% 不透明的清爽样式；
+        去掉该类即自动恢复原有样式（本段不改任何非性能模式下的规则）。
+   注意：这里必须用真实的 ID 选择器（面板都是 #nopic-xxx，不是 .nopic-xxx），
+        而且 data-nopic-theme 和 nopic-perf 都挂在 <html> 上，
+        浅色变体要写成 html.nopic-perf[data-nopic-theme="light"]（不能用后代选择器）。
+   ============================================================ */
+
+/* 1) 全局屏蔽毛玻璃（含页面自身的，性能模式的本意就是省 GPU） */
+html.nopic-perf *,
+html.nopic-perf *::before,
+html.nopic-perf *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 2) 扩展自己的各类面板：背景提到 95% 不透明，去模糊后依旧清晰可读 */
+html.nopic-perf #nopic-menu,
+html.nopic-perf #nopic-widget,
+html.nopic-perf #nopic-settings-submenu,
+html.nopic-perf #nopic-display-submenu,
+html.nopic-perf #nopic-disguise-submenu,
+html.nopic-perf #nopic-tabdisguise-submenu,
+html.nopic-perf #nopic-mask-submenu,
+html.nopic-perf #nopic-privacylock-submenu,
+html.nopic-perf #nopic-textreplace-submenu,
+html.nopic-perf #nopic-autoclicker-submenu,
+html.nopic-perf #nopic-pageedit-submenu,
+html.nopic-perf #nopic-pagemonitor-submenu,
+html.nopic-perf #nopic-elemkill-submenu,
+html.nopic-perf #nopic-keymap-submenu,
+html.nopic-perf #nopic-quicktext-submenu,
+html.nopic-perf #nopic-datacollect-submenu,
+html.nopic-perf #nopic-randomqa-submenu,
+html.nopic-perf #nopic-about-modal,
+html.nopic-perf #nopic-welcome-modal,
+html.nopic-perf #nopic-update-modal,
+html.nopic-perf #nopic-privacy-log-panel,
+html.nopic-perf #nopic-autoclicker-status-panel,
+html.nopic-perf #nopic-parade-header,
+html.nopic-perf #nopic-elemkill-dialog,
+html.nopic-perf #nopic-keymap-dialog,
+html.nopic-perf #nopic-dc-export-menu,
+html.nopic-perf #nopic-permission-request-tip,
+html.nopic-perf .nopic-modal-popup,
+html.nopic-perf .nopic-parade-filter-panel,
+html.nopic-perf .nopic-custom-select-dropdown,
+html.nopic-perf .nopic-dl-bar,
+html.nopic-perf .nopic-submenu-glass,
+html.nopic-perf .nopic-disguise-section,
+html.nopic-perf .nopic-notification-toast,
+html.nopic-perf .nopic-pick-dialog,
+html.nopic-perf .nopic-pick-tip,
+html.nopic-perf .nopic-autorecord-box,
+html.nopic-perf .nopic-pin-dock,
+html.nopic-perf .nopic-confirm-box,
+html.nopic-perf .nopic-export-box,
+html.nopic-perf .nopic-cell-del-box,
+html.nopic-perf .nopic-privacy-lock-wrapper,
+html.nopic-perf #nopic-autoclicker-input-overlay > div,
+html.nopic-perf #nopic-autoclicker-shortcut-overlay > div,
+html.nopic-perf #nopic-autoclicker-script-overlay > div,
+html.nopic-perf #nopic-datacollect-submenu #nopic-dc-thead {
+  background: rgba(18, 20, 28, 0.95) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 浅色主题下的同一批面板 */
+html.nopic-perf[data-nopic-theme="light"] #nopic-menu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-widget,
+html.nopic-perf[data-nopic-theme="light"] #nopic-settings-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-display-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-disguise-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-tabdisguise-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-mask-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-privacylock-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-textreplace-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-autoclicker-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-pageedit-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-pagemonitor-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-elemkill-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-keymap-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-quicktext-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-datacollect-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-randomqa-submenu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-about-modal,
+html.nopic-perf[data-nopic-theme="light"] #nopic-welcome-modal,
+html.nopic-perf[data-nopic-theme="light"] #nopic-update-modal,
+html.nopic-perf[data-nopic-theme="light"] #nopic-privacy-log-panel,
+html.nopic-perf[data-nopic-theme="light"] #nopic-autoclicker-status-panel,
+html.nopic-perf[data-nopic-theme="light"] #nopic-parade-header,
+html.nopic-perf[data-nopic-theme="light"] #nopic-elemkill-dialog,
+html.nopic-perf[data-nopic-theme="light"] #nopic-keymap-dialog,
+html.nopic-perf[data-nopic-theme="light"] #nopic-dc-export-menu,
+html.nopic-perf[data-nopic-theme="light"] #nopic-permission-request-tip,
+html.nopic-perf[data-nopic-theme="light"] .nopic-modal-popup,
+html.nopic-perf[data-nopic-theme="light"] .nopic-parade-filter-panel,
+html.nopic-perf[data-nopic-theme="light"] .nopic-custom-select-dropdown,
+html.nopic-perf[data-nopic-theme="light"] .nopic-dl-bar,
+html.nopic-perf[data-nopic-theme="light"] .nopic-submenu-glass,
+html.nopic-perf[data-nopic-theme="light"] .nopic-disguise-section,
+html.nopic-perf[data-nopic-theme="light"] .nopic-notification-toast,
+html.nopic-perf[data-nopic-theme="light"] .nopic-pick-dialog,
+html.nopic-perf[data-nopic-theme="light"] .nopic-pick-tip,
+html.nopic-perf[data-nopic-theme="light"] .nopic-autorecord-box,
+html.nopic-perf[data-nopic-theme="light"] .nopic-pin-dock,
+html.nopic-perf[data-nopic-theme="light"] .nopic-confirm-box,
+html.nopic-perf[data-nopic-theme="light"] .nopic-export-box,
+html.nopic-perf[data-nopic-theme="light"] .nopic-cell-del-box,
+html.nopic-perf[data-nopic-theme="light"] .nopic-privacy-lock-wrapper,
+html.nopic-perf[data-nopic-theme="light"] #nopic-autoclicker-input-overlay > div,
+html.nopic-perf[data-nopic-theme="light"] #nopic-autoclicker-shortcut-overlay > div,
+html.nopic-perf[data-nopic-theme="light"] #nopic-autoclicker-script-overlay > div,
+html.nopic-perf[data-nopic-theme="light"] #nopic-datacollect-submenu #nopic-dc-thead {
+  background: rgba(246, 247, 251, 0.95) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 3) 全屏遮罩类元素只去模糊，不动透明度（它们本来就是「压暗背景」用的） */
+html.nopic-perf #nopic-export-overlay,
+html.nopic-perf #nopic-cell-del-overlay,
+html.nopic-perf #nopic-confirm-modal,
+html.nopic-perf #nopic-privacy-lock-overlay,
+html.nopic-perf #nopic-autoclicker-input-overlay,
+html.nopic-perf #nopic-autoclicker-shortcut-overlay,
+html.nopic-perf #nopic-autoclicker-script-overlay,
+html.nopic-perf #nopic-parade-overlay,
+html.nopic-perf #nopic-mask-draw-overlay,
+html.nopic-perf .nopic-autorecord-overlay,
+html.nopic-perf .nopic-pick-backdrop,
+html.nopic-perf .nopic-dc-anim-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 4) 拖拽速览的预览窗 / 幽灵态：同样去模糊并提至 95% 不透明
+      （JS 也会加 .nopic-dp-noblur，这里再兜一层，防止漏挂） */
+html.nopic-perf .nopic-dp-win,
+html.nopic-perf .nopic-dp-win.nopic-dp-ghosting {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(18, 20, 28, 0.95) !important;
+}
+html.nopic-perf .nopic-dp-win[data-dp-theme="light"],
+html.nopic-perf .nopic-dp-win[data-dp-theme="light"].nopic-dp-ghosting {
+  background: rgba(246, 247, 251, 0.95) !important;
+}
+
+/* ============================================================
+   拖拽速览 · 四周变暗遮罩 + 标题栏透明度滑块
+   ============================================================ */
+.nopic-dp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483500;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+}
+.nopic-dp-overlay.nopic-dp-show {
+  display: block;
+}
+
+/* 未钉住预览窗存在时，锁死外层页面滚动，避免 iframe 内滚轮链到父页面 */
+html.nopic-dp-page-locked,
+html.nopic-dp-page-locked body {
+  overflow: hidden !important;
+}
+
+/* 标题栏内的透明度滑块（在钉住键左侧，和三个按钮同一行） */
+.nopic-dp-opacity {
+  flex: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  height: 22px !important;
+  margin: 0 4px 0 0 !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-opacity {
+  background: rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+.nopic-dp-opacity-slider {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 62px !important;
+  height: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border: 0 !important;
+  border-radius: 3px !important;
+  outline: none !important;
+  cursor: pointer !important;
+  vertical-align: middle !important;
+}
+.nopic-dp-win[data-dp-theme="light"] .nopic-dp-opacity-slider {
+  background: rgba(15, 23, 42, 0.22) !important;
+}
+.nopic-dp-opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #60a5fa;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.nopic-dp-opacity-slider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #60a5fa;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+.nopic-dp-opacity-val {
+  flex: none !important;
+  min-width: 27px !important;
+  text-align: right !important;
+  font-size: 10px !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1 !important;
+  color: inherit !important;
+  opacity: 0.62;
+  user-select: none !important;
+}
+

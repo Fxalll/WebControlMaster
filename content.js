@@ -7954,6 +7954,106 @@ function _nopicBootMain() {
   }
 
   // ============================================================
+  // ===== 全局设置：性能模式 / 图片模糊特效（由扩展 popup 控制，对所有网站生效） =====
+  // 搜索关键词：性能模式 / 图片模糊特效
+  // 关闭后：隐藏 / 显示图片时不再有 blur 过渡，只保留淡入淡出，其它行为不变。
+  // 存储：chrome.storage.local.nopic_img_blur_effect（缺省视为 true）
+  // 生效方式：给 <html> 加 / 去 .nopic-no-img-blur（见 content.css），
+  //           同时让动态模糊样式输出 filter:none。
+  // ============================================================
+  const NOPIC_IMG_BLUR_KEY = "nopic_img_blur_effect";
+  let nopicImgBlurEffect = true;
+
+  function nopicApplyImgBlurEffect() {
+    try {
+      document.documentElement.classList.toggle(
+        "nopic-no-img-blur",
+        !nopicImgBlurEffect,
+      );
+      // 性能模式（= 图片模糊特效关闭）：顺手在 <html> 上挂一个全局类，
+      // 由 content.css 的 html.nopic-perf 把所有模糊关掉、半透明面板改成
+      // 95% 不透明的清爽样式；关闭性能模式时去掉这个类即恢复原有样式。
+      document.documentElement.classList.toggle(
+        "nopic-perf",
+        !nopicImgBlurEffect,
+      );
+    } catch (e) {}
+    // 动态样式（若已创建）同步重写，保证立即生效
+    try {
+      _nopicWriteBlurStyle();
+    } catch (e) {}
+  }
+
+  function nopicSetImgBlurEffect(value) {
+    const next = value === undefined || value === null ? true : !!value;
+    if (next === nopicImgBlurEffect) {
+      nopicApplyImgBlurEffect();
+      return;
+    }
+    nopicImgBlurEffect = next;
+    nopicApplyImgBlurEffect();
+  }
+
+  // 先用本地镜像同步取一次，避免刷新瞬间闪一下模糊
+  try {
+    const mirror = localStorage.getItem("_nopic_ext_" + NOPIC_IMG_BLUR_KEY);
+    if (mirror !== null) nopicImgBlurEffect = JSON.parse(mirror) !== false;
+  } catch (e) {}
+  nopicApplyImgBlurEffect();
+
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    try {
+      chrome.storage.local.get(NOPIC_IMG_BLUR_KEY, (items) => {
+        nopicSetImgBlurEffect(items && items[NOPIC_IMG_BLUR_KEY]);
+      });
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local" || !changes || !changes[NOPIC_IMG_BLUR_KEY])
+          return;
+        nopicSetImgBlurEffect(changes[NOPIC_IMG_BLUR_KEY].newValue);
+      });
+    } catch (e) {}
+  }
+
+  // ===== 工具栏角标：把「本页隐藏图片数量」上报到后台 =====
+  // 后台按 tabId 记录，并在激活标签页变化时把对应数字写到扩展角标上。
+  function nopicGetHiddenCount() {
+    let c = 0;
+    try {
+      imageControls.forEach(function (btn, el) {
+        if (el && el.isConnected && el.dataset.isHidden === "true") c++;
+      });
+    } catch (e) {}
+    return c;
+  }
+  function nopicReportBadge(count) {
+    if (count == null) count = nopicGetHiddenCount();
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.id
+      ) {
+        chrome.runtime.sendMessage(
+          { type: "nopic-badge-set", count: count },
+          function () {
+            void chrome.runtime.lastError;
+          },
+        );
+      }
+    } catch (e) {}
+  }
+  try {
+    if (typeof chrome !== "undefined" && chrome.runtime) {
+      setInterval(function () {
+        nopicReportBadge();
+      }, 1500);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) nopicReportBadge();
+      });
+    }
+  } catch (e) {}
+
+  // ============================================================
   // ===== 智能模糊调节（新增） =====
   // 搜索关键词：智能模糊调节
   // ============================================================
@@ -8010,15 +8110,7 @@ function _nopicBootMain() {
 
     if (newBlur !== _nopicBlurLevel) {
       _nopicBlurLevel = newBlur;
-      var styleEl = document.getElementById("nopic-dynamic-blur-style");
-      if (styleEl) {
-        styleEl.textContent =
-          ".nopic-hidden{filter:blur(" +
-          _nopicBlurLevel +
-          "px)!important;opacity:0!important;pointer-events:none!important;}.nopic-animation-disabled .nopic-hidden{filter:blur(" +
-          _nopicBlurLevel +
-          "px)!important;opacity:0!important;}";
-      }
+      _nopicWriteBlurStyle();
     }
 
     // ===== 根据隐藏图片数量控制动画 =====
@@ -8060,6 +8152,22 @@ function _nopicBootMain() {
     _nopicBlurThrottle = false;
   }
 
+  // 把当前模糊等级写进动态样式；关闭「图片模糊特效」时输出 filter:none
+  function _nopicWriteBlurStyle() {
+    var styleEl = document.getElementById("nopic-dynamic-blur-style");
+    if (!styleEl) return;
+    var filterValue = nopicImgBlurEffect
+      ? "blur(" + _nopicBlurLevel + "px)"
+      : "none";
+    styleEl.textContent =
+      ".nopic-hidden{filter:" +
+      filterValue +
+      "!important;opacity:0!important;pointer-events:none!important;}" +
+      ".nopic-animation-disabled .nopic-hidden{filter:" +
+      filterValue +
+      "!important;opacity:0!important;}";
+  }
+
   function _nopicStartBlurAdjustment() {
     var styleEl = document.getElementById("nopic-dynamic-blur-style");
     if (!styleEl) {
@@ -8068,6 +8176,7 @@ function _nopicBootMain() {
       document.head.appendChild(styleEl);
     }
     _nopicBlurLevel = 10;
+    _nopicWriteBlurStyle();
 
     if (_nopicBlurCheckTimer) {
       clearInterval(_nopicBlurCheckTimer);
@@ -9107,22 +9216,14 @@ function _nopicBootMain() {
       } catch (e) {}
     } catch (e) {}
   }
-  if (
-    typeof chrome !== "undefined" &&
-    chrome.storage &&
-    chrome.storage.local
-  ) {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     try {
       chrome.storage.local.get("nopic_ui_mode", (items) => {
-        nopicUiMode = nopicNormalizeUiMode(
-          items && items["nopic_ui_mode"],
-        );
+        nopicUiMode = nopicNormalizeUiMode(items && items["nopic_ui_mode"]);
       });
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== "local" || !changes || !changes["nopic_ui_mode"]) return;
-        nopicUiMode = nopicNormalizeUiMode(
-          changes["nopic_ui_mode"].newValue,
-        );
+        nopicUiMode = nopicNormalizeUiMode(changes["nopic_ui_mode"].newValue);
         // 切换模式后立即收敛当前已展开的菜单，避免残留
         nopicCloseAllMenusForMode();
       });
@@ -10858,7 +10959,10 @@ function _nopicBootMain() {
 
   let _nopicThemeTimer = null;
 
-  // 把生效主题同步到 chrome.storage.local，扩展 popup 据此切换深浅色
+  // 把生效主题同步给扩展 popup。
+  // 说明：nopic_theme_effective 是所有标签页共用的单键，谁最后写谁赢，
+  // 所以它只作为「popup 打开时 content script 无响应」的兜底；
+  // popup 真正的主题来源是 nopic-get-theme 查询 + 下面这条变化广播。
   function nopicSyncThemeToStorage(theme) {
     try {
       if (
@@ -10869,7 +10973,38 @@ function _nopicBootMain() {
         chrome.storage.local.set({ nopic_theme_effective: theme });
       }
     } catch (e) {}
+    // 主动广播给已打开的 popup（popup 只接受来自自己那个标签页的广播）
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.id
+      ) {
+        chrome.runtime.sendMessage(
+          { type: "nopic-theme-changed", theme: theme },
+          function () {
+            // popup 没开着会报 "Receiving end does not exist"，吞掉即可
+            void chrome.runtime.lastError;
+          },
+        );
+      }
+    } catch (e) {}
   }
+
+  // 当前生效主题（供 popup 查询）：以 <html data-nopic-theme> 为唯一事实来源；
+  // 若主题模块尚未初始化（popup 开得太早），就地现算一次，避免回落到错误的深色
+  window.__nopicGetEffectiveTheme = function () {
+    try {
+      const t = document.documentElement.getAttribute("data-nopic-theme");
+      if (t === "light" || t === "dark") return t;
+    } catch (e) {}
+    try {
+      const pref = getThemePreference();
+      if (pref === "light" || pref === "dark") return pref;
+      return computeBackgroundBrightness() >= 0.7 ? "light" : "dark";
+    } catch (e) {}
+    return "dark";
+  };
 
   function applyTheme(mode) {
     // 清除旧定时器
@@ -11850,16 +11985,16 @@ function _nopicBootMain() {
   <div style="display: flex; align-items: flex-start; gap: 10px;">
     <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
     <div>
-      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">中键放大与钉图</div>
-      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片即可放大查看；放大时可将图片「钉」在屏幕上固定，方便对照浏览</div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更便利的图片查看</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">鼠标中键点击图片即可放大查看，拖动图片任一角可自由旋转，在空白处拖动可三维翻转图片</div>
     </div>
   </div>
   
   <div style="display: flex; align-items: flex-start; gap: 10px;">
     <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
     <div>
-      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">旋转和翻转图片</div>
-      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">放大模式下，拖动图片任一角可自由旋转；在空白处拖动可三维翻转图片查看不同角度</div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">更快捷的拖拽速览</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">拖动文字或链接可快速预览相关页面，该功能需要在工具栏的扩展图标弹窗打开「拖动速览」</div>
     </div>
   </div>
 
@@ -11878,12 +12013,17 @@ function _nopicBootMain() {
       <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">指示灯颜色含义</div>
       <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.7;">
         <span style="color: #ef4444;">●</span> 红色：图片隐藏功能已关闭<br>
+        <span style="color: #fbbf24;">●</span> 黄色：图片隐藏已开启，动画已被禁用<br>
+
         <span style="color: #4ade80;">●</span> 绿色：图片隐藏已开启，动画正常<br>
-        <span style="color: #fbbf24;">●</span> 黄色：动画已被禁用（手动开启 或 隐藏图片超过 <strong style="color: #fbbf24;">80</strong> 张自动禁用）
       </div>
     </div>
   </div>
 </div>
+
+  <div style="font-size: 11px; color: rgba(251,191,36,0.92); margin-top: 12px; line-height: 1.6; padding: 8px 10px; background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); border-radius: 8px;">
+    ⚠ 安装插件后，请刷新已打开的标签页，新功能才会正常生效。
+  </div>
 
 <div class="nopic-welcome-divider" style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
   <button id="nopic-welcome-start" style="flex: 1; padding: 8px 0; background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; color: #60a5fa; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">开始使用</button>
@@ -11891,6 +12031,73 @@ function _nopicBootMain() {
 `;
 
   document.documentElement.appendChild(welcomeModal);
+
+  // ===== 更新播报弹窗（老用户更新后可见，介绍「拖动速览」新功能） =====
+  const updateModal = document.createElement("div");
+  updateModal.id = "nopic-update-modal";
+  updateModal.style.cssText = `
+  display: none !important;
+  position: fixed;
+  z-index: 2147483681;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: transparent;
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 28px 32px 24px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  max-width: 420px;
+  width: 90%;
+  text-align: left;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.95) translateY(20px);
+`;
+
+  updateModal.innerHTML = `
+<div style="display:flex; align-items:center; gap:8px; margin-bottom: 4px;">
+  <div style="font-size: 20px; font-weight: 700; color: #60a5fa;">新增功能</div>
+  <span style="font-size: 10px; color: #60a5fa; background: rgba(96,165,250,0.16); border: 1px solid rgba(96,165,250,0.32); border-radius: 999px; padding: 1px 8px; letter-spacing: 0.3px;">拖动速览</span>
+</div>
+<div class="nopic-welcome-sub" style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 16px;">网页控制大师 · 这次更新带来了什么</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px;">
+  <div style="display: flex; align-items: flex-start; gap: 10px;">
+    <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">1</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">什么是拖动速览</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">选中网页里的文字拖动，或直接把链接拖一下，松手即在原地弹出预览窗，不用跳走就能看内容。</div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: flex-start; gap: 10px;">
+    <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">2</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">怎么开启</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">点击浏览器工具栏上的扩展图标打开弹窗，把「拖动速览」开关打开即可（新版本默认是关闭的）。</div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: flex-start; gap: 10px;">
+    <span style="background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px;">3</span>
+    <div>
+      <div class="nopic-welcome-title" style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9);">一个小技巧</div>
+      <div class="nopic-welcome-desc" style="font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5;">拖动途中左右快速摇晃鼠标，可以立刻撤销这次预览。</div>
+    </div>
+  </div>
+</div>
+
+<div class="nopic-welcome-divider" style="display: flex; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+  <button id="nopic-update-start" style="flex: 1; padding: 8px 0; background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; color: #60a5fa; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;">开始体验</button>
+</div>
+`;
+
+  document.documentElement.appendChild(updateModal);
 
   // ===== 关于弹窗 =====
   const aboutModal = document.createElement("div");
@@ -12013,15 +12220,19 @@ function _nopicBootMain() {
     </div>
   </div>
 `;
+  // 注意：这里不要再写 display，否则内联 !important 会锁死显隐。
+  // 显隐统一由 content.css 的 #nopic-about-modal / .nopic-modal-open 控制。
   aboutModal.style.cssText =
-    "display:none !important;position:fixed;z-index:2147483680;pointer-events:none;opacity:0;transform:scale(0.95);transition:opacity 0.3s ease,transform 0.3s ease;background:rgba(20,20,25,0.95);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,0.5);color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;text-align:center;";
+    "position:fixed;z-index:2147483680;pointer-events:none;opacity:0;transform:scale(0.95);transition:opacity 0.3s ease,transform 0.3s ease;background:rgba(20,20,25,0.95);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,0.5);color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:320px;text-align:center;";
   document.documentElement.appendChild(aboutModal);
 
   const PAY_IMG =
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////////////////////////////////////2wBDAVVaWnhpeOuCguv/////////////////////////////////////////////////////////////////////////wAARCAFpAWIDASIAAhEBAxEB/8QAGQAAAwEBAQAAAAAAAAAAAAAAAAMEAgUB/8QAORAAAgIBAQMKBAQGAwEBAAAAAQIAAxEEEiExExQzQVFSYXGBkSIycqE0U7HBI0JiktHhJEOCY/D/xAAXAQEBAQEAAAAAAAAAAAAAAAAAAQID/8QAGhEBAAMBAQEAAAAAAAAAAAAAAAECETESUf/aAAwDAQACEQMRAD8AshCLe6us4dsHygMhE86p7/2P+Ic6p7/2P+IDoRPOqe/9j/iHOqe/9j/iA6ETzqnv/Y/4hzqnv/YwHQmK7ksyEOcT17FrALnGYGoRddyWNhGyZp7FrGXOBA1CJ51T3/sf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";
 
   function showAboutModal() {
-    aboutModal.style.display = "block";
+    // display 由 .nopic-modal-open 控制（CSS 里是 display:flex !important，
+    // 内联样式压不住它），关闭时移除该类才能真正 display:none
+    aboutModal.classList.add("nopic-modal-open");
     aboutModal.style.visibility = "visible";
     aboutModal.style.pointerEvents = "auto";
 
@@ -12072,7 +12283,7 @@ function _nopicBootMain() {
     aboutModal.style.transform = "translate(-50%, 0) scale(0.95)";
     aboutModal.style.opacity = "0";
     setTimeout(function () {
-      aboutModal.style.display = "none";
+      aboutModal.classList.remove("nopic-modal-open");
       // ★★★ 关键：不要清除 transition，保留它 ★★★
     }, 400);
   }
@@ -12810,17 +13021,13 @@ function _nopicBootMain() {
     // 同层时按 DOM 顺序决定谁在上 —— 首次显示时移到末尾确保盖在一级菜单之上。
     // 已显示期间（跟随循环每帧重定位）【不再移动 DOM】，否则玻璃壳每帧被
     // appendChild 搬移，会造成滚动/点击等交互不稳定（显示内容菜单无法滚动操作的回归）。
-    const isFirstShow =
-      submenu.style.display !== "flex" || !!wrap._nopicHiding;
+    const isFirstShow = submenu.style.display !== "flex" || !!wrap._nopicHiding;
     if (wrap._nopicHiding) {
       wrap._nopicHiding = false;
       clearTimeout(wrap._nopicHideTimer);
       wrap._nopicHideTimer = null;
     }
-    if (
-      isFirstShow ||
-      wrap.parentElement !== document.documentElement
-    ) {
+    if (isFirstShow || wrap.parentElement !== document.documentElement) {
       document.documentElement.appendChild(wrap);
     }
     submenu.style.display = "flex"; // 恢复内容显示（隐藏时被置为 none）
@@ -12881,9 +13088,35 @@ function _nopicBootMain() {
   //   左侧场景：菜单右边缘贴住指示灯左边缘（同步 syncMenu 的 right = innerWidth - wRect.left）。
   // 说明：nopicPlaceSubmenu 内部还有 4px gap，这里把锚点各让出 4px 抵消，
   //   右侧 right + 6 = 距 10px；左侧 left + 4 = 距 0px。
+  // 一级菜单高度：#nopic-menu 未展开时是 display:none（量不到高度），
+  // 这里做一次「隐形撑开」测量并缓存，保证简洁模式下二级菜单的垂直位置
+  // 与改成 display:none 之前完全一致。
+  let _nopicMenuHeightCache = 0;
+  function nopicMenuHeight() {
+    if (menu.offsetHeight) {
+      _nopicMenuHeightCache = menu.offsetHeight;
+      return _nopicMenuHeightCache;
+    }
+    if (_nopicMenuHeightCache) return _nopicMenuHeightCache;
+    const prevDisplay = menu.style.display;
+    const prevVisibility = menu.style.visibility;
+    const prevTransition = menu.style.transition;
+    try {
+      menu.style.transition = "none";
+      menu.style.visibility = "hidden";
+      menu.style.display = "flex";
+      const h = menu.offsetHeight;
+      if (h) _nopicMenuHeightCache = h;
+    } catch (e) {}
+    menu.style.display = prevDisplay;
+    menu.style.visibility = prevVisibility;
+    menu.style.transition = prevTransition;
+    return _nopicMenuHeightCache || 200;
+  }
+
   function nopicSimpleAnchor() {
     const wRect = widget.getBoundingClientRect();
-    const mHeight = menu.offsetHeight || 200;
+    const mHeight = nopicMenuHeight();
     return {
       left: wRect.left + 4,
       right: wRect.right + 6,
@@ -12893,7 +13126,9 @@ function _nopicBootMain() {
 
   const showSettingsSubmenu = () => {
     const anchor =
-      nopicUiMode === "simple" ? nopicSimpleAnchor() : menu.getBoundingClientRect();
+      nopicUiMode === "simple"
+        ? nopicSimpleAnchor()
+        : menu.getBoundingClientRect();
     nopicPlaceSubmenu(settingsSubmenu, anchor);
   };
 
@@ -19648,7 +19883,7 @@ function _nopicBootMain() {
     if (menu.classList.contains("active")) {
       const wRect = widget.getBoundingClientRect();
       const mWidth = 220;
-      const mHeight = menu.offsetHeight || 200;
+      const mHeight = nopicMenuHeight();
 
       // 判断菜单应该显示在左侧还是右侧
       const showOnRight = wRect.right + 10 + mWidth < window.innerWidth;
@@ -26884,9 +27119,47 @@ function _nopicBootMain() {
     return false;
   }
 
-  // ===== 首次打开检测（全局共用，只弹一次） =====
+  // ===== 首次打开 / 版本更新检测（全局共用，各只弹一次） =====
+  // 新增状态：避免「欢迎使用」和「新功能介绍」同时弹出。
+  //   _nopicWelcomeChecked          —— 本页只检测一次（脚本会调两次，第二次直接跳过）
+  //   _nopicPendingUpdateAfterWelcome —— 欢迎弹窗出现后，新功能介绍要等它被关掉再弹
+  //   _nopicWelcomeDecided          —— 存储回调是否已给出「是否要播报新功能」的结论
+  //   _nopicWelcomeDismissed        —— 欢迎弹窗是否已被用户关掉
+  //   _nopicUpdateShown             —— 新功能介绍是否已经弹过（防止重复）
+  var _nopicWelcomeChecked = false;
+  var _nopicPendingUpdateAfterWelcome = false;
+  var _nopicWelcomeDecided = false;
+  var _nopicWelcomeDismissed = false;
+  var _nopicUpdateShown = false;
+
+  function maybeShowUpdateAfterWelcome() {
+    if (_nopicUpdateShown) return;
+    if (
+      _nopicPendingUpdateAfterWelcome &&
+      _nopicWelcomeDecided &&
+      _nopicWelcomeDismissed
+    ) {
+      _nopicUpdateShown = true;
+      _nopicPendingUpdateAfterWelcome = false;
+      showUpdateModal();
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
+        chrome.storage.local.set({ nopic_dp_feature_announced: true });
+      }
+    }
+  }
+
   function checkFirstTimeAndShowWelcome() {
-    var storageKey = "nopic_welcome_shown_global";
+    // 本页只检测一次：脚本会在顶部和 _nopicRunWhenReady 里各调一次，
+    // 第二次必须跳过，否则会同时把「欢迎」和「新功能介绍」都弹出来。
+    if (_nopicWelcomeChecked) return;
+    _nopicWelcomeChecked = true;
+
+    var welcomeKey = "nopic_welcome_shown_global";
+    var updateKey = "nopic_dp_feature_announced";
 
     // 直接使用 chrome.storage.local（扩展全局共享）
     if (
@@ -26894,10 +27167,21 @@ function _nopicBootMain() {
       chrome.storage &&
       chrome.storage.local
     ) {
-      chrome.storage.local.get([storageKey], function (result) {
-        if (result[storageKey] !== true) {
+      chrome.storage.local.get([welcomeKey, updateKey], function (result) {
+        if (result[welcomeKey] !== true) {
+          // 新用户 → 欢迎弹窗
           showWelcomeModal();
-          chrome.storage.local.set({ [storageKey]: true });
+          chrome.storage.local.set({ [welcomeKey]: true });
+          // 新功能介绍先挂着：等欢迎弹窗被点掉后再弹，不和新用户欢迎同时出现
+          _nopicPendingUpdateAfterWelcome = result[updateKey] !== true;
+          _nopicWelcomeDecided = true;
+          // 防抖：万一用户在存储回调返回前就关掉了欢迎弹窗，这里补播
+          maybeShowUpdateAfterWelcome();
+        } else if (result[updateKey] !== true) {
+          // 老用户（已看过欢迎）→ 直接播报「拖动速览」新功能，仅一次
+          _nopicUpdateShown = true;
+          showUpdateModal();
+          chrome.storage.local.set({ [updateKey]: true });
         }
       });
       return;
@@ -26925,6 +27209,35 @@ function _nopicBootMain() {
   function hideWelcomeModal() {
     var modal = document.getElementById("nopic-welcome-modal");
     if (!modal) return;
+    _nopicWelcomeDismissed = true;
+    modal.style.pointerEvents = "none";
+    modal.style.opacity = "0";
+    modal.style.transform =
+      "translate(-50%, -50%) scale(0.95) translateY(20px)";
+    setTimeout(function () {
+      modal.style.display = "none";
+      // 欢迎弹窗淡出后，若还有「新功能介绍」待播报，此刻再弹出来，
+      // 实现「先欢迎、后新功能」，而不是两个弹窗叠在一起。
+      maybeShowUpdateAfterWelcome();
+    }, 400);
+  }
+
+  function showUpdateModal() {
+    var modal = document.getElementById("nopic-update-modal");
+    if (!modal) return;
+    modal.style.display = "block";
+    modal.style.visibility = "visible";
+    modal.style.pointerEvents = "auto";
+    void modal.offsetHeight;
+    modal.style.transition =
+      "opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+    modal.style.opacity = "1";
+    modal.style.transform = "translate(-50%, -50%) scale(1) translateY(0)";
+  }
+
+  function hideUpdateModal() {
+    var modal = document.getElementById("nopic-update-modal");
+    if (!modal) return;
     modal.style.pointerEvents = "none";
     modal.style.opacity = "0";
     modal.style.transform =
@@ -26948,6 +27261,13 @@ function _nopicBootMain() {
     skipBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       hideWelcomeModal();
+    });
+  }
+  var updateStartBtn = document.getElementById("nopic-update-start");
+  if (updateStartBtn) {
+    updateStartBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      hideUpdateModal();
     });
   }
 
@@ -31013,6 +31333,1492 @@ function _nopicBootMain() {
     return true;
   };
 
+  // ============================================================
+  // ===== 拖动速览（全局设置，由扩展 popup 控制） =====
+  // 搜索关键词：拖动速览 / dragpreview / nopic-dp
+  //
+  // 交互：
+  //   选中文字后拖动 → 松手处弹出「搜索结果」预览窗（搜索引擎在 popup 里选）
+  //   拖动一个超链接 → 松手处弹出「该链接」的预览窗
+  // 拖动途中鼠标下方先出现一个由小到大（贝塞尔）的毛玻璃圆角矩形（下称「幽灵」），
+  // 幽灵的最终尺寸 / 位置与松手后的预览窗完全一致，松手时幽灵原地「长成」预览窗。
+  // 预览窗：标题栏可拖动、四角可缩放、右上角三个按钮（钉住 / 进入 / 关闭）。
+  //   钉住 = position:fixed 钉在视口；默认 position:absolute 跟着页面滚动。
+  // 三个按钮的深浅色跟随 iframe 里那个网页（由 dp-frame.js 探针回报亮度）。
+  //
+  // 存储（chrome.storage.local，全局）：
+  //   nopic_drag_preview_enabled / _engine / _custom
+  // ============================================================
+  const NOPIC_DP_ENABLED_KEY = "nopic_drag_preview_enabled";
+  const NOPIC_DP_ENGINE_KEY = "nopic_drag_preview_engine";
+  const NOPIC_DP_CUSTOM_KEY = "nopic_drag_preview_custom";
+  const NOPIC_DP_ENGINE_URLS = {
+    bing: "https://www.bing.com/search?q=%s",
+    google: "https://www.google.com/search?q=%s",
+    baidu: "https://www.baidu.com/s?wd=%s",
+    ddg: "https://duckduckgo.com/?q=%s",
+    sogou: "https://www.sogou.com/web?query=%s",
+  };
+
+  let nopicDpEnabled = false; // 默认关闭，新用户首次使用不自动开启拖动速览
+  let nopicDpEngine = "bing";
+  let nopicDpCustom = "";
+
+  // 先用本地镜像同步取一次（popup 写 chrome.storage 时会同步镜像到 localStorage）
+  try {
+    const _dpMv = localStorage.getItem("_nopic_ext_" + NOPIC_DP_ENABLED_KEY);
+    if (_dpMv !== null) nopicDpEnabled = JSON.parse(_dpMv) !== false;
+    const _dpMe = localStorage.getItem("_nopic_ext_" + NOPIC_DP_ENGINE_KEY);
+    if (_dpMe !== null) nopicDpEngine = JSON.parse(_dpMe) || "bing";
+    const _dpMc = localStorage.getItem("_nopic_ext_" + NOPIC_DP_CUSTOM_KEY);
+    if (_dpMc !== null) nopicDpCustom = JSON.parse(_dpMc) || "";
+  } catch (e) {}
+
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    try {
+      chrome.storage.local.get(
+        [NOPIC_DP_ENABLED_KEY, NOPIC_DP_ENGINE_KEY, NOPIC_DP_CUSTOM_KEY],
+        function (items) {
+          if (!items) return;
+          if (items[NOPIC_DP_ENABLED_KEY] !== undefined)
+            nopicDpEnabled = !!items[NOPIC_DP_ENABLED_KEY];
+          if (items[NOPIC_DP_ENGINE_KEY])
+            nopicDpEngine = items[NOPIC_DP_ENGINE_KEY];
+          if (items[NOPIC_DP_CUSTOM_KEY] !== undefined)
+            nopicDpCustom = items[NOPIC_DP_CUSTOM_KEY] || "";
+        },
+      );
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== "local" || !changes) return;
+        if (changes[NOPIC_DP_ENABLED_KEY]) {
+          const nv = changes[NOPIC_DP_ENABLED_KEY].newValue;
+          nopicDpEnabled = nv === undefined ? false : !!nv;
+          if (!nopicDpEnabled) nopicDpDiscardGhost();
+        }
+        if (changes[NOPIC_DP_ENGINE_KEY])
+          nopicDpEngine = changes[NOPIC_DP_ENGINE_KEY].newValue || "bing";
+        if (changes[NOPIC_DP_CUSTOM_KEY])
+          nopicDpCustom = changes[NOPIC_DP_CUSTOM_KEY].newValue || "";
+      });
+    } catch (e) {}
+  }
+
+  // ---------- 尺寸与几何 ----------
+  const NOPIC_DP_DEF_W = 800; // 默认宽（尽量宽，看得更全）
+  const NOPIC_DP_DEF_H = 600;
+  const NOPIC_DP_MIN_W = 300;
+  const NOPIC_DP_MIN_H = 220;
+  const NOPIC_DP_GAP = 12; // 与鼠标的间距
+  const NOPIC_DP_EDGE = 8; // 与视口边缘的最小留白
+
+  function nopicDpSize() {
+    return {
+      w: Math.max(
+        NOPIC_DP_MIN_W,
+        Math.min(NOPIC_DP_DEF_W, window.innerWidth - NOPIC_DP_EDGE * 2),
+      ),
+      h: Math.max(
+        NOPIC_DP_MIN_H,
+        Math.min(NOPIC_DP_DEF_H, window.innerHeight - NOPIC_DP_EDGE * 2),
+      ),
+    };
+  }
+
+  // 由鼠标位置推出「原地」矩形：窗口以鼠标为几何中心，再夹进视口
+  function nopicDpRect(x, y, w, h) {
+    let left = x - w / 2;
+    let top = y - h / 2;
+    left = Math.max(
+      NOPIC_DP_EDGE,
+      Math.min(left, window.innerWidth - w - NOPIC_DP_EDGE),
+    );
+    top = Math.max(
+      NOPIC_DP_EDGE,
+      Math.min(top, window.innerHeight - h - NOPIC_DP_EDGE),
+    );
+    return { left: left, top: top, w: w, h: h };
+  }
+
+  // ---------- 小工具 ----------
+  function nopicDpIsOwnUI(node) {
+    let el = node && node.nodeType === 1 ? node : node && node.parentElement;
+    while (el && el !== document.documentElement) {
+      const id = el.id || "";
+      const cls = typeof el.className === "string" ? el.className : "";
+      if (id.indexOf("nopic-") === 0 || /(^|\s)nopic-/.test(cls)) return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  function nopicDpIsEditable(node) {
+    const el = node && node.nodeType === 1 ? node : node && node.parentElement;
+    if (!el || !el.closest) return false;
+    return !!el.closest(
+      'input, textarea, select, [contenteditable=""], [contenteditable="true"]',
+    );
+  }
+
+  function nopicDpBuildSearchUrl(text) {
+    let tpl =
+      nopicDpEngine === "custom"
+        ? String(nopicDpCustom || "").trim()
+        : NOPIC_DP_ENGINE_URLS[nopicDpEngine];
+    if (!tpl || !/^https?:\/\//i.test(tpl)) tpl = NOPIC_DP_ENGINE_URLS.bing;
+    const q = encodeURIComponent(text);
+    return tpl.indexOf("%s") >= 0 ? tpl.replace(/%s/g, q) : tpl + q;
+  }
+
+  function nopicDpHost(url) {
+    try {
+      return new URL(url).host;
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function nopicDpClip(s, n) {
+    s = String(s == null ? "" : s)
+      .replace(/\s+/g, " ")
+      .trim();
+    return s.length > n ? s.slice(0, n) + "…" : s;
+  }
+
+  function nopicDpExtTheme() {
+    try {
+      const t = document.documentElement.getAttribute("data-nopic-theme");
+      if (t === "light" || t === "dark") return t;
+    } catch (e) {}
+    return "dark";
+  }
+
+  // ---------- 幽灵（拖动途中鼠标下方那个圆角矩形） ----------
+  let nopicDpDrag = null; // 本次拖动的上下文
+  let nopicDpGhost = null; // { el, rect }
+
+  function nopicDpDiscardGhost() {
+    if (!nopicDpGhost) return;
+    const el = nopicDpGhost.el;
+    nopicDpGhost = null;
+    if (!el) return;
+    el.style.transition =
+      "transform .18s cubic-bezier(.4,0,1,1), opacity .18s ease";
+    el.style.transformOrigin = el.style.transformOrigin || "center";
+    el.style.transform = "scale(.7)";
+    el.style.opacity = "0";
+    setTimeout(function () {
+      try {
+        el.remove();
+      } catch (e) {}
+    }, 220);
+  }
+
+  function nopicDpGhostLabel(ctx) {
+    if (ctx.kind === "link") {
+      return (
+        '<span class="nopic-dp-ghost-kind">打开</span><span class="nopic-dp-ghost-text">' +
+        nopicDpEscape(nopicDpHost(ctx.url)) +
+        "</span>"
+      );
+    }
+    return (
+      '<span class="nopic-dp-ghost-kind">搜索</span><span class="nopic-dp-ghost-text">' +
+      nopicDpEscape(nopicDpClip(ctx.text, 40)) +
+      "</span>"
+    );
+  }
+
+  function nopicDpEscape(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // 真正预览窗的 DOM（只建不定位 / 不加载）。拖动幽灵和松手预览窗共用它，
+  // 这样「幽灵」就是预览窗本身，松手只是把半透明毛玻璃态「显形」成实心窗，
+  // 而且 iframe 在拖动途中就已经在后台加载了。
+  function nopicDpCreateWin(ctx) {
+    const win = document.createElement("div");
+    // 性能模式（图片模糊特效）关闭 → 预览窗带模糊；开启 → 一并取消模糊（保持清爽）
+    win.className =
+      "nopic-dp-win" + (nopicImgBlurEffect ? "" : " nopic-dp-noblur");
+    const title =
+      ctx.kind === "link"
+        ? nopicDpHost(ctx.url)
+        : "搜索 · " + nopicDpClip(ctx.text, 28);
+    win.innerHTML =
+      '<div class="nopic-dp-ghost-label">' +
+      nopicDpGhostLabel(ctx) +
+      "</div>" +
+      '<div class="nopic-dp-bar">' +
+      '<span class="nopic-dp-dot"></span>' +
+      '<div class="nopic-dp-title" title="' +
+      nopicDpEscape(ctx.url) +
+      '">' +
+      nopicDpEscape(title) +
+      "</div>" +
+      '<div class="nopic-dp-acts">' +
+      // 透明度滑块：放在钉住键左边，和三个按钮同一行（不再用竖向悬浮工具栏）
+      '<div class="nopic-dp-opacity" title="窗口透明度（调整即自动钉住）">' +
+      '<input class="nopic-dp-opacity-slider" type="range" min="20" max="100" value="100" data-tool="opacity">' +
+      '<span class="nopic-dp-opacity-val">100%</span>' +
+      "</div>" +
+      '<button class="nopic-dp-btn nopic-dp-back" type="button" data-act="back" title="返回上一页" aria-label="返回">' +
+      NOPIC_DP_ICON_BACK +
+      "</button>" +
+      '<button class="nopic-dp-btn" type="button" data-act="pin" aria-pressed="false" title="钉住（不随页面滚动）">' +
+      NOPIC_DP_ICON_PIN +
+      "</button>" +
+      '<button class="nopic-dp-btn" type="button" data-act="open" title="在新标签页打开">' +
+      NOPIC_DP_ICON_OPEN +
+      "</button>" +
+      '<button class="nopic-dp-btn" type="button" data-act="close" title="关闭">' +
+      NOPIC_DP_ICON_CLOSE +
+      "</button>" +
+      "</div></div>" +
+      '<div class="nopic-dp-body">' +
+      '<iframe class="nopic-dp-frame" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen" src="about:blank"></iframe>' +
+      '<div class="nopic-dp-mask"></div>' +
+      "</div>" +
+      '<div class="nopic-dp-hint">摇晃以撤销预览</div>' +
+      '<span class="nopic-dp-grip" data-dir="nw"></span>' +
+      '<span class="nopic-dp-grip" data-dir="ne"></span>' +
+      '<span class="nopic-dp-grip" data-dir="sw"></span>' +
+      '<span class="nopic-dp-grip" data-dir="se"></span>';
+    win.setAttribute("data-dp-theme", nopicDpExtTheme());
+
+    win.querySelectorAll(".nopic-dp-btn").forEach(function (btn) {
+      btn.addEventListener("mousedown", function (e) {
+        e.stopPropagation();
+      });
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        // 关闭键和「点空白退出」一样：飞回来源链接的位置再淡出
+        if (act === "close") nopicDpExit(win);
+        else if (act === "pin") nopicDpTogglePin(win);
+        else if (act === "back") nopicDpBack(win);
+        else if (act === "open") {
+          nopicDpOpenInTab(win.dataset.dpUrl || ctx.url, nopicDpWinDocPos(win));
+          nopicDpClose(win);
+        }
+      });
+    });
+    nopicDpBindMove(win);
+    nopicDpBindTools(win);
+    return win;
+  }
+
+  // 真正去加载 iframe（请后台放行 X-Frame-Options / CSP，然后 set src）。
+  // 拖动一开始就会调用它，所以松手时内容往往已经 ready。
+  function nopicDpStartLoad(win, ctx) {
+    const url =
+      ctx.url || (ctx.kind === "text" ? nopicDpBuildSearchUrl(ctx.text) : "");
+    if (!url) return;
+    win.dataset.dpUrl = url;
+    const frame = win.querySelector(".nopic-dp-frame");
+    if (!frame) return;
+    // 重置浏览历史栈：只保留根iframe，清掉上一次可能残留的子层
+    win.querySelectorAll(".nopic-dp-subframe").forEach(function (f) {
+      if (f.parentNode) f.parentNode.removeChild(f);
+    });
+    frame.dataset.dpUrl = url;
+    win._nopicDpStack = [frame];
+    nopicDpUpdateBackState(win);
+    frame.addEventListener("load", function () {
+      if (!frame.src || frame.src === "about:blank") return;
+      nopicDpWatchTheme(win, frame);
+      nopicDpFrameShake(win, true); // 真实内容已加载 → 让子框架转发摇晃手势
+      // 让子框架把「会开新标签的链接」拦截下来，改在当前预览窗内新增 iframe
+      nopicDpEnableLinkCapture(frame);
+      // 兜底：子框架的 dp-frame.js 可能在 load 那一刻还没挂好监听，稍后再发一次
+      setTimeout(function () {
+        if (win.isConnected) {
+          nopicDpFrameShake(win, true);
+          nopicDpEnableLinkCapture(frame);
+        }
+      }, 400);
+    });
+    nopicDpAllowFrame(url, function () {
+      if (!win.isConnected) return;
+      try {
+        frame.src = url;
+      } catch (e) {}
+    });
+  }
+
+  function nopicDpShowGhost(ctx, x, y) {
+    const size = nopicDpSize();
+    const rect = nopicDpRect(x, y, size.w, size.h);
+    if (nopicDpGhost) {
+      nopicDpMoveGhost(rect);
+      return;
+    }
+    // 文字拖动还没算好搜索地址，先补上
+    if (ctx.kind === "text" && !ctx.url)
+      ctx.url = nopicDpBuildSearchUrl(ctx.text);
+
+    const win = nopicDpCreateWin(ctx);
+    win.classList.add("nopic-dp-ghosting");
+    win.style.position = "fixed";
+    win.style.left = rect.left + "px";
+    win.style.top = rect.top + "px";
+    win.style.width = rect.w + "px";
+    win.style.height = rect.h + "px";
+    win.style.zIndex = String(++_nopicDpZ);
+    // 从鼠标所在的那一点长出来
+    const ox = Math.max(0, Math.min(100, ((x - rect.left) / rect.w) * 100));
+    const oy = Math.max(0, Math.min(100, ((y - rect.top) / rect.h) * 100));
+    win.style.transformOrigin = ox + "% " + oy + "%";
+    win.style.transform = "scale(.1)";
+    win.style.opacity = "0";
+    document.documentElement.appendChild(win);
+    nopicDpGhost = { el: win, rect: rect };
+    // 拖动一开始就把 iframe 挂上去加载，松手时就已经 ready
+    nopicDpStartLoad(win, ctx);
+    // 下一帧再放行过渡，保证起始状态被浏览器记录
+    requestAnimationFrame(function () {
+      if (!nopicDpGhost || nopicDpGhost.el !== win) return;
+      win.style.transition =
+        "transform .46s cubic-bezier(.22,1.28,.42,1), opacity .24s ease";
+      win.style.transform = "scale(1)";
+      win.style.opacity = "1";
+    });
+  }
+
+  function nopicDpMoveGhost(rect) {
+    if (!nopicDpGhost) return;
+    const el = nopicDpGhost.el;
+    nopicDpGhost.rect = rect;
+    el.style.left = rect.left + "px";
+    el.style.top = rect.top + "px";
+    el.style.width = rect.w + "px";
+    el.style.height = rect.h + "px";
+  }
+
+  // ---------- iframe 内页面深浅色探针 ----------
+  // 跨域 iframe 读不到内容，所以由注入到子框架里的 dp-frame.js 回报。
+  const nopicDpProbeWaiters = new Map(); // id -> { cb, source }
+  let _nopicDpProbeSeq = 0;
+
+  try {
+    window.addEventListener(
+      "message",
+      function (e) {
+        const d = e && e.data;
+        if (!d || d.__nopicDp !== "probe-result") return;
+        const w = nopicDpProbeWaiters.get(d.id);
+        if (!w) return;
+        // 只认自己问过的那个框架，防止页面伪造回包乱改按钮配色
+        if (w.source && e.source !== w.source) return;
+        nopicDpProbeWaiters.delete(d.id);
+        w.cb(d.theme === "light" ? "light" : "dark");
+      },
+      false,
+    );
+  } catch (e) {}
+
+  function nopicDpProbeTheme(frame, cb) {
+    let win = null;
+    try {
+      win = frame.contentWindow;
+    } catch (e) {}
+    if (!win) {
+      cb(null);
+      return;
+    }
+    const id = "dp" + ++_nopicDpProbeSeq;
+    nopicDpProbeWaiters.set(id, { cb: cb, source: win });
+    setTimeout(function () {
+      if (nopicDpProbeWaiters.has(id)) {
+        nopicDpProbeWaiters.delete(id);
+        cb(null);
+      }
+    }, 1200);
+    try {
+      win.postMessage({ __nopicDp: "probe", id: id }, "*");
+    } catch (e) {}
+  }
+
+  // 连续探几次：页面可能晚一点才把主色刷上去
+  function nopicDpWatchTheme(win, frame) {
+    const delays = [0, 500, 1500, 3200];
+    let ok = false;
+    delays.forEach(function (d) {
+      setTimeout(function () {
+        if (!win.isConnected) return;
+        nopicDpProbeTheme(frame, function (theme) {
+          if (!win.isConnected) return;
+          if (theme) {
+            ok = true;
+            win.dataset.dpTheme = theme;
+            win.setAttribute("data-dp-theme", theme);
+          }
+        });
+      }, d);
+    });
+    // 3.6 秒还没有任何回应 → 基本可以判定这个站点拒绝被内嵌
+    setTimeout(function () {
+      if (!ok && win.isConnected) nopicDpMarkBlocked(win);
+    }, 3600);
+  }
+
+  // ---------- 预览窗 ----------
+  const nopicDpWins = new Set();
+  let _nopicDpZ = 2147483600;
+  let _nopicDpSeq = 0;
+
+  const NOPIC_DP_ICON_PIN =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.7l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
+  const NOPIC_DP_ICON_OPEN =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4"/><path d="M20 9V5a1 1 0 0 0-1-1h-4"/><path d="M4 15v4a1 1 0 0 0 1 1h4"/><path d="M20 15v4a1 1 0 0 1-1 1h-4"/></svg>';
+  const NOPIC_DP_ICON_CLOSE =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+  const NOPIC_DP_ICON_BACK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+
+  // 把视口坐标写成文档坐标（absolute 定位），并用实测结果校正
+  // （页面可能给 <html> 加了 position/padding，offsetParent 会有偏差）
+  function nopicDpSetDocPos(win, vLeft, vTop) {
+    win.style.left = vLeft + window.scrollX + "px";
+    win.style.top = vTop + window.scrollY + "px";
+    const r = win.getBoundingClientRect();
+    const dx = vLeft - r.left;
+    const dy = vTop - r.top;
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      win.style.left = parseFloat(win.style.left) + dx + "px";
+      win.style.top = parseFloat(win.style.top) + dy + "px";
+    }
+  }
+
+  function nopicDpRaise(win) {
+    win.style.zIndex = String(++_nopicDpZ);
+  }
+
+  function nopicDpClose(win) {
+    if (!win || !nopicDpWins.has(win)) return;
+    nopicDpWins.delete(win);
+    nopicDpFrameShake(win, false); // 关掉后不再需要这个框架转发摇晃
+    win.classList.add("nopic-dp-leaving");
+    setTimeout(function () {
+      try {
+        win.remove();
+      } catch (e) {}
+      nopicDpRefreshOverlay();
+      if (!nopicDpWins.size) nopicDpReleaseFrames();
+    }, 240);
+  }
+
+  // 站点拒绝内嵌时的提示：做成底部横幅而不是整块遮罩。
+  // 因为「探针没回话」也可能是误判（比如框里是 PDF、内置查看器），
+  // 挡住一个其实能看的预览比漏一句提示更讨人嫌。
+  function nopicDpMarkBlocked(win) {
+    if (!win || !win.isConnected) return;
+    if (win.querySelector(".nopic-dp-banner")) return;
+    const body = win.querySelector(".nopic-dp-body");
+    if (!body) return;
+    const bar = document.createElement("div");
+    bar.className = "nopic-dp-banner";
+    bar.innerHTML =
+      '<span class="nopic-dp-banner-text">这个站点可能不允许内嵌预览</span>' +
+      '<button class="nopic-dp-banner-btn" type="button" data-act="tab">新标签页打开</button>' +
+      '<button class="nopic-dp-banner-x" type="button" data-act="dismiss" title="忽略">×</button>';
+    body.appendChild(bar);
+    bar.addEventListener("click", function (ev) {
+      const btn = ev.target.closest("button");
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (btn.dataset.act === "tab") {
+        nopicDpOpenInTab(win.dataset.dpUrl || "", nopicDpWinDocPos(win));
+        nopicDpClose(win);
+      } else {
+        bar.remove();
+      }
+    });
+  }
+
+  // 预览窗当前的文档坐标（钉住/缩放后依然准确，因为 left/top 一直由 JS 维护）
+  function nopicDpWinDocPos(win) {
+    return {
+      x: parseFloat(win.style.left) || 0,
+      y: parseFloat(win.style.top) || 0,
+    };
+  }
+
+  // 在新标签页打开目标；pos 不为空时，打开后让源页面（当前页）平滑滚到
+  // 预览窗所在的位置，方便回来时一眼找到刚才拖动的地方。
+  function nopicDpOpenInTab(url, pos) {
+    if (!url) return;
+    let sent = false;
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.id
+      ) {
+        chrome.runtime.sendMessage(
+          { type: "nopic-dp-open-tab", url: url },
+          function () {
+            void chrome.runtime.lastError;
+          },
+        );
+        sent = true;
+      }
+    } catch (e) {}
+    if (!sent) {
+      try {
+        window.open(url, "_blank", "noopener");
+      } catch (e) {}
+    }
+    if (pos) {
+      requestAnimationFrame(function () {
+        try {
+          window.scrollTo({
+            top: Math.max(0, pos.y - 40),
+            left: Math.max(0, pos.x - 40),
+            behavior: "smooth",
+          });
+        } catch (err) {
+          try {
+            window.scrollTo(pos.x - 40, pos.y - 40);
+          } catch (e2) {}
+        }
+      });
+    }
+  }
+
+  // 请后台放行目标域名的 X-Frame-Options / CSP，然后才真正 set src
+  function nopicDpAllowFrame(url, done) {
+    let finished = false;
+    const go = function () {
+      if (finished) return;
+      finished = true;
+      done();
+    };
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.id
+      ) {
+        chrome.runtime.sendMessage(
+          { type: "nopic-dp-allow-frame", url: url },
+          function () {
+            void chrome.runtime.lastError;
+            go();
+          },
+        );
+        setTimeout(go, 800); // 后台没响应也别把用户吊死
+        return;
+      }
+    } catch (e) {}
+    go();
+  }
+
+  // 让子框架开始拦截「会开新标签的链接」（详见 dp-frame.js）。
+  function nopicDpEnableLinkCapture(frame) {
+    try {
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage(
+          { __nopicDp: "capture-links", on: true },
+          "*",
+        );
+      }
+    } catch (e) {}
+  }
+
+  // 在预览窗内新增一个 iframe，加载被点链接的地址，而不是开新标签。
+  // 新 iframe 插在 .nopic-dp-mask 之前，保证遮罩永远在最上层（未钉住时仍整体变暗且不可点）。
+  function nopicDpOpenSubframe(win, url) {
+    if (!win || !win.isConnected || !url) return;
+    const body = win.querySelector(".nopic-dp-body");
+    const mask = win.querySelector(".nopic-dp-mask");
+    if (!body) return;
+    const frame = document.createElement("iframe");
+    frame.className = "nopic-dp-frame nopic-dp-subframe";
+    frame.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
+    frame.setAttribute("allow", "fullscreen");
+    frame.addEventListener("load", function () {
+      if (!frame.src || frame.src === "about:blank") return;
+      // 让嵌套 iframe 里的链接也继续在本窗内叠加，形成可一直往里钻的预览栈
+      nopicDpEnableLinkCapture(frame);
+      setTimeout(function () {
+        if (frame.isConnected) nopicDpEnableLinkCapture(frame);
+      }, 400);
+    });
+    if (mask) body.insertBefore(frame, mask);
+    else body.appendChild(frame);
+    if (!win._nopicDpStack) win._nopicDpStack = [];
+    win._nopicDpStack.push(frame);
+    frame.dataset.dpUrl = url;
+    nopicDpSetTitle(win, url);
+    nopicDpUpdateBackState(win);
+    nopicDpAllowFrame(url, function () {
+      if (!frame.isConnected) return;
+      try {
+        frame.src = url;
+      } catch (e) {}
+    });
+  }
+
+  // 标题栏显示当前层对应地址的主机名
+  function nopicDpSetTitle(win, url) {
+    const el = win.querySelector(".nopic-dp-title");
+    if (!el || !url) return;
+    let host = url;
+    try {
+      host = new URL(url).host;
+    } catch (e) {}
+    el.textContent = host;
+    el.setAttribute("title", url);
+  }
+
+  // 历史栈超过一层才显示「返回」键
+  function nopicDpUpdateBackState(win) {
+    const n = win._nopicDpStack ? win._nopicDpStack.length : 0;
+    win.classList.toggle("nopic-dp-has-history", n > 1);
+  }
+
+  // 返回上一页：弹掉最上层 iframe，露出下面一层
+  function nopicDpBack(win) {
+    if (!win || !win._nopicDpStack || win._nopicDpStack.length <= 1) return;
+    const top = win._nopicDpStack.pop();
+    if (top && top.parentNode) top.parentNode.removeChild(top);
+    const cur = win._nopicDpStack[win._nopicDpStack.length - 1];
+    if (cur) nopicDpSetTitle(win, cur.dataset.dpUrl || win.dataset.dpUrl);
+    nopicDpUpdateBackState(win);
+  }
+
+  // 让子框架开始 / 停止转发 mousemove（供摇晃撤销判定用）。
+  // 跨域 iframe 的 mousemove 父页面收不到，必须由 dp-frame.js 转发。
+  function nopicDpFrameShake(win, on) {
+    if (!win || !win.querySelector) return;
+    const frame = win.querySelector(".nopic-dp-frame");
+    if (!frame) return;
+    try {
+      if (frame.contentWindow)
+        frame.contentWindow.postMessage({ __nopicDp: "shake", on: !!on }, "*");
+    } catch (e) {}
+  }
+
+  function nopicDpReleaseFrames() {
+    try {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.id
+      ) {
+        chrome.runtime.sendMessage(
+          { type: "nopic-dp-release-frame" },
+          function () {
+            void chrome.runtime.lastError;
+          },
+        );
+      }
+    } catch (e) {}
+  }
+
+  // 标题栏拖动 + 四角缩放。iframe 会吞掉 mousemove，所以按下时盖一层透明遮罩。
+  function nopicDpBindMove(win) {
+    const bar = win.querySelector(".nopic-dp-bar");
+    const mask = win.querySelector(".nopic-dp-mask");
+    let mode = null; // "move" | 四角方向
+    let sx = 0,
+      sy = 0,
+      sl = 0,
+      st = 0,
+      sw = 0,
+      sh = 0;
+
+    const begin = function (e, m) {
+      mode = m;
+      sx = e.clientX;
+      sy = e.clientY;
+      sl = parseFloat(win.style.left) || 0;
+      st = parseFloat(win.style.top) || 0;
+      sw = win.offsetWidth;
+      sh = win.offsetHeight;
+      mask.style.display = "block";
+      win.classList.add("nopic-dp-active");
+      nopicDpRaise(win);
+      document.addEventListener("mousemove", onMove, true);
+      document.addEventListener("mouseup", onUp, true);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const onMove = function (e) {
+      if (!mode) return;
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+      if (mode === "move") {
+        win.style.left = sl + dx + "px";
+        win.style.top = st + dy + "px";
+        return;
+      }
+      const maxW = window.innerWidth - NOPIC_DP_EDGE * 2;
+      const maxH = window.innerHeight - NOPIC_DP_EDGE * 2;
+      let w = sw,
+        h = sh,
+        l = sl,
+        t = st;
+      if (mode.indexOf("e") >= 0)
+        w = Math.max(NOPIC_DP_MIN_W, Math.min(maxW, sw + dx));
+      if (mode.indexOf("s") >= 0)
+        h = Math.max(NOPIC_DP_MIN_H, Math.min(maxH, sh + dy));
+      if (mode.indexOf("w") >= 0) {
+        w = Math.max(NOPIC_DP_MIN_W, Math.min(maxW, sw - dx));
+        l = sl + (sw - w);
+      }
+      if (mode.indexOf("n") >= 0) {
+        h = Math.max(NOPIC_DP_MIN_H, Math.min(maxH, sh - dy));
+        t = st + (sh - h);
+      }
+      win.style.width = w + "px";
+      win.style.height = h + "px";
+      win.style.left = l + "px";
+      win.style.top = t + "px";
+    };
+
+    const onUp = function () {
+      mode = null;
+      mask.style.display = "";
+      win.classList.remove("nopic-dp-active");
+      document.removeEventListener("mousemove", onMove, true);
+      document.removeEventListener("mouseup", onUp, true);
+    };
+
+    if (bar) {
+      bar.addEventListener("mousedown", function (e) {
+        if (e.button !== 0) return;
+        if (e.target.closest && e.target.closest(".nopic-dp-btn")) return;
+        begin(e, "move");
+      });
+    }
+    win.querySelectorAll(".nopic-dp-grip").forEach(function (g) {
+      g.addEventListener("mousedown", function (e) {
+        if (e.button !== 0) return;
+        begin(e, g.dataset.dir);
+      });
+    });
+    win.addEventListener("mousedown", function () {
+      nopicDpRaise(win);
+    });
+  }
+
+  // ---------- 四周变暗遮罩 + 窗外交互 ----------
+  // 拖动速览松手后进入「变暗模式」：遮罩盖住页面，窗外滚轮缩放、窗外拖拽移动、
+  // 单击窗外退出；窗内（iframe / 工具栏）正常操作。钉住窗口时遮罩移除。
+  let nopicDpOverlay = null;
+
+  function nopicDpGetOverlay() {
+    if (nopicDpOverlay) return nopicDpOverlay;
+    const ov = document.createElement("div");
+    ov.className = "nopic-dp-overlay";
+    ov.style.zIndex = String(2147483500);
+    document.documentElement.appendChild(ov);
+
+    // 滚轮：缩放「最上层、未钉住」的预览窗（以中心为锚点）
+    ov.addEventListener(
+      "wheel",
+      function (e) {
+        const win = nopicDpTopActive();
+        if (!win) return;
+        e.preventDefault();
+        const step = e.deltaY < 0 ? 28 : -28;
+        nopicDpResizeAroundCenter(win, step, step * 0.72);
+      },
+      { passive: false },
+    );
+
+    // 按下：可能是「拖拽移动窗口」或「单击退出」
+    let down = null;
+    ov.addEventListener("mousedown", function (e) {
+      if (e.button !== 0) return;
+      const win = nopicDpTopActive();
+      if (!win) return;
+      down = { x: e.clientX, y: e.clientY, moved: false, win: win };
+      nopicDpRaise(win);
+      document.addEventListener("mousemove", onOvMove, true);
+      document.addEventListener("mouseup", onOvUp, true);
+      e.preventDefault();
+    });
+    function onOvMove(e) {
+      if (!down) return;
+      const dx = e.clientX - down.x;
+      const dy = e.clientY - down.y;
+      if (!down.moved && dx * dx + dy * dy < 16) return;
+      down.moved = true;
+      nopicDpMoveWin(down.win, dx, dy);
+      down.x = e.clientX;
+      down.y = e.clientY;
+    }
+    function onOvUp() {
+      document.removeEventListener("mousemove", onOvMove, true);
+      document.removeEventListener("mouseup", onOvUp, true);
+      if (down && !down.moved) nopicDpExit(down.win); // 单击窗外 → 退出
+      down = null;
+    }
+
+    nopicDpOverlay = ov;
+    return ov;
+  }
+
+  // 取「最上层且未钉住」的预览窗作为遮罩交互对象
+  function nopicDpTopActive() {
+    let top = null,
+      topZ = -1;
+    nopicDpWins.forEach(function (w) {
+      if (w.dataset.pinned === "1") return;
+      const z = parseInt(w.style.zIndex, 10) || 0;
+      if (z >= topZ) {
+        topZ = z;
+        top = w;
+      }
+    });
+    return top;
+  }
+
+  function nopicDpResizeAroundCenter(win, dw, dh) {
+    const r = win.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const w = Math.max(
+      NOPIC_DP_MIN_W,
+      Math.min(window.innerWidth - NOPIC_DP_EDGE * 2, r.width + dw),
+    );
+    const h = Math.max(
+      NOPIC_DP_MIN_H,
+      Math.min(window.innerHeight - NOPIC_DP_EDGE * 2, r.height + dh),
+    );
+    win.style.width = w + "px";
+    win.style.height = h + "px";
+    if (win.dataset.pinned === "1") {
+      win.style.left = cx - w / 2 + "px";
+      win.style.top = cy - h / 2 + "px";
+    } else {
+      nopicDpSetDocPos(win, cx - w / 2, cy - h / 2);
+    }
+  }
+
+  function nopicDpMoveWin(win, dx, dy) {
+    if (win.dataset.pinned === "1") {
+      // 钉住 = fixed，style.left/top 是视口坐标，位移直接叠加即可
+      win.style.left = (parseFloat(win.style.left) || 0) + dx + "px";
+      win.style.top = (parseFloat(win.style.top) || 0) + dy + "px";
+    } else {
+      // 未钉住 = absolute，style.left/top 是文档坐标；而 nopicDpSetDocPos 期望
+      // 视口坐标（内部会再加 scrollX/Y 转成文档坐标）。这里先把当前文档坐标换算
+      // 回视口坐标再交给它，否则每移动一次就会多叠一次滚动量，页面一滚动窗口就会被
+      // 推到「页面特别下面无限远」。
+      const curLeft = parseFloat(win.style.left) || 0;
+      const curTop = parseFloat(win.style.top) || 0;
+      nopicDpSetDocPos(
+        win,
+        curLeft - window.scrollX + dx,
+        curTop - window.scrollY + dy,
+      );
+    }
+  }
+
+  // 是否还有「未钉住」的预览窗 → 决定遮罩显隐
+  // 只要有未钉住的预览窗（变暗模式），就用捕获阶段的滚轮守卫把父页面滚轮锁死，
+  // 避免 iframe 滚不动时把外层页面带滚（iframe 本身的滚动链由 CSS overscroll-behavior 拦截）。
+  let _nopicDpWheelGuard = null;
+  let _nopicDpPageLock = null;
+  function nopicDpEnsureWheelGuard() {
+    if (_nopicDpWheelGuard) return;
+    _nopicDpWheelGuard = function (e) {
+      // 落在 iframe 内的滚轮不会到达这里（独立文档），由 iframe 的
+      // overscroll-behavior 处理；此处只拦截落在父页面的滚轮，阻止外层页面滚动。
+      e.preventDefault();
+    };
+    // 捕获 + 非 passive：必须能在默认滚动发生前拦下来
+    window.addEventListener("wheel", _nopicDpWheelGuard, {
+      capture: true,
+      passive: false,
+    });
+  }
+  function nopicDpRemoveWheelGuard() {
+    if (!_nopicDpWheelGuard) return;
+    window.removeEventListener("wheel", _nopicDpWheelGuard, {
+      capture: true,
+      passive: false,
+    });
+    _nopicDpWheelGuard = null;
+  }
+
+  // 未钉住的预览窗存在时，锁死外层页面滚动：
+  // 无滚动条的 iframe 本身不是滚动容器，滚轮会被浏览器直接链到父页面；
+  // overscroll-behavior / 父窗口 wheel 监听都拦不住跨文档的链，只有让父页
+  // 面自身不可滚动才能彻底解决。iframe 内部需要滚动时仍正常滚自己的。
+  function nopicDpLockPageScroll(lock) {
+    var root = document.documentElement;
+    var body = document.body;
+    if (!root || !body) return;
+    if (lock) {
+      if (root.classList.contains("nopic-dp-page-locked")) return;
+      var sw = window.innerWidth - root.clientWidth;
+      _nopicDpPageLock = {
+        bodyPR: body.style.paddingRight,
+        sw: sw,
+      };
+      if (sw > 0) {
+        var cur = parseFloat(getComputedStyle(body).paddingRight) || 0;
+        body.style.paddingRight = cur + sw + "px";
+      }
+      root.classList.add("nopic-dp-page-locked");
+    } else {
+      root.classList.remove("nopic-dp-page-locked");
+      if (_nopicDpPageLock) {
+        body.style.paddingRight = _nopicDpPageLock.bodyPR;
+        _nopicDpPageLock = null;
+      }
+    }
+  }
+  function nopicDpRefreshOverlay() {
+    const ov = nopicDpOverlay;
+    if (!ov) return;
+    let any = false;
+    nopicDpWins.forEach(function (w) {
+      if (w.dataset.pinned !== "1") any = true;
+    });
+    ov.classList.toggle("nopic-dp-show", any);
+    if (any) {
+      nopicDpEnsureWheelGuard();
+      nopicDpLockPageScroll(true);
+    } else {
+      nopicDpRemoveWheelGuard();
+      nopicDpLockPageScroll(false);
+    }
+  }
+
+  // 进入「拖动速览」模式：显示变暗遮罩
+  function nopicDpEnterMode(win) {
+    nopicDpGetOverlay();
+    nopicDpRefreshOverlay();
+  }
+
+  // 退出：窗口飞回来源处（链接位置 / 拖动起点）并淡出，然后移除
+  function nopicDpExit(win) {
+    if (!win || !nopicDpWins.has(win)) return;
+    nopicDpWins.delete(win);
+    nopicDpFrameShake(win, false);
+    // 清掉入场动画残留，避免压住飞回动画
+    win.classList.remove(
+      "nopic-dp-reveal-blur",
+      "nopic-dp-reveal-plain",
+      "nopic-dp-ghosting",
+    );
+    const r = win.getBoundingClientRect();
+    const sx = window.scrollX || 0;
+    const sy = window.scrollY || 0;
+    // _srcRect / _srcPt 记录的是「文档坐标」（记录时 + 了 scroll），此处需减回
+    // 当前滚动量换算成视口坐标，否则页面滚动过后飞回目标会整体偏移 (scrollX, scrollY)。
+    let tx = 0,
+      ty = 0;
+    if (win._srcRect) {
+      tx =
+        win._srcRect.left -
+        sx +
+        win._srcRect.width / 2 -
+        (r.left + r.width / 2);
+      ty =
+        win._srcRect.top -
+        sy +
+        win._srcRect.height / 2 -
+        (r.top + r.height / 2);
+    } else if (win._srcPt) {
+      tx = win._srcPt.x - sx - (r.left + r.width / 2);
+      ty = win._srcPt.y - sy - (r.top + r.height / 2);
+    }
+    win.style.transition =
+      "transform .3s cubic-bezier(.4,0,.2,1), opacity .3s ease";
+    win.style.transformOrigin = "center";
+    win.style.transform = "translate(" + tx + "px," + ty + "px) scale(0.2)";
+    win.style.opacity = "0";
+    win.style.pointerEvents = "none";
+    setTimeout(function () {
+      try {
+        win.remove();
+      } catch (e) {}
+      nopicDpRefreshOverlay();
+      if (!nopicDpWins.size) nopicDpReleaseFrames();
+    }, 320);
+  }
+
+  // 调整透明度即进入钉住模式：移除遮罩、固定到屏幕、不随外页滚动
+  function nopicDpPinForOpacity(win) {
+    if (win.dataset.pinned === "1") return;
+    const r = win.getBoundingClientRect();
+    win.dataset.pinned = "1";
+    win.style.position = "fixed";
+    win.style.left = r.left + "px";
+    win.style.top = r.top + "px";
+    const btn = win.querySelector('.nopic-dp-btn[data-act="pin"]');
+    if (btn) {
+      btn.classList.add("on");
+      btn.title = "已钉住 · 点此恢复随页面滚动";
+      btn.setAttribute("aria-pressed", "true");
+    }
+    nopicDpRefreshOverlay();
+  }
+
+  // ---------- 标题栏里的透明度滑块 ----------
+  function nopicDpBindTools(win) {
+    const slider = win.querySelector(".nopic-dp-opacity-slider");
+    const valEl = win.querySelector(".nopic-dp-opacity-val");
+    if (!slider) return;
+    // 滑块在标题栏里，别让它触发「拖动窗口」
+    ["mousedown", "pointerdown", "click", "wheel", "dblclick"].forEach(
+      function (ev) {
+        slider.addEventListener(ev, function (e) {
+          e.stopPropagation();
+        });
+      },
+    );
+    slider.addEventListener("input", function (e) {
+      e.stopPropagation();
+      const v = parseInt(slider.value, 10) || 100;
+      win.style.opacity = (v / 100).toFixed(2);
+      if (valEl) valEl.textContent = v + "%";
+      // 只要动过透明度，就视作进入钉住模式（遮罩消失、外页可滚动）
+      if (v < 100) nopicDpPinForOpacity(win);
+    });
+  }
+
+  function nopicDpTogglePin(win) {
+    const pinned = win.dataset.pinned === "1";
+    const r = win.getBoundingClientRect();
+    if (pinned) {
+      win.dataset.pinned = "0";
+      win.style.position = "absolute";
+      nopicDpSetDocPos(win, r.left, r.top);
+    } else {
+      win.dataset.pinned = "1";
+      win.style.position = "fixed";
+      win.style.left = r.left + "px";
+      win.style.top = r.top + "px";
+    }
+    const btn = win.querySelector('.nopic-dp-btn[data-act="pin"]');
+    if (btn) {
+      const on = win.dataset.pinned === "1";
+      btn.classList.toggle("on", on);
+      btn.title = on ? "已钉住 · 点此恢复随页面滚动" : "钉住（不随页面滚动）";
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    // 钉住 = 移除四周变暗遮罩，让外面页面可正常滚动（类似钉图模式）；
+    // 取消钉住 = 恢复遮罩，重新进入「窗外交互」模式。
+    nopicDpRefreshOverlay();
+  }
+
+  // 把幽灵「显形」成预览窗：幽灵本身就是预览窗，松手只是去掉毛玻璃态并播入场动画。
+  function nopicDpPromote(ctx, rect) {
+    let win;
+    if (nopicDpGhost && nopicDpGhost.el && nopicDpGhost.el.isConnected) {
+      // 复用幽灵这个 DOM，原地显形（iframe 拖动途中就在加载了）
+      win = nopicDpGhost.el;
+      nopicDpGhost = null;
+      win.classList.remove("nopic-dp-ghosting");
+      // 清掉幽灵期残留的内联样式，免得压住入场动画 / 关闭动画
+      win.style.transition = "";
+      win.style.transformOrigin = "";
+      win.style.transform = "none";
+      win.style.opacity = "";
+    } else {
+      win = nopicDpCreateWin(ctx);
+      document.documentElement.appendChild(win);
+      nopicDpStartLoad(win, ctx);
+    }
+
+    win.id = "nopic-dp-win-" + ++_nopicDpSeq;
+    win.dataset.pinned = "0";
+    win.dataset.dpUrl = ctx.url;
+    win._srcRect = ctx._srcRect || null;
+    win._srcPt = ctx._srcPt || null;
+    win.setAttribute("data-dp-theme", nopicDpExtTheme());
+    win.style.zIndex = String(++_nopicDpZ);
+    win.style.opacity = "1"; // 透明度滑块可能改过，复原
+
+    // 默认跟着页面滚动 → absolute + 文档坐标
+    win.style.position = "absolute";
+    win.style.width = rect.w + "px";
+    win.style.height = rect.h + "px";
+    nopicDpSetDocPos(win, rect.left, rect.top);
+
+    // 入场动画：作用到「内容区」，窗口外框（带「摇晃以撤销预览」提示的矩形）
+    // 全程保持可见、不闪、不消失；提示文字也保留，等动画结束后才隐藏。
+    // 性能模式（图片模糊特效）关 → 内容带一点模糊淡入；性能模式开 → 只做透明度淡入
+    // （和「显示图片」的 blur+opacity 动画一致）。
+    const revealClass = nopicImgBlurEffect
+      ? "nopic-dp-reveal-blur"
+      : "nopic-dp-reveal-plain";
+    win.classList.remove("nopic-dp-reveal-blur", "nopic-dp-reveal-plain");
+    // 松手后「摇晃以撤销预览」提示立即消失（去掉 .nopic-dp-ghosting 即隐藏，不保留）
+    win.classList.add(revealClass);
+    // 动画结束后去掉 reveal 类：否则 animation-fill:both 会把透明度锁在 1，
+    // 关窗时 .nopic-dp-leaving 的淡出就失效了
+    function nopicDpClearReveal() {
+      win.classList.remove("nopic-dp-reveal-blur", "nopic-dp-reveal-plain");
+    }
+    win.addEventListener(
+      "animationend",
+      function onRevealEnd(e) {
+        if (
+          e.animationName !== "nopic-dp-reveal-blur" &&
+          e.animationName !== "nopic-dp-reveal-plain"
+        )
+          return;
+        win.removeEventListener("animationend", onRevealEnd);
+        nopicDpClearReveal();
+      },
+      false,
+    );
+    // 兜底：万一 animationend 没触发（如动画被禁用），也保证提示文字最终隐藏
+    setTimeout(nopicDpClearReveal, 700);
+    nopicDpWins.add(win);
+
+    // 定位算完后清掉 transform / willChange 残留（transform 此时已是 none，不会跳变）
+    requestAnimationFrame(function () {
+      if (!win.isConnected) return;
+      win.style.transform = "";
+      win.style.transformOrigin = "";
+      win.style.willChange = "";
+    });
+
+    // 进入「拖动速览」模式：四周变暗，窗外滚轮缩放 / 拖拽移动 / 单击退出
+    nopicDpEnterMode(win);
+    return win;
+  }
+
+  // ---------- 拖动检测 ----------
+  // 用原生 HTML5 拖放事件：鼠标一旦发起原生拖动，mousemove 就不再触发了。
+  // 为了不打扰页面自己的拖放，dragover / drop 用冒泡阶段监听，
+  // 只有页面没有 preventDefault（= 页面自己不接这个拖放）时才接手。
+  function nopicDpLinkFrom(node) {
+    const el = node && node.nodeType === 1 ? node : node && node.parentElement;
+    if (!el || !el.closest) return null;
+    const a = el.closest("a[href]");
+    if (!a) return null;
+    let href = "";
+    try {
+      href = a.href || "";
+    } catch (e) {}
+    return /^https?:\/\//i.test(href) ? href : null;
+  }
+
+  document.addEventListener(
+    "dragstart",
+    function (e) {
+      nopicDpDrag = null;
+      nopicDpDiscardGhost();
+      // 清空拖动途中的摇晃判定状态，避免上次拖动的残留串到这次
+      _nopicDpDragShake.last = 0;
+      _nopicDpDragShake.rev = 0;
+      _nopicDpDragShake.dist = 0;
+      _nopicDpDragShake.lastDir = 0;
+      if (!nopicDpEnabled || !_nopicMasterOn) return;
+      const t = e.target;
+      if (!t || nopicDpIsOwnUI(t)) return;
+
+      let selText = "";
+      try {
+        selText = String(window.getSelection() || "").trim();
+      } catch (err) {}
+      const href = nopicDpLinkFrom(t);
+      const _srcEl = t && t.nodeType === 1 ? t : t && t.parentElement;
+      const _anchor =
+        _srcEl && _srcEl.closest ? _srcEl.closest("a[href]") : null;
+
+      // 页面自己实现的拖拽（卡片排序之类）不掺和：有显式 draggable="true"
+      // 又不是链接、也没有选中文字的，一律放过
+      if (!href && !selText) return;
+      if (!href && selText) {
+        const el = t.nodeType === 1 ? t : t.parentElement;
+        const dg = el && el.closest ? el.closest('[draggable="true"]') : null;
+        if (dg && dg.tagName !== "A") return;
+      }
+
+      nopicDpDrag = {
+        kind: href ? "link" : "text",
+        url: href || "",
+        text: selText,
+        sourceEl: _anchor || null,
+        startX: e.clientX,
+        startY: e.clientY,
+        armed: false,
+        moved: false,
+        canceled: false,
+      };
+    },
+    true,
+  );
+
+  // 捕获阶段只负责跟随鼠标画幽灵（不改变页面行为）
+  document.addEventListener(
+    "dragover",
+    function (e) {
+      const d = nopicDpDrag;
+      if (!d) return;
+      // 本次拖动已被「摇晃撤销」取消过 → 不再出预览，直到下次拖动
+      if (d.canceled) {
+        nopicDpDiscardGhost();
+        return;
+      }
+      if (!d.moved) {
+        const dx = e.clientX - d.startX;
+        const dy = e.clientY - d.startY;
+        if (dx * dx + dy * dy < 24 * 24) return; // 手抖的小位移不算
+        d.moved = true;
+      }
+      if (nopicDpIsEditable(e.target)) {
+        // 松手到输入框里 → 用户是在挪文字，让页面自己处理
+        d.overEditable = true;
+        nopicDpDiscardGhost();
+        return;
+      }
+      d.overEditable = false;
+      // 拖动途中快速左右摇晃鼠标 → 立刻撤销这次预览（不用等松手）
+      nopicDpFeedDragShake(e.clientX, d);
+      if (d.canceled) return;
+      nopicDpShowGhost(d, e.clientX, e.clientY);
+    },
+    true,
+  );
+
+  // 冒泡阶段才决定「接不接这个拖放」
+  document.addEventListener(
+    "dragover",
+    function (e) {
+      const d = nopicDpDrag;
+      if (!d || !d.moved || d.overEditable) return;
+      if (e.defaultPrevented) {
+        // 页面自己要这个拖放 → 我们退让
+        d.armed = false;
+        nopicDpDiscardGhost();
+        return;
+      }
+      d.armed = true;
+      e.preventDefault();
+      try {
+        e.dataTransfer.dropEffect = "copy";
+      } catch (err) {}
+    },
+    false,
+  );
+
+  document.addEventListener(
+    "drop",
+    function (e) {
+      const d = nopicDpDrag;
+      if (!d) return;
+      if (!d.armed || d.overEditable || e.defaultPrevented || d.canceled) {
+        nopicDpDrag = null;
+        nopicDpDiscardGhost();
+        return;
+      }
+      nopicDpDrag = null;
+      e.preventDefault();
+      e.stopPropagation();
+
+      // 以 dataTransfer 为准（外部拖进来的链接 / 文字也能识别），拿不到再用 dragstart 记的
+      let uri = "",
+        txt = "";
+      try {
+        uri = (e.dataTransfer.getData("text/uri-list") || "").trim();
+      } catch (err) {}
+      try {
+        txt = (e.dataTransfer.getData("text/plain") || "").trim();
+      } catch (err) {}
+
+      let ctx = null;
+      if (uri) {
+        const line = uri.split(/[\r\n]+/).filter(function (l) {
+          return l && l.charAt(0) !== "#";
+        })[0];
+        if (line && /^https?:\/\//i.test(line))
+          ctx = { kind: "link", url: line };
+      }
+      if (!ctx && txt) {
+        if (/^https?:\/\/\S+$/i.test(txt)) ctx = { kind: "link", url: txt };
+        else ctx = { kind: "text", text: txt, url: nopicDpBuildSearchUrl(txt) };
+      }
+      if (!ctx) {
+        if (d.kind === "link" && d.url) ctx = { kind: "link", url: d.url };
+        else if (d.text)
+          ctx = {
+            kind: "text",
+            text: d.text,
+            url: nopicDpBuildSearchUrl(d.text),
+          };
+      }
+      if (!ctx) {
+        nopicDpDiscardGhost();
+        return;
+      }
+
+      // 记住来源（用于退出时「飞回原地」的动画）。
+      // 元素本身也留一份引用：退出时按它的实时位置算，页面滚动过也能飞准；
+      // _srcRect / _srcPt 存文档坐标，退出时再减掉当前滚动量换回视口坐标。
+      ctx._srcPt = {
+        x: d.startX + window.scrollX,
+        y: d.startY + window.scrollY,
+      };
+      ctx._srcEl = d.sourceEl && d.sourceEl.isConnected ? d.sourceEl : null;
+      if (ctx._srcEl) {
+        try {
+          const sr = ctx._srcEl.getBoundingClientRect();
+          ctx._srcRect = {
+            left: sr.left + window.scrollX,
+            top: sr.top + window.scrollY,
+            width: sr.width,
+            height: sr.height,
+          };
+        } catch (e) {}
+      }
+
+      const size = nopicDpSize();
+      const rect =
+        nopicDpGhost && nopicDpGhost.rect
+          ? nopicDpGhost.rect
+          : nopicDpRect(e.clientX, e.clientY, size.w, size.h);
+      try {
+        nopicDpPromote(ctx, rect);
+      } catch (err) {
+        nopicDpDiscardGhost();
+      }
+      // 松手后把选区清掉，免得页面残留一块高亮
+      try {
+        if (ctx.kind === "text") window.getSelection().removeAllRanges();
+      } catch (err) {}
+    },
+    false,
+  );
+
+  document.addEventListener(
+    "dragend",
+    function () {
+      nopicDpDrag = null;
+      nopicDpDiscardGhost();
+    },
+    true,
+  );
+
+  // Esc 关掉最上面那个预览窗
+  document.addEventListener(
+    "keydown",
+    function (e) {
+      if (e.key !== "Escape" || !nopicDpWins.size) return;
+      let top = null;
+      let topZ = -1;
+      nopicDpWins.forEach(function (w) {
+        const z = parseInt(w.style.zIndex, 10) || 0;
+        if (z >= topZ) {
+          topZ = z;
+          top = w;
+        }
+      });
+      if (top) {
+        e.stopPropagation();
+        nopicDpClose(top);
+      }
+    },
+    true,
+  );
+
+  // ---------- 摇晃撤销（仅拖动途中） ----------
+  // 只在「鼠标还按着、走 dragover」的拖动阶段判定摇晃：左右快速摆动 →
+  // 标记 d.canceled，本次预览直接撤销，不用等松手。
+  // 松手后 nopicDpDrag 被置空，下面这套判定全部失效，所以松手后怎么晃都不会误关窗口。
+  // 指针停在跨域 iframe 上时父页面的 dragover 收不到，那种情况由 dp-frame.js
+  // 把子框架内部的 dragover / mousemove 转发上来（见下方 message 监听）。
+  let _nopicDpDragShake = {
+    last: 0,
+    lastDir: 0,
+    rev: 0,
+    dist: 0,
+    t0: 0,
+  };
+  function nopicDpFeedDragShake(x, d) {
+    if (!d || d.canceled) return;
+    const now =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    const s = _nopicDpDragShake;
+    if (!s.last) {
+      s.last = x;
+      s.t0 = now;
+      s.lastDir = 0;
+      s.rev = 0;
+      s.dist = 0;
+      return;
+    }
+    const dx = x - s.last;
+    const dir = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+    s.dist += Math.abs(dx);
+    if (dir !== 0 && s.lastDir !== 0 && dir !== s.lastDir) s.rev++;
+    if (dir !== 0) s.lastDir = dir;
+    s.last = x;
+    if (now - s.t0 > 800) {
+      s.t0 = now;
+      s.rev = 0;
+      s.dist = 0;
+      s.lastDir = 0;
+    }
+    if (s.rev >= 3 && s.dist > 140) {
+      s.last = 0;
+      s.rev = 0;
+      s.dist = 0;
+      s.lastDir = 0;
+      d.canceled = true;
+      nopicDpDiscardGhost();
+    }
+  }
+  // dp-frame.js 转发上来的 dragover / mousemove（指针停在 iframe 内摆动时）
+  try {
+    window.addEventListener(
+      "message",
+      function (e) {
+        const d = e && e.data;
+        if (!d || d.__nopicDp !== "shake-move") return;
+        const drag = nopicDpDrag;
+        if (!drag || drag.canceled) return; // 仅拖动中有效；松手后一律忽略
+        nopicDpFeedDragShake(d.x, drag);
+      },
+      false,
+    );
+  } catch (e) {}
+
+  // dp-frame.js 上报的「链接本要开新标签」→ 在预览窗内新增 iframe 继续打开
+  try {
+    window.addEventListener(
+      "message",
+      function (e) {
+        const d = e && e.data;
+        if (!d || d.__nopicDp !== "open-url" || !d.url) return;
+        // 只认本页预览窗里的 iframe，防止别的页面伪造回包乱开窗口
+        const frames = document.querySelectorAll(".nopic-dp-frame");
+        let win = null;
+        for (let i = 0; i < frames.length; i++) {
+          let cw = null;
+          try {
+            cw = frames[i].contentWindow;
+          } catch (err) {}
+          if (cw && cw === e.source) {
+            win = frames[i].closest(".nopic-dp-win");
+            break;
+          }
+        }
+        if (!win) return;
+        nopicDpOpenSubframe(win, d.url);
+      },
+      false,
+    );
+  } catch (e) {}
+
   // ===== popup「显示控制面板」消息：从扩展按钮一键呼出悬浮面板 =====
   if (
     typeof chrome !== "undefined" &&
@@ -31025,6 +32831,15 @@ function _nopicBootMain() {
           try {
             if (msg && msg.type === "nopic-show-panel") {
               sendResponse({ ok: window.__nopicShowPanel(true) });
+            } else if (msg && msg.type === "nopic-get-theme") {
+              // popup 打开时询问「本标签页」当前的生效主题，
+              // 避免共用的 nopic_theme_effective 被别的标签页最后写入导致串色
+              sendResponse({
+                ok: true,
+                theme: window.__nopicGetEffectiveTheme
+                  ? window.__nopicGetEffectiveTheme()
+                  : "dark",
+              });
             } else {
               sendResponse({ ok: false });
             }
