@@ -31342,8 +31342,8 @@ function _nopicBootMain() {
   //   拖动一个超链接 → 松手处弹出「该链接」的预览窗
   // 拖动途中鼠标下方先出现一个由小到大（贝塞尔）的毛玻璃圆角矩形（下称「幽灵」），
   // 幽灵的最终尺寸 / 位置与松手后的预览窗完全一致，松手时幽灵原地「长成」预览窗。
-  // 预览窗：标题栏可拖动、四角可缩放、右上角三个按钮（钉住 / 进入 / 关闭）。
-  //   钉住 = position:fixed 钉在视口；默认 position:absolute 跟着页面滚动。
+  // 预览窗：标题栏可拖动、四角可缩放、右上角三个按钮（遮罩锁定 / 进入 / 关闭）。
+  //   窗口始终 position:fixed（absolute 会改布局，已弃用）；钉住键只切换「变暗遮罩」的锁定/解锁。
   // 三个按钮的深浅色跟随 iframe 里那个网页（由 dp-frame.js 探针回报亮度）。
   //
   // 存储（chrome.storage.local，全局）：
@@ -31363,11 +31363,16 @@ function _nopicBootMain() {
   let nopicDpEnabled = false; // 默认关闭，新用户首次使用不自动开启拖动速览
   let nopicDpEngine = "bing";
   let nopicDpCustom = "";
+  // 暴露给 popup 查询「实际生效状态」，保证弹窗开关显示与真实行为一致
+  window.__nopicDpEnabled = false;
 
   // 先用本地镜像同步取一次（popup 写 chrome.storage 时会同步镜像到 localStorage）
   try {
     const _dpMv = localStorage.getItem("_nopic_ext_" + NOPIC_DP_ENABLED_KEY);
-    if (_dpMv !== null) nopicDpEnabled = JSON.parse(_dpMv) !== false;
+    if (_dpMv !== null) {
+      nopicDpEnabled = JSON.parse(_dpMv) !== false;
+      window.__nopicDpEnabled = nopicDpEnabled;
+    }
     const _dpMe = localStorage.getItem("_nopic_ext_" + NOPIC_DP_ENGINE_KEY);
     if (_dpMe !== null) nopicDpEngine = JSON.parse(_dpMe) || "bing";
     const _dpMc = localStorage.getItem("_nopic_ext_" + NOPIC_DP_CUSTOM_KEY);
@@ -31380,8 +31385,16 @@ function _nopicBootMain() {
         [NOPIC_DP_ENABLED_KEY, NOPIC_DP_ENGINE_KEY, NOPIC_DP_CUSTOM_KEY],
         function (items) {
           if (!items) return;
-          if (items[NOPIC_DP_ENABLED_KEY] !== undefined)
+          if (items[NOPIC_DP_ENABLED_KEY] !== undefined) {
             nopicDpEnabled = !!items[NOPIC_DP_ENABLED_KEY];
+          } else if (_dpMv !== null) {
+            // 重装插件后 chrome.storage 可能被清空，但页面 localStorage 镜像仍保留
+            // 用户上次的选择；把「实际情况」回写，让 popup 开关显示与真实行为一致。
+            try {
+              chrome.storage.local.set({ [NOPIC_DP_ENABLED_KEY]: nopicDpEnabled });
+            } catch (e) {}
+          }
+          window.__nopicDpEnabled = nopicDpEnabled;
           if (items[NOPIC_DP_ENGINE_KEY])
             nopicDpEngine = items[NOPIC_DP_ENGINE_KEY];
           if (items[NOPIC_DP_CUSTOM_KEY] !== undefined)
@@ -31393,6 +31406,7 @@ function _nopicBootMain() {
         if (changes[NOPIC_DP_ENABLED_KEY]) {
           const nv = changes[NOPIC_DP_ENABLED_KEY].newValue;
           nopicDpEnabled = nv === undefined ? false : !!nv;
+          window.__nopicDpEnabled = nopicDpEnabled;
           if (!nopicDpEnabled) nopicDpDiscardGhost();
         }
         if (changes[NOPIC_DP_ENGINE_KEY])
@@ -31579,11 +31593,11 @@ function _nopicBootMain() {
       "</div>" +
       '<div class="nopic-dp-bar">' +
       '<span class="nopic-dp-dot"></span>' +
-      '<div class="nopic-dp-title" title="' +
+      '<input class="nopic-dp-urlbar" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" dir="ltr" title="' +
+      nopicDpEscape(ctx.url) +
+      '" value="' +
       nopicDpEscape(ctx.url) +
       '">' +
-      nopicDpEscape(title) +
-      "</div>" +
       '<div class="nopic-dp-acts">' +
       // 透明度滑块：放在钉住键左边，和三个按钮同一行（不再用竖向悬浮工具栏）
       '<div class="nopic-dp-opacity" title="窗口透明度（调整即自动钉住）">' +
@@ -31593,7 +31607,7 @@ function _nopicBootMain() {
       '<button class="nopic-dp-btn nopic-dp-back" type="button" data-act="back" title="返回上一页" aria-label="返回">' +
       NOPIC_DP_ICON_BACK +
       "</button>" +
-      '<button class="nopic-dp-btn" type="button" data-act="pin" aria-pressed="false" title="钉住（不随页面滚动）">' +
+      '<button class="nopic-dp-btn" type="button" data-act="pin" aria-pressed="false" title="解锁遮罩（不随页面变暗）">' +
       NOPIC_DP_ICON_PIN +
       "</button>" +
       '<button class="nopic-dp-btn" type="button" data-act="open" title="在新标签页打开">' +
@@ -31634,6 +31648,7 @@ function _nopicBootMain() {
     });
     nopicDpBindMove(win);
     nopicDpBindTools(win);
+    nopicDpBindUrlbar(win);
     return win;
   }
 
@@ -31745,7 +31760,12 @@ function _nopicBootMain() {
         // 只认自己问过的那个框架，防止页面伪造回包乱改按钮配色
         if (w.source && e.source !== w.source) return;
         nopicDpProbeWaiters.delete(d.id);
-        w.cb(d.theme === "light" ? "light" : "dark");
+        // 带回网页背景色 / 亮度，交给 nopicDpApplyTheme 做沉浸式配色
+        w.cb({
+          theme: d.theme === "light" ? "light" : "dark",
+          bg: d.bg || null,
+          lum: d.lum != null ? d.lum : null,
+        });
       },
       false,
     );
@@ -31780,20 +31800,130 @@ function _nopicBootMain() {
     delays.forEach(function (d) {
       setTimeout(function () {
         if (!win.isConnected) return;
-        nopicDpProbeTheme(frame, function (theme) {
+        nopicDpProbeTheme(frame, function (info) {
           if (!win.isConnected) return;
-          if (theme) {
+          if (info) {
             ok = true;
-            win.dataset.dpTheme = theme;
-            win.setAttribute("data-dp-theme", theme);
+            // 拖动（幽灵）态不应用配色：幽灵保持中性，松手后由 nopicDpPromote 重新探测上色
+            nopicDpApplyTheme(win, info);
           }
         });
       }, d);
     });
-    // 3.6 秒还没有任何回应 → 基本可以判定这个站点拒绝被内嵌
+    // 3.6 秒还没有任何回应 → 基本可以判定这个站点拒绝被内嵌（已成功上色则跳过）
     setTimeout(function () {
-      if (!ok && win.isConnected) nopicDpMarkBlocked(win);
+      if (!ok && win.isConnected && !win.dataset.dpTheme)
+        nopicDpMarkBlocked(win);
     }, 3600);
+  }
+
+  // 把探针回报的网页配色写到窗口上：
+  //   - 拖动（幽灵）态直接跳过，不污染幽灵的中性外观；
+  //   - 有背景色 → 用该色做沉浸式窗口（标题栏 / 正文底色 / 按钮配色都跟着走）；
+  //   - 无背景色 → 退回 light/dark 默认配色。
+  function nopicDpShade(r, g, b, amt) {
+    const t = amt < 0 ? 0 : 255;
+    const k = Math.abs(amt);
+    return [
+      Math.round(r + (t - r) * k),
+      Math.round(g + (t - g) * k),
+      Math.round(b + (t - b) * k),
+    ];
+  }
+  const NOPIC_DP_THEME_VARS = [
+    "--dp-bg", "--dp-bar", "--dp-fg", "--dp-fg-dim", "--dp-border",
+    "--dp-hover", "--dp-accent", "--dp-accent-fg", "--dp-close-hover",
+    "--dp-op-bg", "--dp-op-border", "--dp-op-track", "--dp-grip",
+    "--dp-banner-bg", "--dp-banner-border", "--dp-banner-fg",
+  ];
+  function nopicDpApplyTheme(win, info) {
+    if (!win || !win.isConnected) return;
+    if (
+      win.classList.contains("nopic-dp-ghosting") ||
+      win.classList.contains("nopic-dp-dragging")
+    )
+      return;
+    if (!info || !info.theme) return;
+    const theme = info.theme === "light" ? "light" : "dark";
+    win.dataset.dpTheme = theme;
+    win.setAttribute("data-dp-theme", theme);
+    if (!info.bg || info.bg.length < 3) {
+      // 没有可用背景色：清掉上次可能写入的沉浸式变量，退回默认 light/dark
+      NOPIC_DP_THEME_VARS.forEach(function (v) {
+        win.style.removeProperty(v);
+      });
+      return;
+    }
+    const r = info.bg[0] | 0,
+      g = info.bg[1] | 0,
+      b = info.bg[2] | 0;
+    const lum =
+      info.lum != null
+        ? info.lum
+        : (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const isLight = lum >= 0.5;
+    const fg = isLight ? "rgba(15,23,42,0.92)" : "rgba(255,255,255,0.92)";
+    const fgDim = isLight ? "rgba(15,23,42,0.55)" : "rgba(255,255,255,0.62)";
+    const border = isLight ? "rgba(15,23,42,0.16)" : "rgba(255,255,255,0.16)";
+    const hover = isLight ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.12)";
+    const bar = nopicDpShade(r, g, b, isLight ? -0.06 : 0.07);
+    win.style.setProperty(
+      "--dp-bg",
+      "rgba(" + r + "," + g + "," + b + ",0.95)",
+    );
+    win.style.setProperty(
+      "--dp-bar",
+      "rgba(" +
+        bar[0] +
+        "," +
+        bar[1] +
+        "," +
+        bar[2] +
+        "," +
+        (isLight ? "0.97" : "0.98") +
+        ")",
+    );
+    win.style.setProperty("--dp-fg", fg);
+    win.style.setProperty("--dp-fg-dim", fgDim);
+    win.style.setProperty("--dp-border", border);
+    win.style.setProperty("--dp-hover", hover);
+    win.style.setProperty(
+      "--dp-accent",
+      isLight ? "rgba(37,99,235,0.16)" : "rgba(96,165,250,0.28)",
+    );
+    win.style.setProperty("--dp-accent-fg", isLight ? "#1d4ed8" : "#cfe4ff");
+    win.style.setProperty(
+      "--dp-close-hover",
+      isLight ? "rgba(220,38,38,0.9)" : "rgba(239,68,68,0.85)",
+    );
+    win.style.setProperty(
+      "--dp-op-bg",
+      isLight ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.07)",
+    );
+    win.style.setProperty(
+      "--dp-op-border",
+      isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.12)",
+    );
+    win.style.setProperty(
+      "--dp-op-track",
+      isLight ? "rgba(15,23,42,0.22)" : "rgba(255,255,255,0.3)",
+    );
+    win.style.setProperty(
+      "--dp-grip",
+      isLight ? "rgba(15,23,42,0.28)" : "rgba(255,255,255,0.35)",
+    );
+    win.style.setProperty(
+      "--dp-banner-bg",
+      isLight ? "rgba(250,251,254,0.94)" : "rgba(24,24,30,0.9)",
+    );
+    win.style.setProperty(
+      "--dp-banner-border",
+      isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.14)",
+    );
+    win.style.setProperty(
+      "--dp-banner-fg",
+      isLight ? "rgba(15,23,42,0.86)" : "rgba(255,255,255,0.88)",
+    );
   }
 
   // ---------- 预览窗 ----------
@@ -31977,6 +32107,8 @@ function _nopicBootMain() {
       if (!frame.src || frame.src === "about:blank") return;
       // 让嵌套 iframe 里的链接也继续在本窗内叠加，形成可一直往里钻的预览栈
       nopicDpEnableLinkCapture(frame);
+      // 新一层页面的底色可能不同，重新探测配色
+      nopicDpWatchTheme(win, frame);
       setTimeout(function () {
         if (frame.isConnected) nopicDpEnableLinkCapture(frame);
       }, 400);
@@ -31986,6 +32118,7 @@ function _nopicBootMain() {
     if (!win._nopicDpStack) win._nopicDpStack = [];
     win._nopicDpStack.push(frame);
     frame.dataset.dpUrl = url;
+    win.dataset.dpUrl = url; // 同步「当前显示地址」，新标签页打开 / 地址栏都读它
     nopicDpSetTitle(win, url);
     nopicDpUpdateBackState(win);
     nopicDpAllowFrame(url, function () {
@@ -31998,14 +32131,82 @@ function _nopicBootMain() {
 
   // 标题栏显示当前层对应地址的主机名
   function nopicDpSetTitle(win, url) {
-    const el = win.querySelector(".nopic-dp-title");
+    const el =
+      win.querySelector(".nopic-dp-urlbar") ||
+      win.querySelector(".nopic-dp-title");
     if (!el || !url) return;
-    let host = url;
-    try {
-      host = new URL(url).host;
-    } catch (e) {}
-    el.textContent = host;
+    if (el.tagName === "INPUT") {
+      // 地址栏：显示完整 URL，方便编辑 / 回车跳转
+      if (el.value !== url) el.value = url;
+    } else {
+      let host = url;
+      try {
+        host = new URL(url).host;
+      } catch (e) {}
+      el.textContent = host;
+    }
     el.setAttribute("title", url);
+  }
+
+  // 地址栏：编辑 + 回车跳转。失焦若未回车则还原为当前真实地址，避免误改。
+  function nopicDpBindUrlbar(win) {
+    const urlbar = win.querySelector(".nopic-dp-urlbar");
+    if (!urlbar) return;
+    ["mousedown", "pointerdown", "click", "dblclick", "wheel"].forEach(
+      function (ev) {
+        urlbar.addEventListener(ev, function (e) {
+          e.stopPropagation();
+        });
+      },
+    );
+    urlbar.addEventListener("focus", function () {
+      try {
+        urlbar.select();
+      } catch (e) {}
+    });
+    urlbar.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        nopicDpNavigate(win, urlbar.value);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        urlbar.value = win.dataset.dpUrl || "";
+        urlbar.blur();
+      }
+    });
+    urlbar.addEventListener("blur", function () {
+      const cur = win.dataset.dpUrl || "";
+      if (urlbar.value !== cur) urlbar.value = cur;
+    });
+  }
+
+  // 地址栏跳转：把当前最上层 iframe 导航到新地址（原地替换，类似真实地址栏）；
+  // 补全协议（没 scheme 且像域名 → https://，否则当作搜索词）；并重新配色。
+  function nopicDpNavigate(win, rawUrl) {
+    if (!win || !win.isConnected || !rawUrl) return;
+    let url = String(rawUrl).trim();
+    if (!url) return;
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
+      if (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(url)) url = "https://" + url;
+      else url = nopicDpBuildSearchUrl(url);
+    }
+    const stack = win._nopicDpStack;
+    const frame =
+      stack && stack.length
+        ? stack[stack.length - 1]
+        : win.querySelector(".nopic-dp-frame");
+    if (!frame) return;
+    frame.dataset.dpUrl = url;
+    win.dataset.dpUrl = url; // 同步「当前显示地址」
+    nopicDpSetTitle(win, url);
+    nopicDpAllowFrame(url, function () {
+      if (!frame.isConnected) return;
+      try {
+        frame.src = url;
+      } catch (e) {}
+    });
+    nopicDpWatchTheme(win, frame);
   }
 
   // 历史栈超过一层才显示「返回」键
@@ -32026,7 +32227,12 @@ function _nopicBootMain() {
       if (top.parentNode) top.parentNode.removeChild(top);
     }
     const cur = win._nopicDpStack[win._nopicDpStack.length - 1];
-    if (cur) nopicDpSetTitle(win, cur.dataset.dpUrl || win.dataset.dpUrl);
+    const curUrl = (cur && cur.dataset.dpUrl) || win.dataset.dpUrl;
+    if (curUrl) win.dataset.dpUrl = curUrl;
+    if (cur) {
+      nopicDpSetTitle(win, curUrl);
+      nopicDpWatchTheme(win, cur); // 返回到的页面底色可能不同，重新配色
+    }
     nopicDpUpdateBackState(win);
   }
 
@@ -32132,7 +32338,12 @@ function _nopicBootMain() {
     if (bar) {
       bar.addEventListener("mousedown", function (e) {
         if (e.button !== 0) return;
-        if (e.target.closest && e.target.closest(".nopic-dp-btn")) return;
+        if (
+          e.target.closest &&
+          (e.target.closest(".nopic-dp-btn") ||
+            e.target.closest(".nopic-dp-urlbar"))
+        )
+          return;
         begin(e, "move");
       });
     }
@@ -32237,32 +32448,15 @@ function _nopicBootMain() {
     );
     win.style.width = w + "px";
     win.style.height = h + "px";
-    if (win.dataset.pinned === "1") {
-      win.style.left = cx - w / 2 + "px";
-      win.style.top = cy - h / 2 + "px";
-    } else {
-      nopicDpSetDocPos(win, cx - w / 2, cy - h / 2);
-    }
+    // 窗口始终 fixed，left/top 即视口坐标
+    win.style.left = cx - w / 2 + "px";
+    win.style.top = cy - h / 2 + "px";
   }
 
   function nopicDpMoveWin(win, dx, dy) {
-    if (win.dataset.pinned === "1") {
-      // 钉住 = fixed，style.left/top 是视口坐标，位移直接叠加即可
-      win.style.left = (parseFloat(win.style.left) || 0) + dx + "px";
-      win.style.top = (parseFloat(win.style.top) || 0) + dy + "px";
-    } else {
-      // 未钉住 = absolute，style.left/top 是文档坐标；而 nopicDpSetDocPos 期望
-      // 视口坐标（内部会再加 scrollX/Y 转成文档坐标）。这里先把当前文档坐标换算
-      // 回视口坐标再交给它，否则每移动一次就会多叠一次滚动量，页面一滚动窗口就会被
-      // 推到「页面特别下面无限远」。
-      const curLeft = parseFloat(win.style.left) || 0;
-      const curTop = parseFloat(win.style.top) || 0;
-      nopicDpSetDocPos(
-        win,
-        curLeft - window.scrollX + dx,
-        curTop - window.scrollY + dy,
-      );
-    }
+    // 窗口始终 fixed，left/top 即视口坐标，位移直接叠加
+    win.style.left = (parseFloat(win.style.left) || 0) + dx + "px";
+    win.style.top = (parseFloat(win.style.top) || 0) + dy + "px";
   }
 
   // 是否还有「未钉住」的预览窗 → 决定遮罩显隐
@@ -32395,7 +32589,7 @@ function _nopicBootMain() {
     }, 320);
   }
 
-  // 调整透明度即进入钉住模式：移除遮罩、固定到屏幕、不随外页滚动
+  // 调整透明度即解锁遮罩（窗口始终 fixed，无「随页面滚动」概念）
   function nopicDpPinForOpacity(win) {
     if (win.dataset.pinned === "1") return;
     const r = win.getBoundingClientRect();
@@ -32406,7 +32600,7 @@ function _nopicBootMain() {
     const btn = win.querySelector('.nopic-dp-btn[data-act="pin"]');
     if (btn) {
       btn.classList.add("on");
-      btn.title = "已钉住 · 点此恢复随页面滚动";
+      btn.title = "已解锁遮罩 · 点此重新变暗锁定";
       btn.setAttribute("aria-pressed", "true");
     }
     nopicDpRefreshOverlay();
@@ -32436,27 +32630,18 @@ function _nopicBootMain() {
   }
 
   function nopicDpTogglePin(win) {
+    // 窗口始终是 fixed（absolute 会改布局，已弃用）；钉住键只负责「遮罩解锁与否」：
+    // pinned === "0" → 四周变暗遮罩生效（锁定窗外交互）；pinned === "1" → 解锁遮罩。
     const pinned = win.dataset.pinned === "1";
-    const r = win.getBoundingClientRect();
-    if (pinned) {
-      win.dataset.pinned = "0";
-      win.style.position = "absolute";
-      nopicDpSetDocPos(win, r.left, r.top);
-    } else {
-      win.dataset.pinned = "1";
-      win.style.position = "fixed";
-      win.style.left = r.left + "px";
-      win.style.top = r.top + "px";
-    }
+    win.dataset.pinned = pinned ? "0" : "1";
     const btn = win.querySelector('.nopic-dp-btn[data-act="pin"]');
     if (btn) {
       const on = win.dataset.pinned === "1";
       btn.classList.toggle("on", on);
-      btn.title = on ? "已钉住 · 点此恢复随页面滚动" : "钉住（不随页面滚动）";
+      btn.title = on ? "已解锁遮罩 · 点此重新变暗锁定" : "解锁遮罩（不随页面变暗）";
       btn.setAttribute("aria-pressed", on ? "true" : "false");
     }
-    // 钉住 = 移除四周变暗遮罩，让外面页面可正常滚动（类似钉图模式）；
-    // 取消钉住 = 恢复遮罩，重新进入「窗外交互」模式。
+    // 切换遮罩显隐（any = 仍有未解锁遮罩的预览窗）
     nopicDpRefreshOverlay();
   }
 
@@ -32494,11 +32679,21 @@ function _nopicBootMain() {
     win.style.zIndex = String(++_nopicDpZ);
     win.style.opacity = "1"; // 透明度滑块可能改过，复原
 
-    // 默认跟着页面滚动 → absolute + 文档坐标
-    win.style.position = "absolute";
+    // 松手后重新探测网页配色并上色（拖动途中刻意不上色，避免幽灵变色）
+    try {
+      const _f =
+        win._nopicDpStack && win._nopicDpStack.length
+          ? win._nopicDpStack[win._nopicDpStack.length - 1]
+          : win.querySelector(".nopic-dp-frame");
+      if (_f) nopicDpWatchTheme(win, _f);
+    } catch (e) {}
+
+    // 窗口始终 fixed（absolute 会改布局，已弃用），left/top 直接用视口坐标
+    win.style.position = "fixed";
     win.style.width = rect.w + "px";
     win.style.height = rect.h + "px";
-    nopicDpSetDocPos(win, rect.left, rect.top);
+    win.style.left = rect.left + "px";
+    win.style.top = rect.top + "px";
 
     // 入场动画：作用到「内容区」，窗口外框（带「摇晃以撤销预览」提示的矩形）
     // 全程保持可见、不闪、不消失；提示文字也保留，等动画结束后才隐藏。
@@ -32940,6 +33135,13 @@ function _nopicBootMain() {
                 theme: window.__nopicGetEffectiveTheme
                   ? window.__nopicGetEffectiveTheme()
                   : "dark",
+              });
+            } else if (msg && msg.type === "nopic-get-dp-enabled") {
+              // popup 打开时询问「本标签页」拖动速览的实际生效状态，
+              // 让弹窗开关显示与真实行为一致（覆盖 chrome.storage 被清空后的偏差）
+              sendResponse({
+                ok: true,
+                enabled: window.__nopicDpEnabled === true,
               });
             } else {
               sendResponse({ ok: false });

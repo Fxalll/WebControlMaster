@@ -151,16 +151,39 @@ function readDragPreview() {
       (items) => {
         const rawEnabled = items && items[DP_ENABLED_KEY];
         const rawEngine = items && items[DP_ENGINE_KEY];
-        renderDragPreview({
+        const base = {
           enabled: rawEnabled === undefined ? false : !!rawEnabled,
           engine: DP_ENGINE_IDS.includes(rawEngine) ? rawEngine : "bing",
           custom: (items && items[DP_CUSTOM_KEY]) || "",
-        });
+        };
+        // chrome.storage 无显式值（如重装插件后被清空）时，以当前标签页 content
+        // script 的「实际生效状态」为准，让开关显示与真实行为一致。
+        if (rawEnabled === undefined) {
+          queryActiveTabDpEnabled((eff) => {
+            if (eff !== null) base.enabled = eff;
+            renderDragPreview(base);
+          });
+        } else {
+          renderDragPreview(base);
+        }
       },
     );
   } catch (e) {
     renderDragPreview({ enabled: false, engine: "bing", custom: "" });
   }
+}
+
+// 询问当前标签页 content script 拖动速览的实际生效状态（popup 开关据此对齐真实行为）
+function queryActiveTabDpEnabled(cb) {
+  getActiveTab((tab) => {
+    if (!tab || tab.id == null) { cb(null); return; }
+    try {
+      chrome.tabs.sendMessage(tab.id, { type: "nopic-get-dp-enabled" }, (resp) => {
+        if (chrome.runtime.lastError || !resp || !resp.ok) { cb(null); return; }
+        cb(resp.enabled === true);
+      });
+    } catch (e) { cb(null); }
+  });
 }
 
 // ===== 深浅色同步 =====

@@ -18,12 +18,9 @@
 (function () {
   "use strict";
 
-  // 顶层页面用不上
-  try {
-    if (window.top === window) return;
-  } catch (e) {
-    // 跨域访问 window.top 会抛错，说明自己确实是子框架，继续
-  }
+  // 注：预览 iframe 加载的目标站点「主框架」也需要响应主题探针（它的背景色才是
+  // 我们想贴近的颜色），所以这里不再 early-return。所有能力都靠「只回答自己父窗口」
+  // 的 parent 校验兜底，不会误伤宿主页面（宿主页不会被 content.js 主动发探针 / 转发指令）。
 
   function firstOpaqueBg() {
     var node = document.body || document.documentElement;
@@ -45,7 +42,11 @@
     return null;
   }
 
-  function computeTheme() {
+  // 返回 { theme, bg, lum }：
+  //   theme —— "light" / "dark" 兜底分类（无背景色时靠 color-scheme 推断）
+  //   bg    —— 页面首个不透明背景色的 [r,g,b]；没有则 null（交给 light/dark 默认配色）
+  //   lum   —— 该背景色的相对亮度，便于父窗口据此决定文字 / 按钮配色
+  function computeThemeInfo() {
     var m = firstOpaqueBg();
     if (!m) {
       // 页面没有显式背景 → 看它声明的 color-scheme，再退回浏览器默认白底
@@ -54,22 +55,27 @@
         cs =
           window.getComputedStyle(document.documentElement).colorScheme || "";
       } catch (e) {}
-      if (/\bdark\b/.test(cs) && !/\blight\b/.test(cs)) return "dark";
+      if (/\bdark\b/.test(cs) && !/\blight\b/.test(cs))
+        return { theme: "dark", bg: null, lum: null };
       try {
         if (
           /\bdark\b/.test(cs) &&
           window.matchMedia &&
           window.matchMedia("(prefers-color-scheme: dark)").matches
         )
-          return "dark";
+          return { theme: "dark", bg: null, lum: null };
       } catch (e) {}
-      return "light";
+      return { theme: "light", bg: null, lum: null };
     }
     var r = parseFloat(m[0]);
     var g = parseFloat(m[1]);
     var b = parseFloat(m[2]);
     var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return lum >= 0.6 ? "light" : "dark";
+    return { theme: lum >= 0.6 ? "light" : "dark", bg: [r, g, b], lum: lum };
+  }
+
+  function computeTheme() {
+    return computeThemeInfo().theme;
   }
 
   window.addEventListener(
@@ -83,13 +89,19 @@
       } catch (err) {
         return;
       }
-      var theme = "light";
+      var info = { theme: "light", bg: null, lum: null };
       try {
-        theme = computeTheme();
+        info = computeThemeInfo();
       } catch (err) {}
       try {
         e.source.postMessage(
-          { __nopicDp: "probe-result", id: d.id, theme: theme },
+          {
+            __nopicDp: "probe-result",
+            id: d.id,
+            theme: info.theme,
+            bg: info.bg,
+            lum: info.lum,
+          },
           "*",
         );
       } catch (err) {}

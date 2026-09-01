@@ -10235,7 +10235,7 @@ html > .nopic-submenu {
 /* ---------- 预览窗 ---------- */
 /* 注意：position / left / top / width / height 交给 JS 内联，这里不能加 !important */
 .nopic-dp-win {
-  position: absolute;
+  position: fixed;
   left: 0;
   top: 0;
   box-sizing: border-box !important;
@@ -10245,15 +10245,33 @@ html > .nopic-submenu {
   padding: 0 !important;
   overflow: hidden !important;
   border-radius: 14px !important;
-  /* 深色为默认；data-dp-theme 由探针改写 */
-  background: rgba(24, 24, 30, 0.92) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  /* 沉浸式配色变量：默认深色；[data-dp-theme="light"] 覆盖为浅色；
+     JS 探测到网页背景色后会在 win 上以内联样式覆盖这些变量（最高优先级），
+     让窗口尽量贴合对应页面的背景色。松开后才上色，拖动态（幽灵）一律保持中性。 */
+  --dp-bg: rgba(24, 24, 30, 0.92);
+  --dp-bar: rgba(20, 20, 26, 1);
+  --dp-fg: rgba(255, 255, 255, 0.92);
+  --dp-fg-dim: rgba(255, 255, 255, 0.62);
+  --dp-border: rgba(255, 255, 255, 0.14);
+  --dp-hover: rgba(255, 255, 255, 0.12);
+  --dp-accent: rgba(96, 165, 250, 0.28);
+  --dp-accent-fg: #cfe4ff;
+  --dp-close-hover: rgba(239, 68, 68, 0.85);
+  --dp-op-bg: rgba(255, 255, 255, 0.07);
+  --dp-op-border: rgba(255, 255, 255, 0.12);
+  --dp-op-track: rgba(255, 255, 255, 0.3);
+  --dp-grip: rgba(255, 255, 255, 0.35);
+  --dp-banner-bg: rgba(24, 24, 30, 0.9);
+  --dp-banner-border: rgba(255, 255, 255, 0.14);
+  --dp-banner-fg: rgba(255, 255, 255, 0.88);
+  /* 松手后的预览窗不做毛玻璃（避免持续重绘带来的性能开销）；
+     拖动途中（.nopic-dp-ghosting）才保留一点点磨砂感，见下方幽灵规则。 */
+  background: var(--dp-bg) !important;
+  border: 1px solid var(--dp-border) !important;
   box-shadow:
     0 20px 64px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
-  backdrop-filter: blur(3px) saturate(1.2);
-  -webkit-backdrop-filter: blur(3px) saturate(1.2);
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: var(--dp-fg) !important;
   font:
     400 13px/1.5 -apple-system,
     BlinkMacSystemFont,
@@ -10264,12 +10282,25 @@ html > .nopic-submenu {
   text-align: left !important;
 }
 .nopic-dp-win[data-dp-theme="light"] {
-  background: rgba(250, 251, 254, 0.95) !important;
-  border-color: rgba(15, 23, 42, 0.14) !important;
+  --dp-bg: rgba(250, 251, 254, 0.95);
+  --dp-bar: rgba(237, 240, 245, 1);
+  --dp-fg: rgba(15, 23, 42, 0.9);
+  --dp-fg-dim: rgba(15, 23, 42, 0.6);
+  --dp-border: rgba(15, 23, 42, 0.14);
+  --dp-hover: rgba(15, 23, 42, 0.09);
+  --dp-accent: rgba(37, 99, 235, 0.16);
+  --dp-accent-fg: #1d4ed8;
+  --dp-close-hover: rgba(220, 38, 38, 0.9);
+  --dp-op-bg: rgba(15, 23, 42, 0.05);
+  --dp-op-border: rgba(15, 23, 42, 0.12);
+  --dp-op-track: rgba(15, 23, 42, 0.22);
+  --dp-grip: rgba(15, 23, 42, 0.28);
+  --dp-banner-bg: rgba(250, 251, 254, 0.94);
+  --dp-banner-border: rgba(15, 23, 42, 0.12);
+  --dp-banner-fg: rgba(15, 23, 42, 0.86);
   box-shadow:
     0 20px 64px rgba(15, 23, 42, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
-  color: rgba(15, 23, 42, 0.9) !important;
 }
 /* 拖动 / 缩放时禁掉文字选择，免得把页面文字一路刷蓝 */
 .nopic-dp-win.nopic-dp-active {
@@ -10330,14 +10361,10 @@ html > .nopic-submenu {
   margin: 0 !important;
   padding: 0 6px 0 10px !important;
   cursor: grab !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-  /* 实色背景：标题栏不透明，盖住窗口的 backdrop-filter 毛玻璃，标题框保持清爽不糊；
-     窗口整体的「一点点高斯模糊」由 .nopic-dp-win 的 blur(3px) 在边框/边缘保留 */
-  background: rgba(20, 20, 26, 1) !important;
-}
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-bar {
-  border-bottom-color: rgba(15, 23, 42, 0.1) !important;
-  background: rgba(237, 240, 245, 1) !important;
+  border-bottom: 1px solid var(--dp-border) !important;
+  /* 实色标题栏：用沉浸式背景色（JS 探测到的网页底色或 light/dark 兜底），
+     不使用毛玻璃，保持清爽、零持续重绘。 */
+  background: var(--dp-bar) !important;
 }
 .nopic-dp-win.nopic-dp-active .nopic-dp-bar {
   cursor: grabbing !important;
@@ -10350,21 +10377,39 @@ html > .nopic-submenu {
   background: #60a5fa !important;
   box-shadow: 0 0 8px rgba(96, 165, 250, 0.8) !important;
 }
-.nopic-dp-title {
-  flex: 1 1 auto !important;
+.nopic-dp-urlbar {
+  flex: 0 1 35% !important;
   min-width: 0 !important;
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 3px 8px !important;
+  height: 22px !important;
+  box-sizing: border-box !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: var(--dp-fg) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  font-family: inherit !important;
+  line-height: 1 !important;
+  outline: none !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-  font-size: 12.5px !important;
-  font-weight: 500 !important;
-  color: inherit !important;
-  opacity: 0.9;
+  cursor: text !important;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.nopic-dp-urlbar:hover {
+  background: var(--dp-hover) !important;
+}
+.nopic-dp-urlbar:focus {
+  background: var(--dp-hover) !important;
+  border-color: var(--dp-border) !important;
+  cursor: text !important;
 }
 .nopic-dp-acts {
   flex: none !important;
+  margin-left: auto !important;
   display: flex !important;
   align-items: center !important;
   gap: 2px !important;
@@ -10386,7 +10431,7 @@ html > .nopic-submenu {
   height: 26px !important;
   border-radius: 7px !important;
   cursor: pointer !important;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--dp-fg-dim);
   transition:
     background 0.15s ease,
     color 0.15s ease;
@@ -10397,31 +10442,16 @@ html > .nopic-submenu {
   display: block !important;
 }
 .nopic-dp-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: var(--dp-hover) !important;
+  color: var(--dp-fg) !important;
 }
 .nopic-dp-btn.on {
-  background: rgba(96, 165, 250, 0.28);
-  color: #cfe4ff;
+  background: var(--dp-accent) !important;
+  color: var(--dp-accent-fg) !important;
 }
 .nopic-dp-btn[data-act="close"]:hover {
-  background: rgba(239, 68, 68, 0.85);
-  color: #fff;
-}
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn {
-  color: rgba(15, 23, 42, 0.6);
-}
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn:hover {
-  background: rgba(15, 23, 42, 0.09);
-  color: #0f172a;
-}
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn.on {
-  background: rgba(37, 99, 235, 0.16);
-  color: #1d4ed8;
-}
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-btn[data-act="close"]:hover {
-  background: rgba(220, 38, 38, 0.9);
-  color: #fff;
+  background: var(--dp-close-hover) !important;
+  color: #fff !important;
 }
 
 /* 正文（iframe + 遮罩 + 提示） */
@@ -10448,13 +10478,10 @@ html > .nopic-submenu {
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  background: #fff !important;
+  background: var(--dp-bg) !important;
   /* 预览窗未钉住（变暗模式）时，iframe 内容滚到头不要「滚动链」到外层页面，
      否则 iframe 里不需要滚动时滚轮会把外面的页面带动。 */
   overscroll-behavior: none !important;
-}
-.nopic-dp-win[data-dp-theme="dark"] .nopic-dp-frame {
-  background: #1b1b20 !important;
 }
 /* 拖动 / 缩放时盖住 iframe，否则鼠标一进框里 mousemove 就被吃掉了。
    display 由 JS 内联切换，这里不能加 !important */
@@ -10480,20 +10507,15 @@ html > .nopic-submenu {
   margin: 0 !important;
   padding: 7px 8px 7px 12px !important;
   border-radius: 10px !important;
-  background: rgba(24, 24, 30, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background: var(--dp-banner-bg) !important;
+  border: 1px solid var(--dp-banner-border) !important;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: rgba(255, 255, 255, 0.88) !important;
+  color: var(--dp-banner-fg) !important;
   font-size: 12px !important;
 }
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-banner {
-  background: rgba(250, 251, 254, 0.94) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.18) !important;
-  color: rgba(15, 23, 42, 0.86) !important;
-}
+/* 浅色配色统一由 --dp-banner-* 变量处理（不再单独写 .nopic-dp-banner 浅色规则） */
 .nopic-dp-banner-text {
   flex: 1 1 auto !important;
   min-width: 0 !important;
@@ -10514,16 +10536,13 @@ html > .nopic-submenu {
 }
 .nopic-dp-banner-btn {
   padding: 5px 10px !important;
-  background: rgba(96, 165, 250, 0.25) !important;
-  color: #cfe4ff !important;
+  background: var(--dp-accent) !important;
+  color: var(--dp-accent-fg) !important;
 }
 .nopic-dp-banner-btn:hover {
   background: rgba(96, 165, 250, 0.4) !important;
 }
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-banner-btn {
-  background: rgba(37, 99, 235, 0.14) !important;
-  color: #1d4ed8 !important;
-}
+/* 浅色配色统一由 --dp-accent / --dp-accent-fg 变量处理 */
 .nopic-dp-banner-x {
   width: 22px !important;
   height: 22px !important;
@@ -10536,7 +10555,7 @@ html > .nopic-submenu {
 }
 .nopic-dp-banner-x:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: var(--dp-hover) !important;
 }
 
 /* 四角缩放柄：只做角、不做边，避免误触。
@@ -10576,13 +10595,9 @@ html > .nopic-submenu {
   bottom: 4px !important;
   width: 7px !important;
   height: 7px !important;
-  border-right: 2px solid rgba(255, 255, 255, 0.35) !important;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.35) !important;
+  border-right: 2px solid var(--dp-grip) !important;
+  border-bottom: 2px solid var(--dp-grip) !important;
   border-radius: 0 0 3px 0 !important;
-}
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-grip[data-dir="se"]::after {
-  border-right-color: rgba(15, 23, 42, 0.28) !important;
-  border-bottom-color: rgba(15, 23, 42, 0.28) !important;
 }
 
 /* 关闭动画期间禁用交互（配合 JS 的 nopic-dp-leaving） */
@@ -10779,13 +10794,10 @@ html.nopic-dp-page-locked body {
   margin: 0 4px 0 0 !important;
   padding: 0 7px !important;
   border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.07) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: var(--dp-op-bg) !important;
+  border: 1px solid var(--dp-op-border) !important;
 }
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-opacity {
-  background: rgba(15, 23, 42, 0.05) !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-}
+/* 浅色配色统一由 --dp-op-bg / --dp-op-border 变量处理 */
 .nopic-dp-opacity-slider {
   -webkit-appearance: none !important;
   appearance: none !important;
@@ -10793,16 +10805,14 @@ html.nopic-dp-page-locked body {
   height: 3px !important;
   margin: 0 !important;
   padding: 0 !important;
-  background: rgba(255, 255, 255, 0.3) !important;
+  background: var(--dp-op-track) !important;
   border: 0 !important;
   border-radius: 3px !important;
   outline: none !important;
   cursor: pointer !important;
   vertical-align: middle !important;
 }
-.nopic-dp-win[data-dp-theme="light"] .nopic-dp-opacity-slider {
-  background: rgba(15, 23, 42, 0.22) !important;
-}
+/* 浅色配色统一由 --dp-op-track 变量处理 */
 .nopic-dp-opacity-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
