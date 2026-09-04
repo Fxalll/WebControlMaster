@@ -31570,6 +31570,13 @@ function _nopicBootMain() {
   // 真正预览窗的 DOM（只建不定位 / 不加载）。拖动幽灵和松手预览窗共用它，
   // 这样「幽灵」就是预览窗本身，松手只是把半透明毛玻璃态「显形」成实心窗，
   // 而且 iframe 在拖动途中就已经在后台加载了。
+  // 预览 iframe 的 sandbox：开放常用能力（脚本 / 同源 / 表单提交 / 弹窗 / 模态框 /
+  // 演示文稿等），唯独不放行 allow-top-navigation（及其 user-activation 变体），
+  // 否则被预览站点随时能把用户正在看的页面整个跳走（见 nopicDpStartHijackWatch 兜底）。
+  // 放开 allow-forms 等后，预览窗里的搜索栏回车、表单提交才能正常工作。
+  const NOPIC_DP_SANDBOX =
+    "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation";
+
   function nopicDpCreateWin(ctx) {
     const win = document.createElement("div");
     // 性能模式（图片模糊特效）关闭 → 预览窗带模糊；开启 → 一并取消模糊（保持清爽）
@@ -31610,7 +31617,7 @@ function _nopicBootMain() {
       "</button>" +
       "</div></div>" +
       '<div class="nopic-dp-body">' +
-      '<iframe class="nopic-dp-frame" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen" src="about:blank"></iframe>' +
+      '<iframe class="nopic-dp-frame" sandbox="' + NOPIC_DP_SANDBOX + '" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen" src="about:blank"></iframe>' +
       '<div class="nopic-dp-mask"></div>' +
       "</div>" +
       '<div class="nopic-dp-hint">摇晃以撤销预览</div>' +
@@ -31660,17 +31667,21 @@ function _nopicBootMain() {
     frame.dataset.dpUrl = url;
     win._nopicDpStack = [frame];
     nopicDpUpdateBackState(win);
+    nopicDpLoadingInc(win); // 加载开始：标题栏圆点转圈
     frame.addEventListener("load", function () {
       if (!frame.src || frame.src === "about:blank") return;
       nopicDpWatchTheme(win, frame);
       nopicDpFrameShake(win, true); // 真实内容已加载 → 让子框架转发摇晃手势
       // 让子框架把「会开新标签的链接」拦截下来，改在当前预览窗内新增 iframe
       nopicDpEnableLinkCapture(frame);
+      nopicDpEnableLocationTrack(frame); // 让子框架回报自身地址，保持「打开」按钮指向最新页面
+      nopicDpLoadingDec(win); // 加载完成：标题栏圆点恢复实心
       // 兜底：子框架的 dp-frame.js 可能在 load 那一刻还没挂好监听，稍后再发一次
       setTimeout(function () {
         if (win.isConnected) {
           nopicDpFrameShake(win, true);
           nopicDpEnableLinkCapture(frame);
+          nopicDpEnableLocationTrack(frame);
         }
       }, 400);
     });
@@ -31785,11 +31796,22 @@ function _nopicBootMain() {
     } catch (e) {}
   }
 
-  // 连续探几次：页面可能晚一点才把主色刷上去
+  // 清理一个预览窗的取色轮询（窗口关闭 / iframe 被替换时调用，避免泄漏定时器）
+  function nopicDpStopThemeWatch(win) {
+    if (win && win._nopicDpThemeTimer) {
+      clearInterval(win._nopicDpThemeTimer);
+      win._nopicDpThemeTimer = 0;
+    }
+  }
+
+  // 取色：iframe 在的时候每 5 秒探一次，页面加载慢 / 中途换肤也能跟上；
+  // iframe 不在（窗口关闭、被替换）时由 nopicDpStopThemeWatch 清掉定时器。
   function nopicDpWatchTheme(win, frame) {
-    const delays = [0, 500, 1500, 3200];
+    nopicDpStopThemeWatch(win);
+    if (!win || !frame) return;
     let ok = false;
-    delays.forEach(function (d) {
+    // 刚加载先快速探几下，尽快上色
+    [0, 400, 1200].forEach(function (d) {
       setTimeout(function () {
         if (!win.isConnected) return;
         nopicDpProbeTheme(frame, function (info) {
@@ -31802,6 +31824,20 @@ function _nopicBootMain() {
         });
       }, d);
     });
+    // 之后每 5 秒轮询一次：iframe 还在就继续，不在了就自己停
+    win._nopicDpThemeTimer = setInterval(function () {
+      if (!win.isConnected || !frame.isConnected) {
+        nopicDpStopThemeWatch(win);
+        return;
+      }
+      nopicDpProbeTheme(frame, function (info) {
+        if (!win.isConnected) return;
+        if (info) {
+          ok = true;
+          nopicDpApplyTheme(win, info);
+        }
+      });
+    }, 5000);
     // 3.6 秒还没有任何回应 → 基本可以判定这个站点拒绝被内嵌（已成功上色则跳过）
     setTimeout(function () {
       if (!ok && win.isConnected && !win.dataset.dpTheme)
@@ -31954,6 +31990,7 @@ function _nopicBootMain() {
     if (!win || !nopicDpWins.has(win)) return;
     nopicDpWins.delete(win);
     nopicDpFrameShake(win, false); // 关掉后不再需要这个框架转发摇晃
+    nopicDpStopThemeWatch(win); // 关窗即停掉取色轮询，避免泄漏定时器
     win.classList.add("nopic-dp-leaving");
     setTimeout(function () {
       nopicDpFreeWin(win); // 先释放 iframe 与引用，避免内嵌页面滞留内存
@@ -32162,6 +32199,46 @@ function _nopicBootMain() {
     } catch (e) {}
   }
 
+  // 标题栏圆点在 iframe 加载时转圈：用计数管理「并发加载」，归零才恢复实心圆点
+  function nopicDpLoadingInc(win) {
+    if (!win) return;
+    win._nopicDpLoads = (win._nopicDpLoads || 0) + 1;
+    win.classList.add("nopic-dp-loading");
+    // 安全兜底：极个别站点加载卡死导致 load 一直不触发时，最多 15s 强制复位，
+    // 避免圆点永远转圈。
+    if (win._nopicDpLoadT) clearTimeout(win._nopicDpLoadT);
+    win._nopicDpLoadT = setTimeout(function () {
+      win._nopicDpLoads = 0;
+      win.classList.remove("nopic-dp-loading");
+      win._nopicDpLoadT = 0;
+    }, 15000);
+  }
+  function nopicDpLoadingDec(win) {
+    if (!win) return;
+    win._nopicDpLoads = Math.max(0, (win._nopicDpLoads || 0) - 1);
+    if (!win._nopicDpLoads) {
+      win.classList.remove("nopic-dp-loading");
+      if (win._nopicDpLoadT) {
+        clearTimeout(win._nopicDpLoadT);
+        win._nopicDpLoadT = 0;
+      }
+    }
+  }
+
+  // 让子框架把自身地址 / 标题回报给父窗口（详见 dp-frame.js），
+  // 这样「在新标签页打开」等按钮始终指向 iframe 当前显示的真实地址，
+  // 修复「在引擎里换词搜索后页面已更新、打开按钮却仍指向最初搜索词」的问题。
+  function nopicDpEnableLocationTrack(frame) {
+    try {
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage(
+          { __nopicDp: "track-location", on: true },
+          "*",
+        );
+      }
+    } catch (e) {}
+  }
+
   // 在预览窗内新增一个 iframe，加载被点链接的地址，而不是开新标签。
   // 新 iframe 插在 .nopic-dp-mask 之前，保证遮罩永远在最上层（未钉住时仍整体变暗且不可点）。
   function nopicDpOpenSubframe(win, url) {
@@ -32173,16 +32250,22 @@ function _nopicBootMain() {
     frame.className = "nopic-dp-frame nopic-dp-subframe";
     frame.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
     frame.setAttribute("allow", "fullscreen");
-    // 沙箱禁止顶层跳转：被预览站点无法执行 top.location.href = 自身地址
-    frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
+    // 沙箱禁止顶层跳转（不含 allow-top-navigation），其余常用能力放开，
+    // 否则表单提交 / 搜索回车 / 弹窗等都会失效
+    frame.setAttribute("sandbox", NOPIC_DP_SANDBOX);
     frame.addEventListener("load", function () {
       if (!frame.src || frame.src === "about:blank") return;
       // 让嵌套 iframe 里的链接也继续在本窗内叠加，形成可一直往里钻的预览栈
       nopicDpEnableLinkCapture(frame);
+      nopicDpEnableLocationTrack(frame); // 同步「打开」按钮指向的当前地址
+      nopicDpLoadingDec(win); // 该层加载完成
       // 新一层页面的底色可能不同，重新探测配色
       nopicDpWatchTheme(win, frame);
       setTimeout(function () {
-        if (frame.isConnected) nopicDpEnableLinkCapture(frame);
+        if (frame.isConnected) {
+          nopicDpEnableLinkCapture(frame);
+          nopicDpEnableLocationTrack(frame);
+        }
       }, 400);
     });
     if (mask) body.insertBefore(frame, mask);
@@ -32193,6 +32276,7 @@ function _nopicBootMain() {
     win.dataset.dpUrl = url; // 同步「当前显示地址」，新标签页打开 / 地址栏都读它
     nopicDpSetTitle(win, url);
     nopicDpUpdateBackState(win);
+    nopicDpLoadingInc(win); // 新层开始加载：圆点转圈
     nopicDpAllowFrame(url, function () {
       if (!frame.isConnected) return;
       try {
@@ -32269,6 +32353,7 @@ function _nopicBootMain() {
         ? stack[stack.length - 1]
         : win.querySelector(".nopic-dp-frame");
     if (!frame) return;
+    nopicDpLoadingInc(win); // 地址栏跳转开始：圆点转圈
     frame.dataset.dpUrl = url;
     win.dataset.dpUrl = url; // 同步「当前显示地址」
     nopicDpSetTitle(win, url);
@@ -32612,6 +32697,7 @@ function _nopicBootMain() {
   // 退出：窗口飞回来源处（链接位置 / 拖动起点）并淡出，然后移除
   function nopicDpExit(win) {
     if (!win || !nopicDpWins.has(win)) return;
+    nopicDpStopThemeWatch(win); // 窗口退出即停掉取色轮询
     // 标记「正在退出」：nopicDpExit 会给窗口设 pointer-events:none，浏览器随后会派发
     // mouseleave；若不拦住，applyOpacity() 会被它调起、把 opacity 又写回 1，导致刚启动
     // 的淡出动画被打断（窗口卡在 100% 直到被移除）。关闭按钮就踩这个坑——鼠标在窗内，
@@ -33222,6 +33308,48 @@ function _nopicBootMain() {
         }
         if (!win) return;
         nopicDpOpenSubframe(win, d.url);
+      },
+      false,
+    );
+  } catch (e) {}
+
+  // dp-frame.js 上报的「当前地址 / 标题」→ 同步「在新标签页打开」按钮指向的地址
+  try {
+    window.addEventListener(
+      "message",
+      function (e) {
+        const d = e && e.data;
+        if (!d || d.__nopicDp !== "location" || !d.url) return;
+        const frames = document.querySelectorAll(".nopic-dp-frame");
+        let win = null,
+          frame = null;
+        for (let i = 0; i < frames.length; i++) {
+          let cw = null;
+          try {
+            cw = frames[i].contentWindow;
+          } catch (err) {}
+          if (cw && cw === e.source) {
+            win = frames[i].closest(".nopic-dp-win");
+            frame = frames[i];
+            break;
+          }
+        }
+        if (!win) return;
+        // 只认「当前最上层」那一层 iframe 的地址：后台的根 iframe 或已弹掉的下层
+        // 回报的地址不能覆盖正在显示的层，否则「在新标签页打开」会打开错页面。
+        const stack = win._nopicDpStack;
+        const topFrame =
+          stack && stack.length ? stack[stack.length - 1] : null;
+        if (frame !== topFrame) return;
+        const cur = win.dataset.dpUrl || "";
+        if (d.url !== cur) {
+          win.dataset.dpUrl = d.url;
+          if (frame) frame.dataset.dpUrl = d.url;
+          const ub = win.querySelector(".nopic-dp-urlbar");
+          // 用户正在编辑地址栏时不抢它的焦点 / 内容
+          if (!(ub && document.activeElement === ub))
+            nopicDpSetTitle(win, d.url);
+        }
       },
       false,
     );

@@ -10377,7 +10377,20 @@ html > .nopic-submenu {
   height: 8px !important;
   border-radius: 50% !important;
   background: #60a5fa !important;
-  box-shadow: 0 0 8px rgba(96, 165, 250, 0.8) !important;
+}
+/* 拖动速览标题栏圆点：iframe 加载中转圈（复用指示灯同款旋转风格），
+   加载完成（移除 .nopic-dp-loading）即恢复为实心蓝点。 */
+.nopic-dp-win.nopic-dp-loading .nopic-dp-dot {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 1.5px solid rgba(96, 165, 250, 0.25) !important;
+  border-top-color: #60a5fa !important;
+  box-sizing: border-box !important;
+  animation: nopic-dp-dot-spin 0.6s linear infinite !important;
+}
+@keyframes nopic-dp-dot-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 .nopic-dp-urlbar {
   flex: 0 1 35% !important;

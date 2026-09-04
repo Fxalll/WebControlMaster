@@ -199,4 +199,60 @@
     false,
   );
 
+  // ---------- 预览窗内导航跟踪：把自身地址 / 标题回报父窗口 ----------
+  // 仅当父窗口发来 {__nopicDp:"track-location", on:true}（预览 iframe 才发）才开启，
+  // 普通子框架不受影响。父窗口据此同步「在新标签页打开」等按钮指向的真实地址，
+  // 解决「在引擎里换词搜索后页面已更新、但打开按钮仍指向最初搜索词」的问题。
+  var _locTrackOn = false;
+  var _locTimer = 0;
+  var _locLastHref = "";
+  var _locLastTitle = "";
+  function _locReport() {
+    try {
+      var href = location.href;
+      var title = document.title || "";
+      if (href === _locLastHref && title === _locLastTitle) return;
+      _locLastHref = href;
+      _locLastTitle = title;
+      window.parent.postMessage(
+        { __nopicDp: "location", url: href, title: title },
+        "*",
+      );
+    } catch (e) {}
+  }
+  function _locSet(on) {
+    on = !!on;
+    if (on === _locTrackOn) return;
+    _locTrackOn = on;
+    if (on) {
+      _locLastHref = "";
+      _locLastTitle = "";
+      _locReport(); // 立即报一次当前地址
+      window.addEventListener("load", _locReport, false);
+      // 周期轮询：捕获同文档内的导航（表单 GET、SPA 跳转、hash 变化等），
+      // 这些不会触发父窗口能读到的 load，但 location.href 会变，轮询即可感知。
+      if (!_locTimer) _locTimer = setInterval(_locReport, 1000);
+    } else {
+      window.removeEventListener("load", _locReport, false);
+      if (_locTimer) {
+        clearInterval(_locTimer);
+        _locTimer = 0;
+      }
+    }
+  }
+  window.addEventListener(
+    "message",
+    function (e) {
+      var d = e && e.data;
+      if (!d || d.__nopicDp !== "track-location") return;
+      try {
+        if (e.source !== window.parent) return;
+      } catch (err) {
+        return;
+      }
+      _locSet(d.on);
+    },
+    false,
+  );
+
 })();
