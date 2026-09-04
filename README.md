@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon128.png" width="128" height="128" alt="网页控制大师">
+  <img src="icon128_new.png" width="128" height="128" alt="网页控制大师">
 </p>
 
 # 网页控制大师
