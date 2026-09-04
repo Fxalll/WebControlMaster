@@ -31439,18 +31439,10 @@ function _nopicBootMain() {
   }
 
   // 由鼠标位置推出「原地」矩形：窗口以鼠标为几何中心，再夹进视口
+  // 由鼠标位置推出「原地」矩形：窗口以鼠标为几何中心。
+  // 不再夹进视口：允许速览窗随鼠标拖到屏幕外（部分超出），增加掌控感。
   function nopicDpRect(x, y, w, h) {
-    let left = x - w / 2;
-    let top = y - h / 2;
-    left = Math.max(
-      NOPIC_DP_EDGE,
-      Math.min(left, window.innerWidth - w - NOPIC_DP_EDGE),
-    );
-    top = Math.max(
-      NOPIC_DP_EDGE,
-      Math.min(top, window.innerHeight - h - NOPIC_DP_EDGE),
-    );
-    return { left: left, top: top, w: w, h: h };
+    return { left: x - w / 2, top: y - h / 2, w: w, h: h };
   }
 
   // ---------- 小工具 ----------
@@ -31601,7 +31593,7 @@ function _nopicBootMain() {
       '<div class="nopic-dp-acts">' +
       // 透明度滑块：放在钉住键左边，和三个按钮同一行（不再用竖向悬浮工具栏）
       '<div class="nopic-dp-opacity" title="窗口透明度（调整即自动钉住）">' +
-      '<input class="nopic-dp-opacity-slider" type="range" min="20" max="100" value="100" data-tool="opacity">' +
+      '<input class="nopic-dp-opacity-slider" type="range" min="1" max="100" value="100" data-tool="opacity">' +
       '<span class="nopic-dp-opacity-val">100%</span>' +
       "</div>" +
       '<button class="nopic-dp-btn nopic-dp-back" type="button" data-act="back" title="返回上一页" aria-label="返回">' +
@@ -31618,7 +31610,7 @@ function _nopicBootMain() {
       "</button>" +
       "</div></div>" +
       '<div class="nopic-dp-body">' +
-      '<iframe class="nopic-dp-frame" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen" src="about:blank"></iframe>' +
+      '<iframe class="nopic-dp-frame" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer-when-downgrade" allow="fullscreen" src="about:blank"></iframe>' +
       '<div class="nopic-dp-mask"></div>' +
       "</div>" +
       '<div class="nopic-dp-hint">摇晃以撤销预览</div>' +
@@ -31969,8 +31961,86 @@ function _nopicBootMain() {
         win.remove();
       } catch (e) {}
       nopicDpRefreshOverlay();
-      if (!nopicDpWins.size) nopicDpReleaseFrames();
+      if (!nopicDpWins.size) {
+        nopicDpReleaseFrames();
+        nopicDpStopHijackWatch(); // 没有预览窗了，停止主页面劫持检测
+      }
     }, 240);
+  }
+
+  // ---------- iframe 劫持主页面地址的兜底检测 ----------
+  // 主防线是「预览 iframe 的 sandbox 不含 allow-top-navigation」，浏览器层面直接禁止
+  // 被预览站点执行 top.location.href = 自身地址。这里再挂一个事后轮询做 best-effort：
+  // 若主页面 url 被换成了预览站点的域名（绕过沙箱的极端情况），弹红色横幅提示。
+  let _nopicDpHijackTimer = 0;
+  let _nopicDpHijackMainUrl = "";
+  let _nopicDpHijackPreviewHost = "";
+  function nopicDpStartHijackWatch(previewUrl) {
+    nopicDpStopHijackWatch();
+    try {
+      _nopicDpHijackMainUrl = location.href;
+      _nopicDpHijackPreviewHost = new URL(previewUrl).host || "";
+    } catch (e) {
+      _nopicDpHijackPreviewHost = "";
+    }
+    _nopicDpHijackTimer = setInterval(function () {
+      let curHost = "";
+      try {
+        curHost = new URL(location.href).host || "";
+      } catch (e) {}
+      let mainHost = "";
+      try {
+        mainHost = new URL(_nopicDpHijackMainUrl).host || "";
+      } catch (e) {}
+      // 主页面域名被换成了预览站点域名 → 说明站点绕过沙箱把主页面导航走了
+      if (
+        curHost &&
+        mainHost &&
+        curHost !== mainHost &&
+        (!_nopicDpHijackPreviewHost || curHost === _nopicDpHijackPreviewHost)
+      ) {
+        nopicDpStopHijackWatch();
+        nopicDpShowHijackBanner(_nopicDpHijackMainUrl, previewUrl);
+      }
+    }, 200);
+  }
+  function nopicDpStopHijackWatch() {
+    if (_nopicDpHijackTimer) {
+      clearInterval(_nopicDpHijackTimer);
+      _nopicDpHijackTimer = 0;
+    }
+  }
+  function nopicDpShowHijackBanner(mainUrl, previewUrl) {
+    if (document.getElementById("nopic-dp-hijack-banner")) return;
+    const bar = document.createElement("div");
+    bar.id = "nopic-dp-hijack-banner";
+    bar.className = "nopic-dp-hijack-banner";
+    bar.innerHTML =
+      '<span class="nopic-dp-hijack-text">⚠ 预览站点试图把整个页面跳转到它自己，已为你拦下</span>' +
+      '<button class="nopic-dp-hijack-btn" type="button" data-act="back">返回原页面</button>' +
+      '<button class="nopic-dp-hijack-btn" type="button" data-act="tab">新标签打开预览</button>' +
+      '<button class="nopic-dp-hijack-x" type="button" data-act="dismiss">×</button>';
+    document.documentElement.appendChild(bar);
+    bar.addEventListener("click", function (ev) {
+      const btn = ev.target.closest("button");
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const act = btn.dataset.act;
+      if (act === "back") {
+        try {
+          if (location.href !== mainUrl) location.replace(mainUrl);
+        } catch (e) {}
+        bar.remove();
+      } else if (act === "tab") {
+        try {
+          window.open(previewUrl, "_blank", "noopener");
+        } catch (e) {}
+        bar.remove();
+      } else {
+        bar.remove();
+      }
+    });
   }
 
   // 站点拒绝内嵌时的提示：做成底部横幅而不是整块遮罩。
@@ -32103,6 +32173,8 @@ function _nopicBootMain() {
     frame.className = "nopic-dp-frame nopic-dp-subframe";
     frame.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
     frame.setAttribute("allow", "fullscreen");
+    // 沙箱禁止顶层跳转：被预览站点无法执行 top.location.href = 自身地址
+    frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
     frame.addEventListener("load", function () {
       if (!frame.src || frame.src === "about:blank") return;
       // 让嵌套 iframe 里的链接也继续在本窗内叠加，形成可一直往里钻的预览栈
@@ -32540,6 +32612,11 @@ function _nopicBootMain() {
   // 退出：窗口飞回来源处（链接位置 / 拖动起点）并淡出，然后移除
   function nopicDpExit(win) {
     if (!win || !nopicDpWins.has(win)) return;
+    // 标记「正在退出」：nopicDpExit 会给窗口设 pointer-events:none，浏览器随后会派发
+    // mouseleave；若不拦住，applyOpacity() 会被它调起、把 opacity 又写回 1，导致刚启动
+    // 的淡出动画被打断（窗口卡在 100% 直到被移除）。关闭按钮就踩这个坑——鼠标在窗内，
+    // 松手退出时 mouseleave 触发把透明度复位；点空白退出鼠标在窗外则不会。
+    win._dpExiting = true;
     nopicDpWins.delete(win);
     // 退出即触发遮罩淡出 + 解锁页面滚动：把视觉收尾与「释放 iframe / 移除 DOM」的
     // 回收解耦，用户松手后立刻能滚动、点击页面，回收在飞回动画结束后才执行，互不干扰。
@@ -32619,14 +32696,46 @@ function _nopicBootMain() {
         });
       },
     );
+    // 透明度策略：
+    // - 鼠标在窗内 → 自动 100%（看得清、好操作）；
+    // - 鼠标移出窗 → 才应用「设定值」；
+    // - 拖滑块过程中实时按设定值预览（不锁 100%），方便边拖边看效果；
+    // - 全程走 0.2s 渐变（见 .nopic-dp-win 的 transition: opacity）。
+    let setOpacity = 100; // 用户设定的透明度
+    let adjusting = false; // 是否正拖着滑块
+    function applyOpacity() {
+      if (win._dpExiting) return; // 正在退出（飞回+淡出）中，禁止鼠标/滑块事件把透明度复位
+      const inside = win._dpInside;
+      const target = inside && !adjusting ? 100 : setOpacity;
+      win.style.opacity = (target / 100).toFixed(2);
+      if (valEl) valEl.textContent = setOpacity + "%";
+    }
+    win.addEventListener("mouseenter", function () {
+      win._dpInside = true;
+      applyOpacity();
+    });
+    win.addEventListener("mouseleave", function () {
+      win._dpInside = false;
+      applyOpacity();
+    });
     slider.addEventListener("input", function (e) {
       e.stopPropagation();
-      const v = parseInt(slider.value, 10) || 100;
-      win.style.opacity = (v / 100).toFixed(2);
-      if (valEl) valEl.textContent = v + "%";
-      // 只要动过透明度，就视作进入钉住模式（遮罩消失、外页可滚动）
-      if (v < 100) nopicDpPinForOpacity(win);
+      const v = parseInt(slider.value, 10);
+      setOpacity = isNaN(v) ? 100 : v;
+      adjusting = true;
+      applyOpacity();
+      // 只要动过透明度（且不是 100），就视作进入钉住模式（遮罩消失、外页可滚动）
+      if (setOpacity < 100) nopicDpPinForOpacity(win);
     });
+    // 松手滑块：若鼠标仍在窗内则恢复 100%，移出窗则保持设定值
+    function endAdjust() {
+      if (!adjusting) return;
+      adjusting = false;
+      applyOpacity();
+    }
+    slider.addEventListener("change", endAdjust);
+    slider.addEventListener("pointerup", endAdjust);
+    slider.addEventListener("mouseup", endAdjust);
   }
 
   function nopicDpTogglePin(win) {
@@ -32673,6 +32782,9 @@ function _nopicBootMain() {
     win.id = "nopic-dp-win-" + ++_nopicDpSeq;
     win.dataset.pinned = "0";
     win.dataset.dpUrl = ctx.url;
+    // 主防线：预览 iframe 已加 sandbox（禁止顶层跳转）。这里再挂事后检测兜底：
+    // 若被预览站点绕过沙箱把主页面地址换掉，弹出红色提示横幅（见 nopicDpStartHijackWatch）。
+    nopicDpStartHijackWatch(ctx.url);
     win._srcRect = ctx._srcRect || null;
     win._srcPt = ctx._srcPt || null;
     win.setAttribute("data-dp-theme", nopicDpExtTheme());

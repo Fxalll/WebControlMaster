@@ -67,7 +67,6 @@ body {
   width: 34px;
   height: 34px;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 4px #3c609b69);
 }
 
 .titles {

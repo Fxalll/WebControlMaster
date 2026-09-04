@@ -10280,6 +10280,8 @@ html > .nopic-submenu {
     "Microsoft YaHei",
     sans-serif !important;
   text-align: left !important;
+  /* 透明度过渡：鼠标移入（→100%）/ 移出（→设定值）平滑渐变 */
+  transition: opacity 0.2s ease;
 }
 .nopic-dp-win[data-dp-theme="light"] {
   --dp-bg: rgba(250, 251, 254, 0.95);
@@ -10556,6 +10558,80 @@ html > .nopic-submenu {
 .nopic-dp-banner-x:hover {
   opacity: 1;
   background: var(--dp-hover) !important;
+}
+
+/* 主页面被 iframe 预览站点劫持时的红色提示横幅（挂在 documentElement 下、全屏固定） */
+.nopic-dp-hijack-banner {
+  position: fixed !important;
+  left: 16px !important;
+  right: 16px !important;
+  top: 16px !important;
+  z-index: 2147483646 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  background: rgba(185, 28, 28, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45) !important;
+  color: #fff !important;
+  font:
+    600 13px/1.5 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei",
+    sans-serif !important;
+  animation: nopic-dp-hijack-in 0.2s ease;
+}
+@keyframes nopic-dp-hijack-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.nopic-dp-hijack-text {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  color: inherit !important;
+}
+.nopic-dp-hijack-btn,
+.nopic-dp-hijack-x {
+  all: unset;
+  box-sizing: border-box !important;
+  flex: none !important;
+  cursor: pointer !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  transition: background 0.15s ease;
+}
+.nopic-dp-hijack-btn {
+  padding: 6px 12px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #fff !important;
+}
+.nopic-dp-hijack-btn:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+.nopic-dp-hijack-x {
+  width: 24px !important;
+  height: 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  opacity: 0.7;
+}
+.nopic-dp-hijack-x:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* 四角缩放柄：只做角、不做边，避免误触。
